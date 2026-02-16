@@ -7,4 +7,4 @@ nixPkgs = ["nodejs"]
 cmds = ["npm install"]
 
 [start]
-cmd = "node src/index.js"
+cmd = "npm start"

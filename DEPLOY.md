@@ -41,13 +41,9 @@ git push -u origin main
    
    > **Note:** Copy these values from your `.env` file
 
-4. **Deploy Commands**
-   After the bot is deployed, run this once in Railway's terminal:
-   ```bash
-   node src/deploy-commands.js
-   ```
-
-5. **Done!** Your bot should now be online 24/7
+4. **Done!** Your bot should now be online 24/7
+   
+   > Commands are automatically deployed on startup - no manual step needed!
 
 ## Railway Configuration Files
 
