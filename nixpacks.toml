@@ -1,0 +1,10 @@
+# Railway Nixpacks configuration for Shantha Discord Bot
+
+[phases.setup]
+nixPkgs = ["nodejs"]
+
+[phases.install]
+cmds = ["npm install"]
+
+[start]
+cmd = "node src/index.js"
