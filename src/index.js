@@ -51,6 +51,15 @@ for (const file of eventFiles) {
 
 // Handle interaction commands
 client.on(Events.InteractionCreate, async interaction => {
+    if (interaction.isButton()) {
+        if (interaction.customId === 'refresh_stats') {
+            await interaction.deferUpdate();
+            const { updateStatusMessage } = await import('./utils/statusUpdater.js');
+            await updateStatusMessage(interaction.client);
+        }
+        return;
+    }
+    
     if (!interaction.isChatInputCommand()) return;
 
     const command = client.commands.get(interaction.commandName);
@@ -76,7 +85,6 @@ client.on(Events.InteractionCreate, async interaction => {
     }
 });
 
-// Login to Discord
 client.login(config.token);
 
 export default client;

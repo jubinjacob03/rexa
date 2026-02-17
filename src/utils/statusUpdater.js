@@ -1,4 +1,4 @@
-import { EmbedBuilder } from 'discord.js';
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import config from '../../config.js';
 
 let statusMessage = null;
@@ -13,7 +13,6 @@ export async function createStatusEmbed(guild, client) {
         await guild.members.fetch();
     } catch (error) {
         if (error.code === 'RateLimitError' || error.name === 'GatewayRateLimitError') {
-            // Use cached data if rate limited
             console.log('[WARN] Rate limited, using cached member data for status update');
         } else {
             console.error('[ERROR] Failed to fetch members:', error);
@@ -29,109 +28,20 @@ export async function createStatusEmbed(guild, client) {
                   member.presence?.status === 'dnd'
     ).size;
     
-    // Get key roles from config (by role ID)
-    const importantRoles = [];
-    if (config.keyRoles && config.keyRoles.length > 0) {
-        for (const roleId of config.keyRoles) {
-            const role = guild.roles.cache.get(roleId);
-            if (role) {
-                importantRoles.push(`${role} • **${role.members.size}** members`);
-            }
-        }
-    } else {
-        // If no roles configured, show top 5 roles
-        const topRoles = guild.roles.cache
-            .filter(role => role.id !== guild.id && !role.managed)
-            .sort((a, b) => b.members.size - a.members.size)
-            .first(5);
-        topRoles.forEach(role => {
-            importantRoles.push(`${role} • **${role.members.size}** members`);
-        });
-    }
-    
-    // Get all available commands from the guild
-    const commands = await guild.commands.fetch();
-    const commandList = commands.map(cmd => `\`/${cmd.name}\``).join(', ') || 'No commands registered yet';
-    
     const embed = new EmbedBuilder()
-        .setColor('#00D9FF')
-        .setAuthor({ 
-            name: '⚡ Shantha • Personal Assistant',
-            iconURL: client.user.displayAvatarURL()
-        })
-        .setDescription('```ansi\n\u001b[36m╔═══════════════════════════════════╗\n\u001b[36m║   Saiyan Gods Server Dashboard    ║\n\u001b[36m╚═══════════════════════════════════╝\u001b[0m```')
-        .setThumbnail(guild.iconURL({ dynamic: true, size: 256 }))
-        .addFields(
-            {
-                name: '```╭──────────────── MEMBERS ────────────────╮```',
-                value: '** **',
-                inline: false
-            },
-            {
-                name: '👥 Members',
-                value: `> **${totalMembers}** Total\n> **${humanCount}** Humans\n> **${botCount}** Bots`,
-                inline: true
-            },
-            {
-                name: '🟢 Activity',
-                value: `> **${onlineMembers}** Online\n> **${totalMembers - onlineMembers}** Offline`,
-                inline: true
-            },
-            {
-                name: '```╰─────────────────────────────────────────╯```',
-                value: '** **',
-                inline: false
-            },
-            {
-                name: '```╭───────────── SERVER INFO ──────────────╮```',
-                value: '** **',
-                inline: false
-            },
-            {
-                name: '🌐 Details',
-                value: `> **Created:** <t:${Math.floor(guild.createdTimestamp / 1000)}:R>\n> **Owner:** <@${guild.ownerId}>\n> **Dev:** <@882490956002242581>\n> **ID:** \`${guild.id}\``,
-                inline: true
-            },
-            {
-                name: '📊 Statistics',
-                value: `> **${guild.roles.cache.size}** Roles\n> **${guild.channels.cache.size}** Channels`,
-                inline: true
-            },
-            {
-                name: '```╰─────────────────────────────────────────╯```',
-                value: '** **',
-                inline: false
-            },
-            {
-                name: '```╭────────────── KEY ROLES ───────────────╮```',
-                value: '** **',
-                inline: false
-            },
-            {
-                name: '🎭 Server Roles',
-                value: importantRoles.length > 0 
-                    ? '> ' + importantRoles.join('\n> ')
-                    : '> *No key roles configured*',
-                inline: false
-            },
-            {
-                name: '```╰─────────────────────────────────────────╯```',
-                value: '** **',
-                inline: false
-            },
-            {
-                name: '⚡ Available Commands',
-                value: `> ${commandList || '*No commands available*'}`,
-                inline: false
-            }
+        .setColor('#00FFFF')
+        .setTitle('sᴇʀᴠᴇʀ sᴛᴀᴛs')
+        .setDescription(
+            `**${totalMembers}** ᴛᴏᴛᴀʟ • **${humanCount}** ᴍᴇᴍʙᴇʀs • **${botCount}** ʙᴏᴛs • **${guild.roles.cache.size}** ʀᴏʟᴇs • **${guild.channels.cache.size}** ᴄʜᴀɴɴᴇʟs\n\n` +
+            `\`\`\`ansi\n\u001b[1;32m ${onlineMembers} ᴏɴʟɪɴᴇ \u001b[0m\`\`\` \`\`\`ansi\n\u001b[1;31m ${totalMembers - onlineMembers} ᴏғғʟɪɴᴇ \u001b[0m\`\`\`\u200b`
         )
+        .setThumbnail(guild.iconURL({ dynamic: true, size: 256 }))
         .setFooter({ 
-            text: `🔄 Auto-updates every ${config.updateInterval} min • Powered by Shantha`,
-            iconURL: guild.iconURL()
+            text: `ʟᴀsᴛ ᴜᴘᴅᴀᴛᴇᴅ`,
+            iconURL: client.user.displayAvatarURL()
         })
         .setTimestamp();
     
-    // Add banner if available
     if (guild.banner) {
         embed.setImage(guild.bannerURL({ size: 1024 }));
     }
@@ -158,9 +68,34 @@ export async function updateStatusMessage(client) {
         
         const embed = await createStatusEmbed(guild, client);
         
+        const refreshButton = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('refresh_stats')
+                    .setLabel('ʀᴇғʀᴇsʜ')
+                    .setStyle(ButtonStyle.Primary)
+            );
+        
+        if (!statusMessage) {
+            try {
+                const pinnedMessages = await channel.messages.fetchPinned();
+                statusMessage = pinnedMessages.find(msg => 
+                    msg.author.id === client.user.id && 
+                    msg.embeds.length > 0 && 
+                    msg.embeds[0].title === 'sᴇʀᴠᴇʀ sᴛᴀᴛs'
+                );
+                
+                if (statusMessage) {
+                    console.log('[INFO] Found existing stats message, will update it');
+                }
+            } catch (error) {
+                console.error('[WARN] Could not fetch pinned messages:', error.message);
+            }
+        }
+        
         if (statusMessage) {
             try {
-                await statusMessage.edit({ embeds: [embed] });
+                await statusMessage.edit({ embeds: [embed], components: [refreshButton] });
                 console.log(`[INFO] Server info updated at ${new Date().toLocaleTimeString()}`);
             } catch (error) {
                 console.error('[ERROR] Could not edit message, creating new one:', error.message);
@@ -169,7 +104,7 @@ export async function updateStatusMessage(client) {
         }
         
         if (!statusMessage) {
-            statusMessage = await channel.send({ embeds: [embed] });
+            statusMessage = await channel.send({ embeds: [embed], components: [refreshButton] });
             await statusMessage.pin();
             console.log('[INFO] New server info message created and pinned!');
         }
@@ -184,10 +119,8 @@ export async function updateStatusMessage(client) {
 export function startStatusUpdater(client) {
     console.log(`[INFO] Shantha starting server monitoring (interval: ${config.updateInterval} minutes)`);
     
-    // Initial update
     updateStatusMessage(client);
-    
-    // Set up interval
+
     updateInterval = setInterval(() => {
         updateStatusMessage(client);
     }, config.updateInterval * 60 * 1000);
