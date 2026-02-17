@@ -56,8 +56,28 @@ client.on(Events.InteractionCreate, async interaction => {
             await interaction.deferUpdate();
             const { updateStatusMessage } = await import('./utils/statusUpdater.js');
             await updateStatusMessage(interaction.client);
+            return;
         }
-        return;
+        
+        if (interaction.customId === 'verify_friends' || interaction.customId === 'verify_member') {
+            const { handleVerificationApply } = await import('./utils/verificationHandler.js');
+            await handleVerificationApply(interaction);
+            return;
+        }
+        
+        if (interaction.customId.startsWith('approve_') || interaction.customId.startsWith('reject_')) {
+            const { handleApprovalAction } = await import('./utils/verificationHandler.js');
+            await handleApprovalAction(interaction);
+            return;
+        }
+    }
+    
+    if (interaction.isModalSubmit()) {
+        if (interaction.customId.startsWith('nickname_modal_')) {
+            const { handleNicknameModal } = await import('./utils/verificationHandler.js');
+            await handleNicknameModal(interaction);
+            return;
+        }
     }
     
     if (!interaction.isChatInputCommand()) return;

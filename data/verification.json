@@ -1,0 +1,25 @@
+{
+  "pendingRequests": {},
+  "approvalLogs": [
+    {
+      "userId": "882490956002242581",
+      "username": "jubin_jv",
+      "requestedRole": "Member",
+      "approvedBy": "jubin_jv",
+      "approvedById": "882490956002242581",
+      "nickname": null,
+      "status": "rejected",
+      "timestamp": "2026-02-17T15:05:49.411Z"
+    },
+    {
+      "userId": "882490956002242581",
+      "username": "jubin_jv",
+      "requestedRole": "Member",
+      "approvedBy": "jubin_jv",
+      "approvedById": "882490956002242581",
+      "nickname": null,
+      "status": "rejected",
+      "timestamp": "2026-02-17T15:17:08.470Z"
+    }
+  ]
+}
