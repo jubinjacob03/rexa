@@ -32,8 +32,6 @@ const rest = new REST().setToken(config.token);
 (async () => {
     try {
         console.log(`[INFO] Started refreshing ${commands.length} application (/) commands.`);
-
-        // Register commands to specific guild (faster for development)
         const data = await rest.put(
             Routes.applicationGuildCommands(config.clientId, config.guildId),
             { body: commands },

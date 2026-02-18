@@ -18,7 +18,7 @@ export default {
             const friendsEmbed = new EmbedBuilder()
                 .setColor('#0099FF')
                 .setTitle('🌟 ғʀɪᴇɴᴅs ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ')
-                .setDescription('ᴀᴘᴘʟʏ ғᴏʀ **ғʀɪᴇɴᴅs** ʀᴏʟᴇ ᴛᴏ ᴀᴄᴄᴇss ʙᴀsɪᴄ sᴇʀᴠᴇʀ ғᴇᴀᴛᴜʀᴇs ᴀɴᴅ ᴄʜᴀɴɴᴇʟs.')
+                .setDescription('ᴀᴘᴘʟʏ ғᴏʀ **ғʀɪᴇɴᴅs** ʀᴏʟᴇ ɪғ ʏᴏᴜ ᴀʀᴇ ᴀ **ᴠɪsɪᴛᴏʀ** ɪɴ ᴛʜᴇ sᴇʀᴠᴇʀ.')
                 .addFields(
                     { name: 'ᴘᴜʀᴘᴏsᴇ', value: 'ғᴏʀ ᴠɪsɪᴛᴏʀs', inline: true },
                     { name: 'ᴀᴄᴄᴇss ʟᴇᴠᴇʟ', value: 'ʙᴀsɪᴄ', inline: true },
@@ -32,13 +32,12 @@ export default {
                         .setCustomId('verify_friends')
                         .setLabel('ᴀᴘᴘʟʏ')
                         .setStyle(ButtonStyle.Primary)
-                        .setEmoji('✅')
                 );
 
             const memberEmbed = new EmbedBuilder()
                 .setColor('#00FF00')
                 .setTitle('👑 ᴍᴇᴍʙᴇʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ')
-                .setDescription('ᴀᴘᴘʟʏ ғᴏʀ **ᴍᴇᴍʙᴇʀ** ʀᴏʟᴇ ᴛᴏ ᴀᴄᴄᴇss ᴀʟʟ sᴇʀᴠᴇʀ ғᴇᴀᴛᴜʀᴇs ᴀɴᴅ ᴇxᴄʟᴜsɪᴠᴇ ᴄʜᴀɴɴᴇʟs.')
+                .setDescription('ᴀᴘᴘʟʏ ғᴏʀ **ᴍᴇᴍʙᴇʀ** ʀᴏʟᴇ ɪғ ʏᴏᴜ ᴀʀᴇ ᴀ **ɢᴜɪʟᴅᴍᴀᴛᴇ** ɪɴ sᴀɪʏᴀɴ ɢᴏᴅs.')
                 .addFields(
                     { name: 'ᴘᴜʀᴘᴏsᴇ', value: 'ɢᴜɪʟᴅᴍᴀᴛᴇs', inline: true },
                     { name: 'ᴀᴄᴄᴇss ʟᴇᴠᴇʟ', value: 'ғᴜʟʟ ᴀᴄᴄᴇss', inline: true },
@@ -52,7 +51,6 @@ export default {
                         .setCustomId('verify_member')
                         .setLabel('ᴀᴘᴘʟʏ')
                         .setStyle(ButtonStyle.Success)
-                        .setEmoji('✅')
                 );
 
             const messages = await verificationChannel.messages.fetch({ limit: 10 });

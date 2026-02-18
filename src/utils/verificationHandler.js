@@ -97,12 +97,11 @@ export async function handleApprovalAction(interaction) {
             
             const nicknameInput = new TextInputBuilder()
                 .setCustomId('nickname_input')
-                .setLabel('ᴇɴᴛᴇʀ ᴛʜᴇ ɴᴀᴍᴇ ғᴏʀ "ɢᴏᴅ [ɴᴀᴍᴇ]" ғᴏʀᴍᴀᴛ')
-                .setPlaceholder('ᴇxᴀᴍᴘʟᴇ: ᴊᴏʜɴ → ɢᴏᴅ ᴊᴏʜɴ')
+                .setLabel(isFriends ? 'ᴇɴᴛᴇʀ ᴛʜᴇ ɴɪᴄᴋɴᴀᴍᴇ' : 'ᴇɴᴛᴇʀ ᴛʜᴇ ɴᴀᴍᴇ ғᴏʀ "ɢᴏᴅ [ɴᴀᴍᴇ]" ғᴏʀᴍᴀᴛ')
+                .setPlaceholder(isFriends ? 'ᴇxᴀᴍᴘʟᴇ: ᴊᴏʜɴ' : 'ᴇxᴀᴍᴘʟᴇ: ᴊᴏʜɴ → ɢᴏᴅ ᴊᴏʜɴ')
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true)
-                .setMaxLength(26);
-            
+                .setMaxLength(isFriends ? 32 : 26); 
             const row = new ActionRowBuilder().addComponents(nicknameInput);
             modal.addComponents(row);
             
@@ -163,8 +162,9 @@ export async function handleNicknameModal(interaction) {
         await interaction.deferReply({ ephemeral: true });
         
         const [, , userId, roleId] = interaction.customId.split('_');
-        const nicknameSuffix = interaction.fields.getTextInputValue('nickname_input');
-        const finalNickname = `God ${nicknameSuffix}`;
+        const nicknameInput = interaction.fields.getTextInputValue('nickname_input');
+        const isFriends = roleId === config.friendsRoleId;
+        const finalNickname = isFriends ? nicknameInput : `God ${nicknameInput}`;
 
         const request = verificationManager.getRequest(userId);
         if (!request) {
@@ -181,8 +181,18 @@ export async function handleNicknameModal(interaction) {
             });
         }
 
-        await member.roles.remove(config.unverifiedRoleId);
+        if (member.roles.cache.has(roleId)) {
+            return interaction.editReply({
+                content: `❌ User already has the **${request.requestedRole}** role. No changes made.`
+            });
+        }
+
+        if (member.roles.cache.has(config.unverifiedRoleId)) {
+            await member.roles.remove(config.unverifiedRoleId);
+        }
+
         await member.roles.add(roleId);
+
         await member.setNickname(finalNickname);
 
         const originalEmbed = EmbedBuilder.from(interaction.message.embeds[0])
