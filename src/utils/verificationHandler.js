@@ -91,6 +91,9 @@ export async function handleApprovalAction(interaction) {
         }
         
         if (action === 'approve') {
+            // Check if it's Friends or Member role
+            const isFriends = roleId === config.friendsRoleId;
+            
             const modal = new ModalBuilder()
                 .setCustomId(`nickname_modal_${userId}_${roleId}`)
                 .setTitle('sᴇᴛ sᴇʀᴠᴇʀ ɴɪᴄᴋɴᴀᴍᴇ');
