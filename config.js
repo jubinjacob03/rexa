@@ -22,6 +22,7 @@ export default {
     moderatorRoleId: process.env.MODERATOR_ROLE_ID,
     managerRoleId: process.env.MANAGER_ROLE_ID,
     ownerRoleId: process.env.OWNER_ROLE_ID,
+    botRoleId: process.env.BOT_ROLE_ID,
     
     imageOnlyChannels: ['1473075469028167811', '1473075469028167814']
 };

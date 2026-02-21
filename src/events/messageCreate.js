@@ -28,8 +28,8 @@ export default {
                 await message.delete();
                 const channelAllowsMentions = message.channel.id === '1473075469028167811';
                 const notificationText = channelAllowsMentions
-                    ? `<@${message.author.id}> ᴛʜɪs ɪs ᴀɴ ɪᴍᴀɢᴇ-ᴏɴʟʏ ᴄʜᴀɴɴᴇʟ. ᴏɴʟʏ ɪᴍᴀɢᴇs ᴀɴᴅ ᴍᴇɴᴛɪᴏɴs ᴀʀᴇ ᴀʟʟᴏᴡᴇᴅ.`
-                    : `<@${message.author.id}> ᴛʜɪs ɪs ᴀɴ ɪᴍᴀɢᴇ-ᴏɴʟʏ ᴄʜᴀɴɴᴇʟ. ᴏɴʟʏ ɪᴍᴀɢᴇs ᴀʀᴇ ᴀʟʟᴏᴡᴇᴅ.`;
+                    ? `<@${message.author.id}> ᴘʟᴇᴀsᴇ ᴜsᴇ ɢᴇɴᴇʀᴀʟ ᴄʜᴀᴛ ғᴏʀ sᴇɴᴅɪɴɢ ᴍᴇssᴀɢᴇs. ᴏɴʟʏ ᴍᴇᴅɪᴀ ᴀᴛᴛᴀᴄʜᴍᴇɴᴛs ᴀɴᴅ ᴍᴇɴᴛɪᴏɴs ᴀʀᴇ ᴀʟʟᴏᴡᴇᴅ.`
+                    : `<@${message.author.id}> ᴘʟᴇᴀsᴇ ᴜsᴇ ɢᴇɴᴇʀᴀʟ ᴄʜᴀᴛ ғᴏʀ sᴇɴᴅɪɴɢ ᴍᴇssᴀɢᴇs. ᴏɴʟʏ ᴍᴇᴅɪᴀ ᴀᴛᴛᴀᴄʜᴍᴇɴᴛs ᴀʀᴇ ᴀʟʟᴏᴡᴇᴅ.`;
                 
                 const reply = await message.channel.send({
                     content: notificationText
