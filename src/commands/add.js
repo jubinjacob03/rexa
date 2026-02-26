@@ -42,6 +42,12 @@ export default {
       );
     }
 
+    if (getVCByMember(targetUser.id)) {
+      return interaction.editReply(
+        `<@${targetUser.id}> is already in another private VC and cannot be added.`,
+      );
+    }
+
     const targetMember = await guild.members
       .fetch(targetUser.id)
       .catch(() => null);

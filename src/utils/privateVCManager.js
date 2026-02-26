@@ -1,7 +1,7 @@
 import { ChannelType, PermissionFlagsBits } from "discord.js";
 import config from "../../config.js";
 
-const ROMAN = ["I", "II", "III", "IV", "V"];
+const ROMAN = ["ɪ", "ɪɪ", "ɪɪɪ", "ɪᴠ", "ᴠ"];
 function toRoman(n) {
   return ROMAN[n - 1] ?? String(n);
 }

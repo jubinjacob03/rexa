@@ -3,6 +3,7 @@ import {
   canCreate,
   activeCount,
   createPrivateVC,
+  getVCByMember,
 } from "../utils/privateVCManager.js";
 import config from "../../config.js";
 
@@ -43,6 +44,10 @@ export default {
 
     const guild = interaction.guild;
     const invoker = interaction.member;
+
+    if (getVCByMember(invoker.id)) {
+      return interaction.editReply("You are already in a private VC. Leave it before creating a new one.");
+    }
 
     if (!canCreate()) {
       return interaction.editReply(
