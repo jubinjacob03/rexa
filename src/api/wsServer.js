@@ -3,9 +3,23 @@ import { consumeToken } from "./wsTokens.js";
 import voiceManager from "../voice/VoiceManager.js";
 import { soundCache } from "../voice/SoundCache.js";
 
+let _wss = null;
+
+/** Broadcast a JSON payload to all authenticated WS clients. */
+export function broadcastWs(payload) {
+  if (!_wss) return;
+  const data = JSON.stringify(payload);
+  for (const client of _wss.clients) {
+    if (client.authenticated && client.readyState === client.OPEN) {
+      client.send(data);
+    }
+  }
+}
+
 /** @param {import('http').Server} httpServer */
 export function attachWsServer(httpServer, discordClient) {
   const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
+  _wss = wss;
 
   wss.on("connection", (ws) => {
     ws.authenticated = false;

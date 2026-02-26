@@ -14,6 +14,7 @@ import wsTokenRoute from "./routes/wsToken.js";
 import privateVcRoute from "./routes/privateVc.js";
 import adminRoute from "./routes/admin.js";
 import membersRoute from "./routes/members.js";
+import verificationRoute from "./routes/verification.js";
 import { attachWsServer } from "./wsServer.js";
 
 export function createApiServer(discordClient) {
@@ -25,7 +26,7 @@ export function createApiServer(discordClient) {
   app.use(
     cors({
       origin: config.api.allowedOrigins,
-      methods: ["GET", "POST"],
+      methods: ["GET", "POST", "DELETE"],
       allowedHeaders: ["Content-Type", "Authorization"],
     }),
   );
@@ -72,6 +73,7 @@ export function createApiServer(discordClient) {
   app.use("/api/private-vc", authenticateApiKey, privateVcRoute);
   app.use("/api/admin", authenticateApiKey, adminRoute);
   app.use("/api/members", authenticateApiKey, membersRoute);
+  app.use("/api/verification", authenticateApiKey, verificationRoute);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
@@ -124,3 +126,4 @@ export function startApiServer(discordClient) {
 
   return server;
 }
+

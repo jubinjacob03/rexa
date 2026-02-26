@@ -1,0 +1,287 @@
+import { Router } from "express";
+import { EmbedBuilder } from "discord.js";
+import config from "../../../config.js";
+import {
+  getAllPendingRequests,
+  getRequest,
+  hasPendingRequest,
+  createRequest,
+  removeRequest,
+  logApproval,
+} from "../../utils/verificationManager.js";
+import { broadcastWs } from "../wsServer.js";
+
+const router = Router();
+
+const MOD_ROLES = new Set([
+  config.moderatorRoleId,
+  config.managerRoleId,
+  config.ownerRoleId,
+]);
+
+function isModerator(member) {
+  return [...MOD_ROLES].some((r) => member.roles.cache.has(r));
+}
+
+function broadcastVerification(guild) {
+  const pending = getAllPendingRequests();
+  const list = Object.values(pending).map((r) => {
+    const member = guild?.members.cache.get(r.userId);
+    return {
+      ...r,
+      displayName: member?.displayName ?? r.username,
+      avatar: member?.user.displayAvatarURL({ size: 64 }) ?? null,
+    };
+  });
+  broadcastWs({ type: "verification_update", data: list });
+}
+
+// GET /api/verification/pending
+router.get("/pending", async (req, res) => {
+  try {
+    const client = req.app.get("discordClient");
+    const guild = client.guilds.cache.get(config.guildId);
+    if (!guild) return res.status(503).json({ success: false, error: "Guild not found" });
+
+    await guild.members.fetch({ limit: 200 }).catch(() => {});
+    const pending = getAllPendingRequests();
+    const list = Object.values(pending).map((r) => {
+      const member = guild.members.cache.get(r.userId);
+      return {
+        ...r,
+        displayName: member?.displayName ?? r.username,
+        avatar: member?.user.displayAvatarURL({ size: 64 }) ?? null,
+      };
+    });
+    res.json({ success: true, data: { requests: list } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/verification/user-status?userId=X
+router.get("/user-status", async (req, res) => {
+  try {
+    const client = req.app.get("discordClient");
+    const guild = client.guilds.cache.get(config.guildId);
+    if (!guild) return res.status(503).json({ success: false, error: "Guild not found" });
+
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ success: false, error: "userId required" });
+
+    const member = await guild.members.fetch(userId).catch(() => null);
+    if (!member) return res.status(404).json({ success: false, error: "Member not found" });
+
+    const roleIds = [...member.roles.cache.keys()];
+    const hasFriends = member.roles.cache.has(config.friendsRoleId);
+    const hasMember = member.roles.cache.has(config.memberRoleId);
+    const pending = getRequest(userId);
+
+    res.json({
+      success: true,
+      data: {
+        roleIds,
+        hasFriends,
+        hasMember,
+        hasPending: !!pending,
+        pendingRole: pending?.requestedRole ?? null,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/verification/apply — { userId, type: 'friends' | 'member' }
+router.post("/apply", async (req, res) => {
+  try {
+    const client = req.app.get("discordClient");
+    const guild = client.guilds.cache.get(config.guildId);
+    if (!guild) return res.status(503).json({ success: false, error: "Guild not found" });
+
+    const { userId, type } = req.body;
+    if (!userId || !type) return res.status(400).json({ success: false, error: "userId and type required" });
+
+    const member = await guild.members.fetch(userId).catch(() => null);
+    if (!member) return res.status(404).json({ success: false, error: "Member not found" });
+
+    if (hasPendingRequest(userId)) {
+      return res.status(409).json({ success: false, error: "You already have a pending request." });
+    }
+
+    const isFriends = type === "friends";
+    const requestedRole = isFriends ? "Friends" : "Member";
+    const requestedRoleId = isFriends ? config.friendsRoleId : config.memberRoleId;
+
+    if (isFriends && member.roles.cache.has(config.friendsRoleId)) {
+      return res.status(409).json({ success: false, error: "You already have the Friends role." });
+    }
+    if (!isFriends && member.roles.cache.has(config.memberRoleId)) {
+      return res.status(409).json({ success: false, error: "You already have the Member role." });
+    }
+    if (!isFriends && !member.roles.cache.has(config.friendsRoleId)) {
+      return res.status(400).json({ success: false, error: "You must have the Friends role before applying for Member." });
+    }
+
+    const approvalEmbed = new EmbedBuilder()
+      .setColor(isFriends ? "#0099FF" : "#00FF00")
+      .setTitle(`${isFriends ? "🌟" : "👑"} ɴᴇᴡ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ`)
+      .setDescription(`<@${userId}> ʜᴀs ʀᴇǫᴜᴇsᴛᴇᴅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ғᴏʀ **${requestedRole}** ʀᴏʟᴇ ᴠɪᴀ ᴡᴇʙ ᴅᴀsʜʙᴏᴀʀᴅ.`)
+      .addFields(
+        { name: "ᴜsᴇʀ", value: `<@${userId}>`, inline: true },
+        { name: "ᴜsᴇʀɴᴀᴍᴇ", value: member.user.tag, inline: true },
+        { name: "ʀᴇǫᴜᴇsᴛᴇᴅ ʀᴏʟᴇ", value: requestedRole, inline: true }
+      )
+      .setTimestamp()
+      .setFooter({ text: `ᴜsᴇʀ ɪᴅ: ${userId}` });
+
+    const approvalsChannel = await guild.channels.fetch(config.approvalsChannelId).catch(() => null);
+    if (!approvalsChannel) return res.status(500).json({ success: false, error: "Approvals channel not found." });
+
+    const approvalMessage = await approvalsChannel.send({
+      content: `<@&${config.ownerRoleId}> <@&${config.managerRoleId}> <@&${config.moderatorRoleId}>`,
+      embeds: [approvalEmbed],
+    });
+
+    createRequest(userId, member.user.tag, requestedRole, requestedRoleId, approvalMessage.id);
+    broadcastVerification(guild);
+
+    res.json({ success: true, data: { message: "Verification request submitted." } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/verification/approve — { requesterId, targetUserId, nickname }
+router.post("/approve", async (req, res) => {
+  try {
+    const client = req.app.get("discordClient");
+    const guild = client.guilds.cache.get(config.guildId);
+    if (!guild) return res.status(503).json({ success: false, error: "Guild not found" });
+
+    const { requesterId, targetUserId, nickname } = req.body;
+    if (!requesterId || !targetUserId || !nickname) {
+      return res.status(400).json({ success: false, error: "requesterId, targetUserId, and nickname required" });
+    }
+
+    const requester = await guild.members.fetch(requesterId).catch(() => null);
+    if (!requester) return res.status(404).json({ success: false, error: "Requester not found." });
+    if (!isModerator(requester)) return res.status(403).json({ success: false, error: "Moderator+ required." });
+
+    const request = getRequest(targetUserId);
+    if (!request) return res.status(404).json({ success: false, error: "Pending request not found." });
+
+    const member = await guild.members.fetch(targetUserId).catch(() => null);
+    if (!member) {
+      removeRequest(targetUserId);
+      return res.status(404).json({ success: false, error: "Member no longer in server." });
+    }
+
+    const isFriends = request.requestedRoleId === config.friendsRoleId;
+    const finalNickname = isFriends ? nickname : `God ${nickname}`;
+
+    if (member.roles.cache.has(config.unverifiedRoleId)) {
+      await member.roles.remove(config.unverifiedRoleId);
+    }
+    await member.roles.add(request.requestedRoleId);
+    await member.setNickname(finalNickname).catch(() => {});
+
+    // Update Discord embed in approvals channel
+    if (request.approvalMessageId) {
+      const approvalsChannel = await guild.channels.fetch(config.approvalsChannelId).catch(() => null);
+      if (approvalsChannel) {
+        const msg = await approvalsChannel.messages.fetch(request.approvalMessageId).catch(() => null);
+        if (msg) {
+          const updatedEmbed = EmbedBuilder.from(msg.embeds[0])
+            .setColor("#00FF00")
+            .setTitle("✅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ")
+            .addFields(
+              { name: "ᴀᴘᴘʀᴏᴠᴇᴅ ʙʏ", value: `<@${requesterId}>`, inline: true },
+              { name: "ɴɪᴄᴋɴᴀᴍᴇ", value: finalNickname, inline: true }
+            );
+          await msg.edit({ embeds: [updatedEmbed], components: [] }).catch(() => {});
+        }
+      }
+    }
+
+    logApproval(targetUserId, request.username, request.requestedRole, requester.user.tag, requesterId, finalNickname, "approved");
+    removeRequest(targetUserId);
+
+    const user = await client.users.fetch(targetUserId).catch(() => null);
+    if (user) {
+      await user.send({
+        embeds: [
+          new EmbedBuilder()
+            .setColor("#00FF00")
+            .setTitle("✅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ")
+            .setDescription(`ʏᴏᴜʀ ʀᴇǫᴜᴇsᴛ ʜᴀs ʙᴇᴇɴ ᴀᴘᴘʀᴏᴠᴇᴅ!\n\n**ʀᴏʟᴇ:** ${request.requestedRole}\n**ɴɪᴄᴋɴᴀᴍᴇ:** ${finalNickname}`)
+            .setTimestamp(),
+        ],
+      }).catch(() => {});
+    }
+
+    broadcastVerification(guild);
+    res.json({ success: true, data: { finalNickname } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/verification/reject — { requesterId, targetUserId }
+router.post("/reject", async (req, res) => {
+  try {
+    const client = req.app.get("discordClient");
+    const guild = client.guilds.cache.get(config.guildId);
+    if (!guild) return res.status(503).json({ success: false, error: "Guild not found" });
+
+    const { requesterId, targetUserId } = req.body;
+    if (!requesterId || !targetUserId) {
+      return res.status(400).json({ success: false, error: "requesterId and targetUserId required" });
+    }
+
+    const requester = await guild.members.fetch(requesterId).catch(() => null);
+    if (!requester) return res.status(404).json({ success: false, error: "Requester not found." });
+    if (!isModerator(requester)) return res.status(403).json({ success: false, error: "Moderator+ required." });
+
+    const request = getRequest(targetUserId);
+    if (!request) return res.status(404).json({ success: false, error: "Pending request not found." });
+
+    // Update Discord embed in approvals channel
+    if (request.approvalMessageId) {
+      const approvalsChannel = await guild.channels.fetch(config.approvalsChannelId).catch(() => null);
+      if (approvalsChannel) {
+        const msg = await approvalsChannel.messages.fetch(request.approvalMessageId).catch(() => null);
+        if (msg) {
+          const updatedEmbed = EmbedBuilder.from(msg.embeds[0])
+            .setColor("#FF0000")
+            .setTitle("❌ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇᴊᴇᴄᴛᴇᴅ")
+            .addFields({ name: "ʀᴇᴊᴇᴄᴛᴇᴅ ʙʏ", value: `<@${requesterId}>`, inline: true });
+          await msg.edit({ embeds: [updatedEmbed], components: [] }).catch(() => {});
+        }
+      }
+    }
+
+    logApproval(targetUserId, request.username, request.requestedRole, requester.user.tag, requesterId, null, "rejected");
+    removeRequest(targetUserId);
+
+    const user = await client.users.fetch(targetUserId).catch(() => null);
+    if (user) {
+      await user.send({
+        embeds: [
+          new EmbedBuilder()
+            .setColor("#FF0000")
+            .setTitle("❌ sᴀɪʏᴀɴ ɢᴏᴅs - ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ғᴀɪʟᴇᴅ")
+            .setDescription(`sᴏʀʀʏ, ʏᴏᴜʀ ʀᴇǫᴜᴇsᴛ ғᴏʀ **${request.requestedRole}** ʀᴏʟᴇ ʜᴀs ʙᴇᴇɴ ʀᴇᴊᴇᴄᴛᴇᴅ.`)
+            .setTimestamp(),
+        ],
+      }).catch(() => {});
+    }
+
+    broadcastVerification(guild);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+export default router;
