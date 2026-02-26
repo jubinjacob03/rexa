@@ -3,3 +3,6 @@ node_modules/
 *.log
 .DS_Store
 logs/
+
+# Audio cache (ephemeral — repopulated by warmup.js on deploy)
+cache/

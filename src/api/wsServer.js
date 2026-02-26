@@ -1,0 +1,105 @@
+import { WebSocketServer } from "ws";
+import { consumeToken } from "./wsTokens.js";
+import voiceManager from "../voice/VoiceManager.js";
+import { soundCache } from "../voice/SoundCache.js";
+
+/** @param {import('http').Server} httpServer */
+export function attachWsServer(httpServer, discordClient) {
+  const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
+
+  wss.on("connection", (ws) => {
+    ws.authenticated = false;
+
+    ws.on("message", async (raw) => {
+      let msg;
+      try {
+        msg = JSON.parse(raw);
+      } catch {
+        return;
+      }
+
+      if (!ws.authenticated) {
+        if (msg.type === "auth" && consumeToken(msg.token)) {
+          ws.authenticated = true;
+          send(ws, { type: "auth", ok: true });
+        } else {
+          send(ws, {
+            type: "auth",
+            ok: false,
+            error: "Invalid or expired token",
+          });
+          ws.terminate();
+        }
+        return;
+      }
+
+      if (msg.type === "play") {
+        const {
+          id,
+          soundId,
+          soundUrl,
+          soundName,
+          guildId,
+          channelId,
+          channelName,
+          userId,
+          username,
+        } = msg;
+
+        try {
+          const guild = discordClient.guilds.cache.get(guildId);
+          if (!guild) throw new Error("Guild not found");
+
+          const channel = guild.channels.cache.get(channelId);
+          if (!channel || channel.type !== 2)
+            throw new Error("Invalid voice channel");
+
+          let connection = voiceManager.getConnection(guildId);
+          if (!connection) {
+            connection = await voiceManager.joinChannel(guild, channel);
+          }
+
+          const result = await voiceManager.playSound(guildId, {
+            soundId,
+            soundUrl,
+            soundName,
+            requestedBy: username || "Unknown",
+            guildId,
+            channelId,
+            channelName: channelName || channel.name,
+            userId,
+          });
+
+          send(ws, { type: "play_result", id, ok: true, data: result });
+        } catch (err) {
+          console.error("[ERROR] WS play command failed:", err.message);
+          send(ws, { type: "play_result", id, ok: false, error: err.message });
+        }
+        return;
+      }
+
+      if (msg.type === "cache_invalidate" && msg.soundId) {
+        soundCache.invalidate(msg.soundId);
+        send(ws, { type: "cache_invalidate_ack", soundId: msg.soundId });
+        return;
+      }
+    });
+
+    ws.on("error", (err) =>
+      console.error("[ERROR] WS client error:", err.message),
+    );
+  });
+
+  wss.on("error", (err) =>
+    console.error("[ERROR] WS server error:", err.message),
+  );
+
+  console.log("[INFO] WebSocket server attached at /ws");
+  return wss;
+}
+
+function send(ws, payload) {
+  if (ws.readyState === ws.OPEN) {
+    ws.send(JSON.stringify(payload));
+  }
+}

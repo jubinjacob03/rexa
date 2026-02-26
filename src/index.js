@@ -1,110 +1,153 @@
-import { Client, GatewayIntentBits, Collection, Events } from 'discord.js';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import { readdirSync } from 'fs';
-import config from '../config.js';
+import { Client, GatewayIntentBits, Collection, Events } from "discord.js";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+import { readdirSync } from "fs";
+import ffmpegPath from "ffmpeg-static";
+import config from "../config.js";
+
+if (ffmpegPath) {
+  process.env.FFMPEG_PATH = ffmpegPath;
+  const ffmpegDir = dirname(ffmpegPath);
+  const sep = process.platform === "win32" ? ";" : ":";
+  process.env.PATH = `${ffmpegDir}${sep}${process.env.PATH}`;
+  console.log(`[INFO] ffmpeg path set to: ${ffmpegPath}`);
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Create a new client instance
 const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildPresences,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
-    ],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildPresences,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildVoiceStates, // Required for voice channel interactions
+  ],
 });
 
 // Setup commands collection
 client.commands = new Collection();
 
 // Load commands
-const commandsPath = join(__dirname, 'commands');
-const commandFiles = readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+const commandsPath = join(__dirname, "commands");
+const commandFiles = readdirSync(commandsPath).filter((file) =>
+  file.endsWith(".js"),
+);
 
 for (const file of commandFiles) {
-    const filePath = join(commandsPath, file);
-    const command = await import(`file://${filePath}`);
-    if ('data' in command.default && 'execute' in command.default) {
-        client.commands.set(command.default.data.name, command.default);
-        console.log(`[INFO] Loaded command: ${command.default.data.name}`);
-    } else {
-        console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
-    }
+  const filePath = join(commandsPath, file);
+  const command = await import(`file://${filePath}`);
+  if ("data" in command.default && "execute" in command.default) {
+    client.commands.set(command.default.data.name, command.default);
+    console.log(`[INFO] Loaded command: ${command.default.data.name}`);
+  } else {
+    console.log(
+      `[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`,
+    );
+  }
 }
 
 // Load events
-const eventsPath = join(__dirname, 'events');
-const eventFiles = readdirSync(eventsPath).filter(file => file.endsWith('.js'));
+const eventsPath = join(__dirname, "events");
+const eventFiles = readdirSync(eventsPath).filter((file) =>
+  file.endsWith(".js"),
+);
 
 for (const file of eventFiles) {
-    const filePath = join(eventsPath, file);
-    const event = await import(`file://${filePath}`);
-    if (event.default.once) {
-        client.once(event.default.name, (...args) => event.default.execute(...args));
-    } else {
-        client.on(event.default.name, (...args) => event.default.execute(...args));
-    }
-    console.log(`[INFO] Loaded event: ${event.default.name}`);
+  const filePath = join(eventsPath, file);
+  const event = await import(`file://${filePath}`);
+  if (event.default.once) {
+    client.once(event.default.name, (...args) =>
+      event.default.execute(...args),
+    );
+  } else {
+    client.on(event.default.name, (...args) => event.default.execute(...args));
+  }
+  console.log(`[INFO] Loaded event: ${event.default.name}`);
 }
 
 // Handle interaction commands
-client.on(Events.InteractionCreate, async interaction => {
-    if (interaction.isButton()) {
-        if (interaction.customId === 'refresh_stats') {
-            await interaction.deferUpdate();
-            const { updateStatusMessage } = await import('./utils/statusUpdater.js');
-            await updateStatusMessage(interaction.client);
-            return;
-        }
-        
-        if (interaction.customId === 'verify_friends' || interaction.customId === 'verify_member') {
-            const { handleVerificationApply } = await import('./utils/verificationHandler.js');
-            await handleVerificationApply(interaction);
-            return;
-        }
-        
-        if (interaction.customId.startsWith('approve_') || interaction.customId.startsWith('reject_')) {
-            const { handleApprovalAction } = await import('./utils/verificationHandler.js');
-            await handleApprovalAction(interaction);
-            return;
-        }
-    }
-    
-    if (interaction.isModalSubmit()) {
-        if (interaction.customId.startsWith('nickname_modal_')) {
-            const { handleNicknameModal } = await import('./utils/verificationHandler.js');
-            await handleNicknameModal(interaction);
-            return;
-        }
-    }
-    
-    if (!interaction.isChatInputCommand()) return;
-
-    const command = client.commands.get(interaction.commandName);
-
-    if (!command) {
-        console.error(`No command matching ${interaction.commandName} was found.`);
-        return;
+client.on(Events.InteractionCreate, async (interaction) => {
+  if (interaction.isButton()) {
+    if (interaction.customId === "refresh_stats") {
+      await interaction.deferUpdate();
+      const { updateStatusMessage } = await import("./utils/statusUpdater.js");
+      await updateStatusMessage(interaction.client);
+      return;
     }
 
-    try {
-        await command.execute(interaction);
-    } catch (error) {
-        console.error(`Error executing ${interaction.commandName}`);
-        console.error(error);
-        
-        const errorMessage = { content: 'There was an error while executing this command!', ephemeral: true };
-        
-        if (interaction.replied || interaction.deferred) {
-            await interaction.followUp(errorMessage);
-        } else {
-            await interaction.reply(errorMessage);
-        }
+    if (
+      interaction.customId === "verify_friends" ||
+      interaction.customId === "verify_member"
+    ) {
+      const { handleVerificationApply } =
+        await import("./utils/verificationHandler.js");
+      await handleVerificationApply(interaction);
+      return;
     }
+
+    if (
+      interaction.customId.startsWith("approve_") ||
+      interaction.customId.startsWith("reject_")
+    ) {
+      const { handleApprovalAction } =
+        await import("./utils/verificationHandler.js");
+      await handleApprovalAction(interaction);
+      return;
+    }
+  }
+
+  if (interaction.isModalSubmit()) {
+    if (interaction.customId.startsWith("nickname_modal_")) {
+      const { handleNicknameModal } =
+        await import("./utils/verificationHandler.js");
+      await handleNicknameModal(interaction);
+      return;
+    }
+  }
+
+  if (!interaction.isChatInputCommand()) return;
+
+  const command = client.commands.get(interaction.commandName);
+
+  if (!command) {
+    console.error(`No command matching ${interaction.commandName} was found.`);
+    return;
+  }
+
+  try {
+    await command.execute(interaction);
+  } catch (error) {
+    console.error(`Error executing ${interaction.commandName}`);
+    console.error(error);
+
+    const errorMessage = {
+      content: "There was an error while executing this command!",
+      ephemeral: true,
+    };
+
+    if (interaction.replied || interaction.deferred) {
+      await interaction.followUp(errorMessage);
+    } else {
+      await interaction.reply(errorMessage);
+    }
+  }
+});
+
+client.once(Events.ClientReady, (client) => {
+  console.log(`[SUCCESS] Shantha logged in as ${client.user.tag}`);
+  console.log(`[INFO] Serving ${client.guilds.cache.size} guild(s)`);
+
+  import("./utils/statusUpdater.js").then(({ startStatusUpdater }) => {
+    startStatusUpdater(client);
+  });
+
+  import("./api/server.js").then(({ startApiServer }) => {
+    startApiServer(client);
+  });
 });
 
 client.login(config.token);
