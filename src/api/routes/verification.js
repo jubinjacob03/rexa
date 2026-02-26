@@ -53,7 +53,7 @@ router.get("/pending", async (req, res) => {
         avatar: member?.user.displayAvatarURL({ size: 64 }) ?? null,
       };
     });
-    res.json({ success: true, data: { requests: list } });
+    res.json({ success: true, data: list });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -285,3 +285,4 @@ router.post("/reject", async (req, res) => {
 });
 
 export default router;
+

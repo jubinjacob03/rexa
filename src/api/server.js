@@ -22,6 +22,9 @@ export function createApiServer(discordClient) {
 
   app.set("discordClient", discordClient);
 
+  // Trust Railway's reverse proxy so express-rate-limit can read X-Forwarded-For
+  app.set("trust proxy", 1);
+
   app.use(helmet());
   app.use(
     cors({
@@ -126,4 +129,5 @@ export function startApiServer(discordClient) {
 
   return server;
 }
+
 
