@@ -46,7 +46,9 @@ export default {
     const invoker = interaction.member;
 
     if (getVCByMember(invoker.id)) {
-      return interaction.editReply("You are already in a private VC. Leave it before creating a new one.");
+      return interaction.editReply(
+        "You are already in a private VC. Leave it before creating a new one.",
+      );
     }
 
     if (!canCreate()) {

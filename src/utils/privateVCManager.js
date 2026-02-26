@@ -214,3 +214,32 @@ export function onMemberJoined(channelId) {
   if (!activeVCs.has(channelId)) return;
   stopIdleTimer(channelId);
 }
+
+/** Returns serialisable list of all active private VCs. */
+export function listAllVCs(guild) {
+  const result = [];
+  for (const [channelId, data] of activeVCs) {
+    const channel = guild?.channels.cache.get(channelId);
+    const members = [];
+    for (const userId of data.members) {
+      const member = guild?.members.cache.get(userId);
+      if (member) {
+        members.push({
+          id: userId,
+          username: member.user.username,
+          displayName: member.displayName,
+          avatar: member.user.displayAvatarURL({ size: 64 }),
+          inVC: member.voice?.channelId === channelId,
+        });
+      }
+    }
+    result.push({
+      channelId,
+      name: channel?.name ?? `Private VC ${toRoman(data.index)}`,
+      index: data.index,
+      memberCount: channel?.members.size ?? 0,
+      members,
+    });
+  }
+  return result;
+}

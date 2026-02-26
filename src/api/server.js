@@ -11,6 +11,9 @@ import playRoute from "./routes/play.js";
 import statusRoute from "./routes/status.js";
 import channelsRoute from "./routes/channels.js";
 import wsTokenRoute from "./routes/wsToken.js";
+import privateVcRoute from "./routes/privateVc.js";
+import adminRoute from "./routes/admin.js";
+import membersRoute from "./routes/members.js";
 import { attachWsServer } from "./wsServer.js";
 
 export function createApiServer(discordClient) {
@@ -66,6 +69,9 @@ export function createApiServer(discordClient) {
   app.use("/api/status", authenticateApiKey, statusRoute);
   app.use("/api/channels", authenticateApiKey, channelsRoute);
   app.use("/api/ws-token", authenticateApiKey, wsTokenRoute);
+  app.use("/api/private-vc", authenticateApiKey, privateVcRoute);
+  app.use("/api/admin", authenticateApiKey, adminRoute);
+  app.use("/api/members", authenticateApiKey, membersRoute);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
