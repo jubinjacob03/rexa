@@ -113,26 +113,3 @@ router.post("/remove", async (req, res) => {
 });
 
 export default router;
-
-const router = Router();
-
-// GET /api/private-vc — list active private VCs
-router.get("/", (req, res) => {
-  const client = req.app.get("discordClient");
-  const guild = client.guilds.cache.get(config.guildId);
-  if (!guild) return res.status(503).json({ success: false, error: "Guild not found" });
-
-  const list = [];
-  for (const [channelId, data] of (/** @type {Map<string,any>} */ (
-    // Access module-level state via exported helpers
-    Object.entries({})
-  ))) {
-    // Handled via getVCData — we expose a listAll instead
-  }
-
-  // Use the exported helper we'll add
-  const { listAllVCs } = require("../../utils/privateVCManager.js");
-  res.json({ success: true, data: { count: activeCount() } });
-});
-
-export default router;
