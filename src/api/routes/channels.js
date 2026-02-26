@@ -40,6 +40,7 @@ router.get("/", async (req, res) => {
         id: ch.id,
         name: ch.name,
         memberCount: ch.members.size,
+        memberIds: [...ch.members.keys()],
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
 
