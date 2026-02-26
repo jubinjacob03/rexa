@@ -43,4 +43,11 @@ export default {
   soundboard: {
     uploadRoles: process.env.UPLOAD_ROLES?.split(",") || [],
   },
+  privateVC: {
+    categoryId: "1473075469028167816",
+    lobbyVCId: "1473075469028167817",
+    maxSimultaneous: 5,
+    idleTimeoutMs: 5 * 60 * 1000,
+    maxLifetimeMs: 3 * 60 * 60 * 1000,
+  },
 };
