@@ -131,11 +131,13 @@ export async function createPrivateVC(guild, members) {
   });
 
   const memberSet = new Set(members.map((m) => m.id));
+  const creatorId = members[0]?.id ?? null;
 
   const maxTimer = setTimeout(() => destroyVC(channel.id, guild), MAX_MS);
 
   activeVCs.set(channel.id, {
     members: memberSet,
+    creatorId,
     index,
     idleTimer: null,
     maxTimer,
@@ -202,6 +204,11 @@ export async function removeMember(channelId, member, guild) {
   return true;
 }
 
+/** Force-delete a VC by channelId — pushes any live members to lobby first. */
+export async function forceDeleteVC(channelId, guild) {
+  return destroyVC(channelId, guild);
+}
+
 export function onMemberLeft(channelId, guild) {
   if (!activeVCs.has(channelId)) return;
   const channel = guild.channels.cache.get(channelId);
@@ -233,12 +240,16 @@ export function listAllVCs(guild) {
         });
       }
     }
+    const creator = guild?.members.cache.get(data.creatorId);
     result.push({
       channelId,
       name: channel?.name ?? `Private VC ${toRoman(data.index)}`,
       index: data.index,
       memberCount: channel?.members.size ?? 0,
       members,
+      creatorId: data.creatorId ?? null,
+      creatorName: creator?.displayName ?? creator?.user.username ?? null,
+      creatorAvatar: creator?.user.displayAvatarURL({ size: 64 }) ?? null,
     });
   }
   return result;

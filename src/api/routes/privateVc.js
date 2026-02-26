@@ -9,6 +9,7 @@ import {
   getVCData,
   getVCByMember,
   listAllVCs,
+  forceDeleteVC,
 } from "../../utils/privateVCManager.js";
 
 const router = Router();
@@ -107,6 +108,35 @@ router.post("/remove", async (req, res) => {
 
     await removeMember(channelId, member, guild);
     res.json({ success: true, data: { channelId } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// DELETE /api/private-vc/:channelId — owner-role force delete
+router.delete("/:channelId", async (req, res) => {
+  try {
+    const client = req.app.get("discordClient");
+    const guild = client.guilds.cache.get(config.guildId);
+    if (!guild) return res.status(503).json({ success: false, error: "Guild not found" });
+
+    const { channelId } = req.params;
+    const { requesterId } = req.body;
+    if (!requesterId) return res.status(400).json({ success: false, error: "requesterId required" });
+
+    // Verify requester has owner role
+    const requester = await guild.members.fetch(requesterId).catch(() => null);
+    if (!requester) return res.status(404).json({ success: false, error: "Requester not found." });
+    if (!requester.roles.cache.has(config.ownerRoleId)) {
+      return res.status(403).json({ success: false, error: "Only owners can force-delete private VCs." });
+    }
+
+    if (!getVCData(channelId)) {
+      return res.status(404).json({ success: false, error: "Private VC not found." });
+    }
+
+    await forceDeleteVC(channelId, guild);
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
