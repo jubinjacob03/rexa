@@ -1,10 +1,47 @@
 import { Events } from 'discord.js';
 import config from '../../config.js';
 
+const WAR_RESULTS_CHANNEL = '1473075469028167814';
+
+const GUARANTEED_EMOJIS = ['🔥', '❤️', '💪', '👏', '⚡', '✨'];
+const RANDOM_EMOJIS = [
+    '😍', '🤩', '😎', '💯', '🎉', '🎊', '👍', '🙌', 
+    '💥', '⭐', '🌟', '💫', '🏆', '👑', '💎', '🎯',
+    '🚀', '💖', '💝', '🤯', '😤', '🔴', '🟠', '🟡',
+    '🏴‍☠️', '⚔️', '🛡️', '💣', '🎖️', '🥇', '🥈', '🥉',
+    '🎪', '🎭', '🎬', '🎮', '🎲', '🎰', '🎺', '🎸',
+    '🔱', '⚜️', '🦅', '🦁', '🐉', '🦈', '🦾', '🧨',
+    '💀', '☠️', '🗡️', '🏹', '🪓', '⚙️', '🔧', '🔩'
+];
+
+async function addReactionsToImage(message) {
+    try {
+        const selectedEmojis = [...GUARANTEED_EMOJIS];
+        const shuffled = [...RANDOM_EMOJIS].sort(() => Math.random() - 0.5);
+        const neededCount = 20 - GUARANTEED_EMOJIS.length;
+        selectedEmojis.push(...shuffled.slice(0, neededCount));
+        
+        selectedEmojis.sort(() => Math.random() - 0.5);
+        
+        for (const emoji of selectedEmojis) {
+            await message.react(emoji).catch(() => {});
+            await new Promise(resolve => setTimeout(resolve, 300));
+        }
+    } catch (error) {
+        console.error('[ERROR] Failed to add reactions:', error);
+    }
+}
+
 export default {
     name: Events.MessageCreate,
     async execute(message) {
         if (message.author.bot) return;
+
+        if (message.channel.id === WAR_RESULTS_CHANNEL && message.attachments.size > 0) {
+            addReactionsToImage(message);
+            return;
+        }
+
         if (config.imageOnlyChannels.includes(message.channel.id)) {
             if (message.attachments.size > 0) {
                 return;

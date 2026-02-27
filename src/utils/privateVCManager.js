@@ -149,7 +149,9 @@ export async function createPrivateVC(guild, members) {
     }
   }
 
-  startIdleTimer(channel.id, guild);
+  if (channel.members.size === 0) {
+    startIdleTimer(channel.id, guild);
+  }
 
   return channel;
 }
