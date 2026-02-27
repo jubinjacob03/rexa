@@ -49,7 +49,7 @@ async function retroactivelyAddReactions(client) {
         let count = 0;
 
         for (const [, message] of messages) {
-            if (message.attachments.size > 0 && message.reactions.cache.size === 0) {
+            if (message.attachments.size > 0) {
                 await addReactionsToMessage(message);
                 count++;
             }
