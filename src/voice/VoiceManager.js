@@ -164,7 +164,7 @@ export class VoiceManager {
     console.log(`[INFO] Left voice channel for guild ${guildId}`);
   }
 
-  /** Play immediately or enqueue if already playing. */
+  /** Stop any current playback and immediately play the requested sound. */
   async playSound(guildId, soundData) {
     const connection = this.connections.get(guildId);
     const player = this.players.get(guildId);
@@ -173,15 +173,11 @@ export class VoiceManager {
       throw new Error("Not connected to voice channel");
     }
 
+    // Stop current audio and clear the queue so the new sound plays right away
     if (player.isPlaying()) {
-      const queue = this.queues.get(guildId);
-      const queueItem = queue.add(soundData);
-      console.log(`[INFO] Added to queue. Position: ${queue.size()}`);
-      return {
-        queued: true,
-        queuePosition: queue.size(),
-        queueId: queueItem.id,
-      };
+      console.log(`[INFO] Interrupting current playback to play: ${soundData.soundName}`);
+      player.stop();
+      this.queues.get(guildId)?.clear();
     }
 
     const success = await player.play(soundData, connection);
