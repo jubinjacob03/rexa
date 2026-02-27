@@ -175,7 +175,9 @@ export class VoiceManager {
 
     // Stop current audio and clear the queue so the new sound plays right away
     if (player.isPlaying()) {
-      console.log(`[INFO] Interrupting current playback to play: ${soundData.soundName}`);
+      console.log(
+        `[INFO] Interrupting current playback to play: ${soundData.soundName}`,
+      );
       player.stop();
       this.queues.get(guildId)?.clear();
     }
