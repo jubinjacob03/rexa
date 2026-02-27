@@ -44,7 +44,7 @@ export default {
     uploadRoles: process.env.UPLOAD_ROLES?.split(",") || [],
   },
   privateVC: {
-    categoryId: "1473075469028167816",
+    categoryId: "1473075468805738543",
     lobbyVCId: "1473075469028167817",
     maxSimultaneous: 5,
     idleTimeoutMs: 5 * 60 * 1000,

@@ -80,14 +80,8 @@ router.post("/", async (req, res) => {
       }
     }
 
-    // Check if bot is in voice channel, if not join
-    let connection = voiceManager.getConnection(guildId);
-    if (!connection) {
-      console.log(`[INFO] Joining voice channel for play request`);
-      connection = await voiceManager.joinChannel(guild, channel);
-    }
+    await voiceManager.joinChannel(guild, channel);
 
-    // Play the sound
     const soundData = {
       soundId: sound.id,
       soundUrl: sound.file_url,

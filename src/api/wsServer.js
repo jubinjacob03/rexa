@@ -68,10 +68,7 @@ export function attachWsServer(httpServer, discordClient) {
           if (!channel || channel.type !== 2)
             throw new Error("Invalid voice channel");
 
-          let connection = voiceManager.getConnection(guildId);
-          if (!connection) {
-            connection = await voiceManager.joinChannel(guild, channel);
-          }
+          await voiceManager.joinChannel(guild, channel);
 
           const result = await voiceManager.playSound(guildId, {
             soundId,
