@@ -15,6 +15,7 @@ import privateVcRoute from "./routes/privateVc.js";
 import adminRoute from "./routes/admin.js";
 import membersRoute from "./routes/members.js";
 import verificationRoute from "./routes/verification.js";
+import musicRoute from "./routes/music.js";
 import { attachWsServer } from "./wsServer.js";
 
 export function createApiServer(discordClient) {
@@ -77,6 +78,7 @@ export function createApiServer(discordClient) {
   app.use("/api/admin", authenticateApiKey, adminRoute);
   app.use("/api/members", authenticateApiKey, membersRoute);
   app.use("/api/verification", authenticateApiKey, verificationRoute);
+  app.use("/api/music", authenticateApiKey, musicRoute);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
