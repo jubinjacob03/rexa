@@ -19,7 +19,9 @@ router.post("/play", async (req, res) => {
     res.json(data);
   } catch (err) {
     const status = err.response?.status || 502;
-    res.status(status).json(err.response?.data || { error: "Remani API unreachable" });
+    res
+      .status(status)
+      .json(err.response?.data || { error: "Remani API unreachable" });
   }
 });
 
@@ -29,7 +31,9 @@ router.post("/control", async (req, res) => {
     res.json(data);
   } catch (err) {
     const status = err.response?.status || 502;
-    res.status(status).json(err.response?.data || { error: "Remani API unreachable" });
+    res
+      .status(status)
+      .json(err.response?.data || { error: "Remani API unreachable" });
   }
 });
 
@@ -39,7 +43,9 @@ router.get("/status", async (req, res) => {
     res.json(data);
   } catch (err) {
     const status = err.response?.status || 502;
-    res.status(status).json(err.response?.data || { error: "Remani API unreachable" });
+    res
+      .status(status)
+      .json(err.response?.data || { error: "Remani API unreachable" });
   }
 });
 

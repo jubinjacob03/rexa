@@ -131,5 +131,3 @@ export function startApiServer(discordClient) {
 
   return server;
 }
-
-
