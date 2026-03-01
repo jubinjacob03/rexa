@@ -2,6 +2,8 @@ import { Events } from "discord.js";
 import config from "../../config.js";
 
 const WAR_RESULTS_CHANNEL = "1473075469028167814";
+// Only the guild owner + bots/webhooks/system messages may speak here
+const ANNOUNCEMENTS_CHANNEL = "1473075468805738540";
 
 const GUARANTEED_EMOJIS = ["🔥", "❤️", "💪", "👏", "⚡", "✨"];
 const RANDOM_EMOJIS = [
@@ -84,6 +86,20 @@ async function addReactionsToImage(message) {
 export default {
   name: Events.MessageCreate,
   async execute(message) {
+    // ── Announcements-only channel ────────────────────────────────────────
+    // Allow: guild owner, bots, webhook posts, and native Discord system msgs.
+    // Everything else is deleted silently and instantly.
+    if (message.channel.id === ANNOUNCEMENTS_CHANNEL) {
+      const isOwner = message.guild?.ownerId === message.author.id;
+      const isBot = message.author.bot;
+      const isWebhook = !!message.webhookId;
+      const isSystem = message.system;
+      if (!isOwner && !isBot && !isWebhook && !isSystem) {
+        await message.delete().catch(() => {});
+      }
+      return;
+    }
+
     if (message.author.bot) return;
 
     if (
