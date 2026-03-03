@@ -6,3 +6,6 @@ logs/
 
 # Audio cache (ephemeral — repopulated by warmup.js on deploy)
 cache/
+
+src/api/Node.exe
+src/api/imgui.ini
