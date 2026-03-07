@@ -63,6 +63,21 @@ const proxyGet = (remaniPath, getParams) => async (req, res) => {
   }
 };
 
+const proxyDelete = (remaniPath) => async (req, res) => {
+  try {
+    const { data } = await remani().delete(remaniPath, {
+      data: req.body,
+      timeout: CMD_TIMEOUT,
+    });
+    res.json(data);
+  } catch (err) {
+    const status = err.response?.status || 502;
+    res
+      .status(status)
+      .json(err.response?.data || { error: "Remani API unreachable" });
+  }
+};
+
 // ── Play (long timeout — Lavalink search + load)
 router.post("/play", proxyPost("/play", 35_000));
 
@@ -96,6 +111,10 @@ router.post("/volume", proxyPost("/volume"));
 router.post("/seek", proxyPost("/seek"));
 router.post("/remove", proxyPost("/remove"));
 router.post("/filter", proxyPost("/filter"));
+
+// ── Caching endpoints (for playlist songs)
+router.post("/cache-song", proxyPost("/cache-song", 60_000)); // Long timeout for download
+router.delete("/delete-cache", proxyDelete("/delete-cache"));
 
 // ── Legacy generic control (backward compat)
 router.post("/control", proxyPost("/control"));
