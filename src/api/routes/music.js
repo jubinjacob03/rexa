@@ -108,13 +108,7 @@ router.post("/stop", proxyPost("/stop"));
 router.post("/shuffle", proxyPost("/shuffle"));
 router.post("/loop", proxyPost("/loop"));
 router.post("/volume", proxyPost("/volume"));
-router.post("/seek", proxyPost("/seek"));
 router.post("/remove", proxyPost("/remove"));
-router.post("/filter", proxyPost("/filter"));
-
-// ── Caching endpoints (for playlist songs)
-router.post("/cache-song", proxyPost("/cache-song", 60_000)); // Long timeout for download
-router.delete("/delete-cache", proxyDelete("/delete-cache"));
 
 // ── Legacy generic control (backward compat)
 router.post("/control", proxyPost("/control"));
