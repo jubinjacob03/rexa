@@ -67,16 +67,17 @@ export function getLanguageModel(
 ) {
   const modelName = customModel || config.model.name;
 
+  // March 2026 Free Tier Models
   const presets = {
-    fast: "gemini-3.1-flash-lite-preview",
-    balanced: "gemini-3-flash-preview",
-    powerful: "gemini-3.1-pro-preview",
-    creative: "gemini-3-flash-preview",
+    fast: "gemini-2.5-flash-lite",
+    balanced: "gemini-2.5-flash",
+    powerful: "gemini-2.5-pro",
+    creative: "gemini-2.5-flash",
   };
 
   const model = preset !== "custom" ? presets[preset] : modelName;
 
-  return google(model || "gemini-3-flash-preview", {
+  return google(model || "gemini-2.5-flash-lite", {
     temperature: config.model.temperature,
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
   });
