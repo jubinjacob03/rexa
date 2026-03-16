@@ -3,12 +3,10 @@
  * Creates visual content using AI models
  */
 
-import { tool } from 'ai';
-import { z } from 'zod';
-import { generateImage } from 'ai';
-import { EmbedBuilder } from 'discord.js';
-import { openai } from '@ai-sdk/openai';
-import config, { getImageModel } from '../config.js';
+import { tool } from "ai";
+import { z } from "zod";
+import { EmbedBuilder } from "discord.js";
+import config, { getImageModel } from "../config.js";
 
 const imageCache = new Map();
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
@@ -22,56 +20,47 @@ const usageStats = {
  * Quality presets for image generation
  */
 const QUALITY_PRESETS = {
-  ultra: {
-    model: 'dall-e-3',
-    settings: { providerOptions: { openai: { quality: 'hd', style: 'vivid' } } },
-    description: 'Maximum quality (~30s, high cost)',
-  },
-  balanced: {
-    model: 'dall-e-3',
-    settings: { providerOptions: { openai: { quality: 'standard' } } },
-    description: 'Good quality (~20s, medium cost)',
-  },
-  fast: {
-    model: 'dall-e-2',
-    settings: {},
-    description: 'Fast generation (~10s, low cost)',
-  },
+  fast: "imagen-4.0-fast-generate-001",
+  balanced: "imagen-4.0-generate-001",
+  ultra: "imagen-4.0-ultra-generate-001",
 };
 
 /**
  * Style enhancements for images
  */
 const STYLE_PROMPTS = {
-  realistic: 'photorealistic, highly detailed, professional photography, 8k',
-  anime: 'anime style, vibrant colors, manga art, detailed character design',
-  cartoon: 'cartoon style, colorful, playful illustration, clean lines',
-  'digital-art': 'digital art, detailed, vibrant colors, artistic',
-  photographic: 'professional photograph, natural lighting, high resolution',
-  painting: 'oil painting style, artistic, brushstrokes visible',
-  sketch: 'pencil sketch, detailed line work, hand-drawn quality',
-  'pixel-art': '16-bit pixel art, retro gaming aesthetic',
-  '3d-render': '3D rendered, CGI, raytraced lighting',
-  fantasy: 'fantasy art, mystical, magical atmosphere',
-  'sci-fi': 'science fiction, futuristic, technological',
+  realistic: "photorealistic, highly detailed, professional photography, 8k",
+  anime: "anime style, vibrant colors, manga art, detailed character design",
+  cartoon: "cartoon style, colorful, playful illustration, clean lines",
+  "digital-art": "digital art, detailed, vibrant colors, artistic",
+  photographic: "professional photograph, natural lighting, high resolution",
+  painting: "oil painting style, artistic, brushstrokes visible",
+  sketch: "pencil sketch, detailed line work, hand-drawn quality",
+  "pixel-art": "16-bit pixel art, retro gaming aesthetic",
+  "3d-render": "3D rendered, CGI, raytraced lighting",
+  fantasy: "fantasy art, mystical, magical atmosphere",
+  "sci-fi": "science fiction, futuristic, technological",
 };
 
 /**
- * Discord embed color presets
+ * Parse color value from various formats
  */
-const EMBED_COLORS = {
-  blue: 0x3498db,
-  green: 0x2ecc71,
-  red: 0xe74c3c,
-  purple: 0x9b59b6,
-  gold: 0xf1c40f,
-  orange: 0xe67e22,
-  pink: 0xe91e63,
-  cyan: 0x00bcd4,
-  lime: 0xcddc39,
-  indigo: 0x3f51b5,
-  default: 0x7289da, // Discord blurple
-};
+function parseColorValue(color) {
+  if (!color) return 0x7289da; // Discord blurple default
+
+  // If it's already a number, use it
+  if (typeof color === "number") return color;
+
+  // Parse hex string (#FF5733 or FF5733)
+  if (typeof color === "string") {
+    const hex = color.replace("#", "");
+    const parsed = parseInt(hex, 16);
+    if (!isNaN(parsed)) return parsed;
+  }
+
+  // Fallback to default
+  return 0x7289da;
+}
 
 /**
  * Generate cache key
@@ -86,99 +75,134 @@ function getCacheKey(prompt, options) {
 function checkImageCache(cacheKey) {
   const cached = imageCache.get(cacheKey);
   if (!cached) return null;
-  
+
   if (Date.now() - cached.timestamp > CACHE_TTL) {
     imageCache.delete(cacheKey);
     return null;
   }
-  
+
   usageStats.images.cached++;
-  console.log('[GENERATIVE] Image cache hit');
+  console.log("[GENERATIVE] Image cache hit");
   return cached;
 }
 
 /**
- * Generate AI image with quality presets
- * NOTE: Image generation REQUIRES OpenAI API key (NOT FREE)
- * This feature is disabled by default in config.js
- * To enable: Set IMAGE_GENERATION_ENABLED=true in .env and add OPENAI_API_KEY
+ * Generate AI image
  */
 export async function generateAIImage(prompt, options = {}) {
   if (!config.imageGeneration.enabled) {
     return {
       success: false,
-      error: 'Image generation is disabled. This feature requires a paid OpenAI API key.',
-      suggestion: 'Enable it by setting IMAGE_GENERATION_ENABLED=true in .env and adding OPENAI_API_KEY',
+      error: "Image generation is disabled.",
+      suggestion: "Set IMAGE_GENERATION_ENABLED=true in .env to enable.",
     };
   }
-  
+
   const {
-    quality = 'balanced',
-    style = 'digital-art',
-    size = 'square',
+    quality = "balanced",
+    style = "digital-art",
+    size = "square",
     seed = null,
   } = options;
-  
+
   const cacheKey = getCacheKey(prompt, { quality, style, size, seed });
   const cached = checkImageCache(cacheKey);
   if (cached) {
     return { ...cached.data, fromCache: true };
   }
-  
-  const preset = QUALITY_PRESETS[quality];
-  if (!preset) {
-    throw new Error(`Invalid quality: ${quality}. Use: ultra, balanced, fast`);
-  }
-  
-  const styleEnhancement = STYLE_PROMPTS[style] || '';
-  const enhancedPrompt = styleEnhancement 
-    ? `${prompt}, ${styleEnhancement}`
-    : prompt;
-  
-  const sizeMap = {
-    square: '1024x1024',
-    landscape: preset.model === 'dall-e-3' ? '1792x1024' : '1024x1024',
-    portrait: preset.model === 'dall-e-3' ? '1024x1792' : '1024x1024',
-  };
-  
+
   try {
-    console.log(`[GENERATIVE] Generating image: ${preset.model} (${quality})`);
-    
-    const startTime = Date.now();
-    
-    const result = await generateImage({
-      model: openai.image(preset.model),
-      prompt: enhancedPrompt,
-      size: sizeMap[size],
-      seed: seed || undefined,
-      ...preset.settings,
-    });
-    
-    const generationTime = Date.now() - startTime;
-    usageStats.images.total++;
-    
-    const imageData = {
-      success: true,
-      image: result.image,
-      prompt: enhancedPrompt,
-      originalPrompt: prompt,
-      style,
-      quality,
-      model: preset.model,
-      generationTime,
-      base64: result.image.base64,
-      url: result.image.uint8Array ? `data:image/png;base64,${result.image.base64}` : null,
-    };
-    
-    imageCache.set(cacheKey, {
-      data: imageData,
-      timestamp: Date.now(),
-    });
-    
-    return imageData;
-    
+    const imageModelConfig = getImageModel();
+
+    if (imageModelConfig.provider === "google") {
+      const model = QUALITY_PRESETS[quality] || config.imageGeneration.model;
+      const styleEnhancement = STYLE_PROMPTS[style] || "";
+      const enhancedPrompt = styleEnhancement
+        ? `${prompt}, ${styleEnhancement}`
+        : prompt;
+
+      console.log(
+        `[GENERATIVE] Generating image with Google Imagen 4: ${model}`,
+      );
+
+      const startTime = Date.now();
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${imageModelConfig.apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            instances: [{ prompt: enhancedPrompt }],
+            parameters: { sampleCount: 1 },
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`Imagen API error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const imageBase64 = data.predictions?.[0]?.bytesBase64Encoded;
+
+      if (!imageBase64) {
+        throw new Error("No image generated");
+      }
+
+      const generationTime = Date.now() - startTime;
+      usageStats.images.total++;
+
+      const imageData = {
+        success: true,
+        url: `data:image/png;base64,${imageBase64}`,
+        base64: imageBase64,
+        prompt: enhancedPrompt,
+        originalPrompt: prompt,
+        style,
+        quality,
+        model,
+        provider: "google-imagen",
+        generationTime,
+      };
+
+      imageCache.set(cacheKey, { data: imageData, timestamp: Date.now() });
+      return imageData;
+    }
+
+    // Pollinations.ai (FREE backup, no API key needed)
+    if (imageModelConfig.provider === "pollinations") {
+      const styleEnhancement = STYLE_PROMPTS[style] || "";
+      const enhancedPrompt = styleEnhancement
+        ? `${prompt}, ${styleEnhancement}`
+        : prompt;
+
+      console.log(`[GENERATIVE] Generating image with Pollinations.ai`);
+
+      const encodedPrompt = encodeURIComponent(enhancedPrompt);
+      const imageUrl = `${imageModelConfig.endpoint}${encodedPrompt}`;
+
+      const startTime = Date.now();
+      const generationTime = Date.now() - startTime;
+      usageStats.images.total++;
+
+      const imageData = {
+        success: true,
+        url: imageUrl,
+        prompt: enhancedPrompt,
+        originalPrompt: prompt,
+        style,
+        quality,
+        provider: "pollinations",
+        generationTime,
+      };
+
+      imageCache.set(cacheKey, { data: imageData, timestamp: Date.now() });
+      return imageData;
+    }
+
+    throw new Error(`Unknown provider: ${imageModelConfig.provider}`);
   } catch (error) {
-    console.error('[GENERATIVE] Image generation error:', error);
+    console.error("[GENERATIVE] Image generation error:", error);
     return {
       success: false,
       error: error.message,
@@ -187,13 +211,13 @@ export async function generateAIImage(prompt, options = {}) {
 }
 
 /**
- * Create Discord embed with rich formatting
+ * Create Discord embed with rich formatting and modern design
  */
 export function createDiscordEmbed(options) {
   const {
     title,
     description,
-    color = 'default',
+    color = "#7289da", // Discord blurple default
     fields = [],
     thumbnail = null,
     image = null,
@@ -202,19 +226,20 @@ export function createDiscordEmbed(options) {
     url = null,
     timestamp = true,
   } = options;
-  
+
   try {
     const embed = new EmbedBuilder();
-    
+
     if (title) embed.setTitle(title);
     if (description) embed.setDescription(description);
     if (url) embed.setURL(url);
-    
-    const colorValue = EMBED_COLORS[color.toLowerCase()] || color;
+
+    // Parse and apply color (supports hex strings, decimal numbers, or direct values)
+    const colorValue = parseColorValue(color);
     embed.setColor(colorValue);
-    
+
     if (fields && fields.length > 0) {
-      fields.forEach(field => {
+      fields.forEach((field) => {
         embed.addFields({
           name: field.name,
           value: field.value,
@@ -222,41 +247,40 @@ export function createDiscordEmbed(options) {
         });
       });
     }
-    
+
     if (thumbnail) embed.setThumbnail(thumbnail);
     if (image) embed.setImage(image);
-    
+
     if (footer) {
       embed.setFooter(
-        typeof footer === 'string' 
+        typeof footer === "string"
           ? { text: footer }
-          : { text: footer.text, iconURL: footer.icon }
+          : { text: footer.text, iconURL: footer.icon },
       );
     }
-    
+
     if (author) {
       embed.setAuthor(
-        typeof author === 'string'
+        typeof author === "string"
           ? { name: author }
-          : { name: author.name, iconURL: author.icon, url: author.url }
+          : { name: author.name, iconURL: author.icon, url: author.url },
       );
     }
-    
+
     if (timestamp) embed.setTimestamp();
-    
+
     usageStats.embeds.total++;
-    
-    console.log(`[GENERATIVE] Created Discord embed: ${title || 'Untitled'}`);
-    
+
+    console.log(`[GENERATIVE] Created Discord embed: ${title || "Untitled"}`);
+
     return {
       success: true,
       embed: embed.toJSON(),
       embedObject: embed,
-      preview: `Embed: ${title || 'Untitled'}${description ? ' - ' + description.substring(0, 50) : ''}`,
+      preview: `Embed: ${title || "Untitled"}${description ? " - " + description.substring(0, 50) : ""}`,
     };
-    
   } catch (error) {
-    console.error('[GENERATIVE] Embed creation error:', error);
+    console.error("[GENERATIVE] Embed creation error:", error);
     return {
       success: false,
       error: error.message,
@@ -266,36 +290,50 @@ export function createDiscordEmbed(options) {
 
 /**
  * Image Generation Tool for AI agent
+ * Uses Google Imagen 4 (FREE!) or Pollinations.ai backup
  */
 export const imageGenerationTool = tool({
-  description: `Generate AI images from text descriptions. Supports multiple quality levels and artistic styles.
-Quality options: ultra (best, slow), balanced (good, default), fast (quick, draft).
-Style options: realistic, anime, cartoon, digital-art, photographic, painting, sketch, pixel-art, 3d-render, fantasy, sci-fi.`,
-  
+  description: `Generate AI images using Google Imagen 4 (FREE with same API key) or Pollinations.ai backup.
+Quality: fast, balanced, ultra
+Styles: realistic, anime, cartoon, digital-art, photographic, painting, sketch, pixel-art, 3d-render, fantasy, sci-fi`,
+
   parameters: z.object({
-    prompt: z.string().describe('Detailed image description'),
-    quality: z.enum(['ultra', 'balanced', 'fast']).default('balanced'),
-    style: z.enum(['realistic', 'anime', 'cartoon', 'digital-art', 'photographic', 'painting', 'sketch', 'pixel-art', '3d-render', 'fantasy', 'sci-fi']).default('digital-art'),
-    size: z.enum(['square', 'landscape', 'portrait']).default('square'),
-    seed: z.number().optional().describe('Seed for reproducible generation'),
+    prompt: z.string().describe("Detailed image description"),
+    quality: z.enum(["fast", "balanced", "ultra"]).default("balanced"),
+    style: z
+      .enum([
+        "realistic",
+        "anime",
+        "cartoon",
+        "digital-art",
+        "photographic",
+        "painting",
+        "sketch",
+        "pixel-art",
+        "3d-render",
+        "fantasy",
+        "sci-fi",
+      ])
+      .default("digital-art"),
   }),
-  
-  execute: async ({ prompt, quality, style, size, seed }) => {
-    const result = await generateAIImage(prompt, { quality, style, size, seed });
-    
+
+  execute: async ({ prompt, quality, style }) => {
+    const result = await generateAIImage(prompt, { quality, style });
+
     if (result.success) {
       return {
         success: true,
         imageUrl: result.url,
         prompt: result.originalPrompt,
         enhancedPrompt: result.prompt,
+        provider: result.provider,
         quality,
         style,
         generationTime: `${result.generationTime}ms`,
         fromCache: result.fromCache || false,
       };
     }
-    
+
     return {
       success: false,
       error: result.error,
@@ -304,32 +342,74 @@ Style options: realistic, anime, cartoon, digital-art, photographic, painting, s
 });
 
 /**
- * Discord Embed Generator Tool for AI agent
+ * Discord Embed Generator Tool for AI agent - Modern Material Design UI
  */
 export const embedGeneratorTool = tool({
-  description: `Create beautiful Discord embeds with rich formatting. Use for important messages, info cards, or structured data.
-Colors: blue, green, red, purple, gold, orange, pink, cyan, lime, indigo, default.
-Supports: title, description, fields, images, thumbnails, footers, author info.`,
-  
+  description: `Create beautiful, modern Discord embeds with complete creative freedom.
+
+USE EMBEDS FOR:
+- Structured information (stats, lists, features)
+- Important announcements or updates
+- Rich responses with multiple sections
+- Music info, server info, user profiles
+- Success/error messages that need emphasis
+- Visual appeal when plain text feels flat
+
+COLORS - COMPLETE FREEDOM! Use ANY color:
+- Hex strings: "#FF5733", "#00BFFF", "#FF1493", "#7FFF00"
+- Match the vibe: warm = energy, cool = calm, bright = excitement
+- Be contextual: music = vibrant, stats = professional, errors = reds, success = greens
+- Get creative: gradients in mind, themes, moods - pick what feels perfect!
+
+EMOJIS - BE EXPRESSIVE!
+- Put emojis directly in titles: "yo here's the stats 📊"
+- Use creative combos: "🔥🎵", "✨🎉", "🚀🌌"
+- Match the mood: 😎 for cool, 🥳 for party, 💀 for gaming, 🌱 for fresh
+- Be unique and creative - full emoji freedom!
+
+Supports: title, description, fields, images, thumbnails, footers, author info, timestamps`,
+
   parameters: z.object({
-    title: z.string().describe('Embed title'),
-    description: z.string().optional().describe('Main content'),
-    color: z.enum(['blue', 'green', 'red', 'purple', 'gold', 'orange', 'pink', 'cyan', 'lime', 'indigo', 'default']).default('default'),
-    fields: z.array(z.object({
-      name: z.string(),
-      value: z.string(),
-      inline: z.boolean().optional(),
-    })).optional().describe('Additional fields'),
-    thumbnail: z.string().optional().describe('Small image URL (top right)'),
-    image: z.string().optional().describe('Large image URL (bottom)'),
-    footer: z.string().optional().describe('Footer text'),
-    author: z.string().optional().describe('Author name'),
-    url: z.string().optional().describe('Title link URL'),
+    title: z.string().describe("Embed title (short and catchy with emojis)"),
+    description: z
+      .string()
+      .optional()
+      .describe("Main content (supports markdown formatting)"),
+    color: z
+      .string()
+      .optional()
+      .describe(
+        "Any hex color you want! Examples: '#FF5733' (coral), '#00BFFF' (sky blue), '#FF1493' (hot pink), '#32CD32' (lime green). Be creative and match your message vibe!",
+      ),
+    fields: z
+      .array(
+        z.object({
+          name: z.string().describe("Field title"),
+          value: z.string().describe("Field content (supports markdown)"),
+          inline: z
+            .boolean()
+            .optional()
+            .describe("Display side-by-side (max 3 per row)"),
+        }),
+      )
+      .optional()
+      .describe("Additional structured fields"),
+    thumbnail: z
+      .string()
+      .optional()
+      .describe("Small image URL (top right corner)"),
+    image: z
+      .string()
+      .optional()
+      .describe("Large image URL (full width at bottom)"),
+    footer: z.string().optional().describe("Small footer text"),
+    author: z.string().optional().describe("Author name (displayed at top)"),
+    url: z.string().optional().describe("Title clickable link URL"),
   }),
-  
+
   execute: async (options) => {
     const result = createDiscordEmbed(options);
-    
+
     if (result.success) {
       return {
         success: true,
@@ -337,7 +417,7 @@ Supports: title, description, fields, images, thumbnails, footers, author info.`
         preview: result.preview,
       };
     }
-    
+
     return {
       success: false,
       error: result.error,
@@ -361,13 +441,6 @@ export function getQualityPresets() {
  */
 export function getAvailableStyles() {
   return Object.keys(STYLE_PROMPTS);
-}
-
-/**
- * Get available embed colors
- */
-export function getEmbedColors() {
-  return Object.keys(EMBED_COLORS);
 }
 
 /**
@@ -397,7 +470,6 @@ export default {
   embedGeneratorTool,
   getQualityPresets,
   getAvailableStyles,
-  getEmbedColors,
   getUsageStats,
   clearImageCache,
 };
