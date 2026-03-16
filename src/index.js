@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import { Client, GatewayIntentBits, Collection, Events } from "discord.js";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
@@ -16,7 +19,6 @@ if (ffmpegPath) {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Create a new client instance
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -24,14 +26,12 @@ const client = new Client({
     GatewayIntentBits.GuildPresences,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildVoiceStates, // Required for voice channel interactions
+    GatewayIntentBits.GuildVoiceStates,
   ],
 });
 
-// Setup commands collection
 client.commands = new Collection();
 
-// Load commands
 const commandsPath = join(__dirname, "commands");
 const commandFiles = readdirSync(commandsPath).filter((file) =>
   file.endsWith(".js"),
@@ -56,9 +56,14 @@ const eventFiles = readdirSync(eventsPath).filter((file) =>
   file.endsWith(".js"),
 );
 
+console.log(`[DEBUG] Found ${eventFiles.length} event files to load`);
+
 for (const file of eventFiles) {
   const filePath = join(eventsPath, file);
   const event = await import(`file://${filePath}`);
+  
+  console.log(`[DEBUG] Registering event: ${event.default.name} from ${file} (once: ${!!event.default.once})`);
+  
   if (event.default.once) {
     client.once(event.default.name, (...args) =>
       event.default.execute(...args),
@@ -69,7 +74,6 @@ for (const file of eventFiles) {
   console.log(`[INFO] Loaded event: ${event.default.name}`);
 }
 
-// Handle interaction commands
 client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.isButton()) {
     if (interaction.customId === "refresh_stats") {
@@ -137,18 +141,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
-client.once(Events.ClientReady, (client) => {
-  console.log(`[SUCCESS] Shantha logged in as ${client.user.tag}`);
-  console.log(`[INFO] Serving ${client.guilds.cache.size} guild(s)`);
-
-  import("./utils/statusUpdater.js").then(({ startStatusUpdater }) => {
-    startStatusUpdater(client);
-  });
-
-  import("./api/server.js").then(({ startApiServer }) => {
-    startApiServer(client);
-  });
-});
+// Ready event handled by src/events/ready.js
 
 client.login(config.token);
 

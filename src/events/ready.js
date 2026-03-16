@@ -121,6 +121,15 @@ export default {
     console.log(`[SUCCESS] Shantha logged in as ${client.user.tag}`);
     console.log(`[INFO] Serving ${client.guilds.cache.size} guild(s)`);
 
+    // Initialize AI Agent
+    import('../agents/agent.js').then(({ initializeAgent }) => {
+      initializeAgent(client).then(() => {
+        console.log('[INFO] AI Agent ready to respond to mentions');
+      }).catch(err => {
+        console.error('[ERROR] Failed to initialize AI Agent:', err);
+      });
+    });
+
     startStatusUpdater(client);
     startApiServer(client);
 
