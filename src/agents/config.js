@@ -20,8 +20,8 @@ const config = {
 
   model: {
     provider: process.env.AI_MODEL_PROVIDER || "google",
-    name: process.env.AI_MODEL_NAME || "gemini-3-flash-preview",
-    preset: process.env.AI_MODEL_PRESET || "balanced",
+    name: process.env.AI_MODEL_NAME || "gemini-2.5-flash-lite",
+    preset: process.env.AI_MODEL_PRESET || "fast",
     temperature: parseFloat(process.env.AI_TEMPERATURE) || 0.7,
     maxTokens: parseInt(process.env.AI_MAX_TOKENS) || 2000,
   },
