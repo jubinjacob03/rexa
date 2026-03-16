@@ -7,10 +7,12 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { google } from "@ai-sdk/google";
+import { createGroq } from "@ai-sdk/groq";
 
 const config = {
   apiKeys: {
     google: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+    groq: process.env.GROQ_API_KEY,
   },
 
   supabase: {
@@ -18,9 +20,16 @@ const config = {
     serviceKey: process.env.SUPABASE_SERVICE_KEY,
   },
 
+  tunnel: {
+    enabled: process.env.USE_GEMINI_TUNNEL === "true",
+    email: process.env.GEMINI_EMAIL,
+    password: process.env.GEMINI_PASSWORD,
+    headless: process.env.GEMINI_HEADLESS !== "false",
+  },
+
   model: {
-    provider: process.env.AI_MODEL_PROVIDER || "google",
-    name: process.env.AI_MODEL_NAME || "gemini-2.5-flash-lite",
+    provider: process.env.AI_MODEL_PROVIDER || "groq", // Default to Groq for agent orchestration
+    name: process.env.AI_MODEL_NAME || "llama-3.3-70b-versatile", // Best Groq model
     preset: process.env.AI_MODEL_PRESET || "fast",
     temperature: parseFloat(process.env.AI_TEMPERATURE) || 0.7,
     maxTokens: parseInt(process.env.AI_MAX_TOKENS) || 2000,
@@ -65,17 +74,38 @@ export function getLanguageModel(
   preset = config.model.preset,
   customModel = null,
 ) {
+  const provider = config.model.provider;
   const modelName = customModel || config.model.name;
 
-  // March 2026 Free Tier Models
-  const presets = {
+  // Use Groq for agent orchestration (fast, free tool calling)
+  if (provider === "groq") {
+    const groq = createGroq({
+      apiKey: process.env.GROQ_API_KEY,
+    });
+    
+    const groqModels = {
+      fast: "llama-3.3-70b-versatile",
+      balanced: "llama-3.3-70b-versatile", 
+      powerful: "llama-3.1-70b-versatile",
+      creative: "mixtral-8x7b-32768",
+    };
+    
+    const model = preset !== "custom" ? groqModels[preset] : modelName;
+    
+    return groq(model || "llama-3.3-70b-versatile", {
+      temperature: config.model.temperature,
+    });
+  }
+  
+  // Fallback to Google Gemini (for direct API usage)
+  const geminiModels = {
     fast: "gemini-2.5-flash-lite",
     balanced: "gemini-2.5-flash",
     powerful: "gemini-2.5-pro",
     creative: "gemini-2.5-flash",
   };
 
-  const model = preset !== "custom" ? presets[preset] : modelName;
+  const model = preset !== "custom" ? geminiModels[preset] : modelName;
 
   return google(model || "gemini-2.5-flash-lite", {
     temperature: config.model.temperature,
