@@ -93,18 +93,16 @@ export async function processMessage(userId, guildId, message, context = null) {
             console.log("[AGENT] Groq processing Gemini response...");
             const orchestrationResult = await generateText({
               model: getLanguageModel(),
-              tools,
-              maxSteps: 3,
               prompt: `You are Shantha's response formatter. Gemini generated a response, but it may contain UI noise. Your job:
 
 1. Extract ONLY Shantha's actual spoken response (remove: system prompts, "Gemini is AI and can make mistakes", "About Gemini", "You said", timestamps, UI elements)
-2. If the response deserves a rich embed (quotes, lists, important info), call createEmbed tool
-3. Return the clean response text
+2. Return ONLY the clean text that Shantha said
 
 Gemini's raw output:
 ${geminiRawResponse}
 
-Provide the clean response that should be sent to Discord:`,
+Clean response:`,
+              maxTokens: 500,
             });
             finalResponse = orchestrationResult.text.trim();
             console.log(`[AGENT] Orchestrated response: ${finalResponse.substring(0, 80)}...`);
@@ -129,18 +127,16 @@ Provide the clean response that should be sent to Discord:`,
                 try {
                   const orchestrationResult = await generateText({
                     model: getLanguageModel(),
-                    tools,
-                    maxSteps: 3,
                     prompt: `You are Shantha's response formatter. Gemini generated a response, but it may contain UI noise. Your job:
 
 1. Extract ONLY Shantha's actual spoken response (remove: system prompts, "Gemini is AI and can make mistakes", "About Gemini", "You said", timestamps, UI elements)
-2. If the response deserves a rich embed (quotes, lists, important info), call createEmbed tool
-3. Return the clean response text
+2. Return ONLY the clean text that Shantha said
 
 Gemini's raw output:
 ${rawResponse}
 
-Provide the clean response that should be sent to Discord:`,
+Clean response:`,
+                    maxTokens: 500,
                   });
                   finalResponse = orchestrationResult.text.trim();
                   console.log(`[AGENT] Orchestrated from tool result: ${finalResponse.substring(0, 80)}...`);
