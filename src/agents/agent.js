@@ -103,6 +103,11 @@ export async function processMessage(userId, guildId, message, context = null) {
     let finalResponse = result.text || "";
     if ((!finalResponse || finalResponse.trim() === "") && result.steps?.length > 0) {
       console.log("[AGENT] No direct text response, extracting from tool results...");
+      console.log(`[AGENT] Steps structure:`, JSON.stringify(result.steps.map(s => ({
+        toolCalls: s.toolCalls?.map(tc => ({ name: tc.toolName, args: tc.args })),
+        toolResults: s.toolResults?.map(tr => ({ name: tr.toolName, hasResult: !!tr.result })),
+        text: s.text?.substring(0, 100)
+      })), null, 2));
 
       const toolResults = [];
       for (const step of result.steps) {
