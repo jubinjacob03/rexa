@@ -7,10 +7,8 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Add stealth plugin to avoid bot detection
 puppeteer.use(StealthPlugin());
 
-// Helper function to wait (replaces deprecated waitForTimeout)
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 class GeminiWebTunnel {
@@ -20,13 +18,11 @@ class GeminiWebTunnel {
     this.browser = null;
     this.page = null;
     this.isAuthenticated = false;
+    this.systemPromptSent = false;
     this.cookiesPath = path.join(__dirname, "../../cache/gemini-cookies.json");
-    this.headless = options.headless !== false; // Default true
+    this.headless = options.headless !== false;
   }
 
-  /**
-   * Initialize browser and authenticate
-   */
   async initialize() {
     try {
       console.log("[GEMINI TUNNEL] Launching browser...");
@@ -45,13 +41,11 @@ class GeminiWebTunnel {
 
       this.page = await this.browser.newPage();
 
-      // Set viewport and user agent
       await this.page.setViewport({ width: 1920, height: 1080 });
       await this.page.setUserAgent(
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
       );
 
-      // Try to load saved cookies first
       const cookiesLoaded = await this.loadCookies();
 
       if (cookiesLoaded) {
@@ -61,7 +55,6 @@ class GeminiWebTunnel {
           timeout: 30000,
         });
 
-        // Check if still authenticated
         await wait(3000);
         const isLoggedIn = await this.checkIfLoggedIn();
 
@@ -76,7 +69,6 @@ class GeminiWebTunnel {
         }
       }
 
-      // Perform fresh login (will pause for 2FA if needed)
       await this.login();
       return true;
     } catch (error) {
@@ -85,16 +77,12 @@ class GeminiWebTunnel {
     }
   }
 
-  /**
-   * Check if user is logged in
-   */
   async checkIfLoggedIn() {
     try {
-      // Look for the chat input or user profile indicator
       const selectors = [
-        'div[contenteditable="true"]', // Chat input
-        'textarea[placeholder*="Enter"]', // Alternative input
-        'button[aria-label*="profile"]', // Profile button
+        'div[contenteditable="true"]',
+        'textarea[placeholder*="Enter"]',
+        'button[aria-label*="profile"]',
       ];
 
       for (const selector of selectors) {
@@ -110,14 +98,10 @@ class GeminiWebTunnel {
     }
   }
 
-  /**
-   * Perform Google login
-   */
   async login() {
     try {
       console.log("[GEMINI TUNNEL] Starting login process...");
 
-      // Navigate to Gemini
       await this.page.goto("https://gemini.google.com/app", {
         waitUntil: "networkidle2",
         timeout: 30000,
@@ -125,7 +109,6 @@ class GeminiWebTunnel {
 
       await wait(2000);
 
-      // Check if already on chat page (no login needed)
       const isLoggedIn = await this.checkIfLoggedIn();
       if (isLoggedIn) {
         console.log("[GEMINI TUNNEL] Already logged in!");
@@ -136,7 +119,6 @@ class GeminiWebTunnel {
 
       console.log("[GEMINI TUNNEL] Need to login. Looking for login button...");
 
-      // Click "Sign in" button if present
       try {
         await this.page.waitForSelector(
           'button, a[href*="accounts.google.com"]',
@@ -155,7 +137,6 @@ class GeminiWebTunnel {
         );
       }
 
-      // Enter email
       console.log("[GEMINI TUNNEL] Entering email...");
       await this.page.waitForSelector('input[type="email"]', {
         timeout: 10000,
@@ -163,10 +144,8 @@ class GeminiWebTunnel {
       await this.page.type('input[type="email"]', this.email, { delay: 100 });
       await this.page.keyboard.press("Enter");
 
-      // Wait for password page
       await wait(2000);
 
-      // Enter password (can be regular password or App Password)
       console.log("[GEMINI TUNNEL] Entering password...");
       await this.page.waitForSelector('input[type="password"]', {
         timeout: 10000,
@@ -176,10 +155,8 @@ class GeminiWebTunnel {
       });
       await this.page.keyboard.press("Enter");
 
-      // Wait for navigation after login
       console.log("[GEMINI TUNNEL] Waiting for login to complete...");
 
-      // If 2FA is required, give user time to complete it
       if (!this.headless) {
         console.log("\n" + "=".repeat(60));
         console.log("⚠️  If 2FA verification appears, please complete it now.");
@@ -190,7 +167,7 @@ class GeminiWebTunnel {
       await this.page
         .waitForNavigation({
           waitUntil: "networkidle2",
-          timeout: 120000, // 2 minutes for 2FA
+          timeout: 120000,
         })
         .catch(() =>
           console.log(
@@ -200,7 +177,6 @@ class GeminiWebTunnel {
 
       await wait(3000);
 
-      // Verify login success
       const loginSuccess = await this.checkIfLoggedIn();
 
       if (loginSuccess) {
@@ -235,32 +211,67 @@ class GeminiWebTunnel {
     }
   }
 
-  /**
-   * Send prompt to Gemini and get response
-   */
+  async initializePersonality() {
+    const systemPrompt = `You are Shantha - a casual, friendly Gen Z Discord bot. Communication rules:
+
+1. PERSONALITY: Talk like a friend, not a formal assistant. Use "yo", "ngl", "bet", "fr", "lowkey", no corporate speak.
+
+2. LANGUAGE MIRRORING (CRITICAL):
+   - User speaks English → Respond in English only
+   - User speaks Manglish → Respond in Manglish only (use: eda, machane, pwoli, adipoli, enthada, sheriya)
+   - User speaks Malayalam → Respond in Malayalam only
+   - NEVER mix languages unless user does first
+
+3. TONE: Keep it short, casual, expressive. Use emojis when natural.
+
+Examples:
+❌ "I shall assist you with that request" 
+✅ "yo got it! 👍"
+✅ "eda sheriya wait cheyy" (Manglish)
+✅ "bet, on it rn" (English)
+
+Respond naturally based on the user's language choice.`;
+
+    console.log("[GEMINI TUNNEL] 🎭 Initializing Shantha personality...");
+    
+    await this.page.waitForSelector('div[contenteditable="true"], textarea', {
+      timeout: 5000,
+    });
+
+    const inputSelector = 'div[contenteditable="true"], textarea';
+    await this.page.focus(inputSelector);
+    await this.page.type(inputSelector, systemPrompt, { delay: 0 });
+
+    const sendButton = await this.page.$(
+      'button[aria-label*="Send"], button[type="submit"]',
+    );
+    if (!sendButton) {
+      await this.page.keyboard.press("Enter");
+    } else {
+      await sendButton.click();
+    }
+
+    await wait(2000);
+    console.log("[GEMINI TUNNEL] ✅ Shantha personality initialized!");
+  }
+
   async sendPrompt(prompt, options = {}) {
     if (!this.isAuthenticated) {
       throw new Error("Not authenticated. Call initialize() first.");
     }
 
     try {
-      console.log(`[GEMINI TUNNEL] Sending prompt (${prompt.length} chars)...`);
-
-      // Navigate to Gemini if not already there
-      const currentUrl = this.page.url();
-      if (!currentUrl.includes("gemini.google.com")) {
-        await this.page.goto("https://gemini.google.com/app", {
-          waitUntil: "networkidle2",
-          timeout: 30000,
-        });
+      if (!this.systemPromptSent) {
+        await this.initializePersonality();
+        this.systemPromptSent = true;
       }
 
-      // Find the input field
+      console.log(`[GEMINI TUNNEL] Sending prompt (${prompt.length} chars)...`);
+
       await this.page.waitForSelector('div[contenteditable="true"], textarea', {
-        timeout: 10000,
+        timeout: 5000,
       });
 
-      // Clear any existing input
       await this.page.evaluate(() => {
         const input =
           document.querySelector('div[contenteditable="true"]') ||
@@ -273,16 +284,12 @@ class GeminiWebTunnel {
 
       const inputSelector = 'div[contenteditable="true"], textarea';
       await this.page.focus(inputSelector);
-      await this.page.type(inputSelector, prompt, { delay: 5 });
+      await this.page.type(inputSelector, prompt, { delay: 0 });
 
-      await wait(200);
-
-      // Find and click send button
       const sendButton = await this.page.$(
         'button[aria-label*="Send"], button[type="submit"]',
       );
       if (!sendButton) {
-        // Try pressing Enter as fallback
         await this.page.keyboard.press("Enter");
       } else {
         await sendButton.click();
@@ -290,35 +297,52 @@ class GeminiWebTunnel {
 
       console.log("[GEMINI TUNNEL] Waiting for response...");
 
-      // Wait for response to start appearing
-      await wait(1000);
-
-      let responseAppeared = false;
-      for (let i = 0; i < 40; i++) {
-        const hasContent = await this.page.evaluate(() => {
+      let previousLength = 0;
+      let stableCount = 0;
+      let responseText = "";
+      
+      for (let i = 0; i < 60; i++) {
+        await wait(250);
+        
+        const currentResponse = await this.page.evaluate(() => {
           const main = document.querySelector("main") || document.body;
-          const text = main.innerText || "";
-          const lines = text.split("\n").filter((l) => l.trim().length > 10);
-          return lines.length > 2;
+          const allText = main.innerText;
+          const lines = allText.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+
+          const responseLines = [];
+          let foundPrompt = false;
+          for (let i = lines.length - 1; i >= 0; i--) {
+            const line = lines[i];
+            if (!foundPrompt && line.length > 5 && 
+                !line.match(/^(Copy|Share|Good|Bad|Tools|Fast|Balanced|Precise|Show drafts|Gemini)$/i)) {
+              responseLines.unshift(line);
+            } else if (foundPrompt) {
+              break;
+            }
+          }
+          
+          return responseLines.join(" ").trim();
         });
+        
+        if (currentResponse && currentResponse.length > 20) {
+          responseText = currentResponse;
 
-        if (hasContent) {
-          responseAppeared = true;
-          break;
+          if (currentResponse.length === previousLength) {
+            stableCount++;
+            if (stableCount >= 2) {
+              break;
+            }
+          } else {
+            stableCount = 0;
+            previousLength = currentResponse.length;
+          }
         }
-
-        await wait(500);
       }
 
-      if (!responseAppeared) {
-        console.warn("[GEMINI TUNNEL] Response did not appear in time");
-      }
+      let response = responseText;
 
-      await wait(1500);
-
-      // Extract the response text
-      const response = await this.page.evaluate(() => {
-        // Strategy 1: Find all text content, get everything after user prompt
+      if (!response || response.length < 10) {
+        response = await this.page.evaluate(() => {
         const main = document.querySelector("main") || document.body;
         const allText = main.innerText;
         const lines = allText
@@ -326,7 +350,6 @@ class GeminiWebTunnel {
           .map((l) => l.trim())
           .filter((l) => l.length > 0);
 
-        // Find the user prompt and get everything after it
         const promptIndex = lines.findIndex(
           (l) =>
             l.includes("Hello! Please respond") ||
@@ -334,7 +357,6 @@ class GeminiWebTunnel {
         );
 
         if (promptIndex >= 0 && promptIndex < lines.length - 1) {
-          // Get all lines after the prompt, excluding UI elements
           const responseLines = lines
             .slice(promptIndex + 1)
             .filter(
@@ -352,7 +374,6 @@ class GeminiWebTunnel {
           }
         }
 
-        // Strategy 2: Look for specific Gemini response containers
         const responseSelectors = [
           '[data-test-id*="model"]',
           '[data-test-id*="response"]',
@@ -370,30 +391,27 @@ class GeminiWebTunnel {
           }
         }
 
-        // Strategy 3: Get last substantial paragraph/div
         const contentElements = Array.from(document.querySelectorAll("p, div"));
         for (let i = contentElements.length - 1; i >= 0; i--) {
           const el = contentElements[i];
           const text = el.textContent.trim();
 
-          // Skip user prompts
           if (text.includes("Hello! Please respond")) continue;
           if (text.includes("What did I just ask")) continue;
 
-          // Look for response
           if (text.length > 15 && text.match(/[a-zA-Z]{3,}/)) {
             return text;
           }
         }
 
-        // Last resort: get all visible text and extract response portion
         const visibleText = (main.innerText || "").trim();
         if (visibleText.length > 50) {
           return visibleText;
         }
 
         return "";
-      });
+        });
+      }
 
       if (!response || response.length < 5) {
         console.error(
@@ -401,11 +419,9 @@ class GeminiWebTunnel {
           response,
         );
 
-        // Take a screenshot for debugging
         await this.page.screenshot({ path: "debug-screenshot.png" });
         console.log("[GEMINI TUNNEL] Screenshot saved to debug-screenshot.png");
 
-        // Get page HTML for debugging
         const html = await this.page.content();
         await fs.writeFile("debug-page.html", html);
         console.log("[GEMINI TUNNEL] Page HTML saved to debug-page.html");
@@ -426,9 +442,6 @@ class GeminiWebTunnel {
     }
   }
 
-  /**
-   * Save cookies for session persistence
-   */
   async saveCookies() {
     try {
       const cookies = await this.page.cookies();
@@ -440,9 +453,6 @@ class GeminiWebTunnel {
     }
   }
 
-  /**
-   * Load saved cookies
-   */
   async loadCookies() {
     try {
       const cookiesString = await fs.readFile(this.cookiesPath, "utf8");
@@ -456,9 +466,6 @@ class GeminiWebTunnel {
     }
   }
 
-  /**
-   * Close browser
-   */
   async close() {
     if (this.browser) {
       await this.browser.close();
@@ -467,12 +474,8 @@ class GeminiWebTunnel {
   }
 }
 
-// Singleton instance
 let tunnelInstance = null;
 
-/**
- * Get or create tunnel instance
- */
 export async function getTunnel() {
   if (!tunnelInstance) {
     tunnelInstance = new GeminiWebTunnel({
@@ -483,17 +486,11 @@ export async function getTunnel() {
   return tunnelInstance;
 }
 
-/**
- * Send prompt through tunnel
- */
 export async function sendPromptTunnel(prompt, options) {
   const tunnel = await getTunnel();
   return await tunnel.sendPrompt(prompt, options);
 }
 
-/**
- * Close tunnel
- */
 export async function closeTunnel() {
   if (tunnelInstance) {
     await tunnelInstance.close();
