@@ -9,7 +9,7 @@ export const chatTool = tool({
     
     CRITICAL: Call this tool for ALL user messages and pass the user's message as the 'prompt' parameter.
     
-    This tool returns RAW response from Gemini that may contain UI noise. The orchestrator will clean and format it.
+    This tool returns clean response text from Gemini that you can use directly or enhance with embeds.
     
     Use this for:
     - Any user message and casual chat
@@ -17,6 +17,8 @@ export const chatTool = tool({
     - Malayalam/Manglish conversations (Gemini has excellent Indic language support)
     - Long-form explanations and creative writing
     - Contextual conversations
+    
+    After getting response, you can call createEmbed if the content deserves rich formatting.
     
     This tool accesses the unlimited Gemini Pro web interface with no quota limits.`,
   parameters: z.object({
@@ -37,7 +39,14 @@ export const chatTool = tool({
         : prompt;
 
       const rawResponse = await sendPromptTunnel(fullPrompt);
-      return `[RAW_GEMINI_RESPONSE]\n${rawResponse}\n[/RAW_GEMINI_RESPONSE]`;
+      
+      const cleanupResult = await generateText({
+        model: getLanguageModel(),
+        prompt: `Extract ONLY the actual response content. Remove any UI noise like "Gemini is AI and can make mistakes", "About Gemini", "You said", timestamps, or other interface text. Return ONLY what was said:\n\n${rawResponse}\n\nClean response:`,
+        maxTokens: 500,
+      });
+      
+      return cleanupResult.text.trim();
     } catch (error) {
       console.error("[CHAT TOOL] Error:", error);
       return `Error generating response: ${error.message}`;

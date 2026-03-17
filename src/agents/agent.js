@@ -81,72 +81,13 @@ export async function processMessage(userId, guildId, message, context = null) {
     });
 
     let finalResponse = result.text || "";
-    if (result.finishReason === "tool-calls" && result.steps?.length > 0) {
-      const lastStep = result.steps[result.steps.length - 1];
-      const chatToolCall = lastStep.toolCalls?.find(tc => tc.toolName === "chat");
-      
-      if (chatToolCall && (!chatToolCall.args || !chatToolCall.args.prompt)) {
-        console.log("[AGENT] Calling Gemini and letting Groq orchestrate response...");
-        try {
-          const geminiRawResponse = await sendPromptTunnel(message);
-          if (geminiRawResponse && geminiRawResponse.trim()) {
-            console.log("[AGENT] Groq processing Gemini response...");
-            const orchestrationResult = await generateText({
-              model: getLanguageModel(),
-              prompt: `You are Shantha's response formatter. Gemini generated a response, but it may contain UI noise. Your job:
-
-1. Extract ONLY Shantha's actual spoken response (remove: system prompts, "Gemini is AI and can make mistakes", "About Gemini", "You said", timestamps, UI elements)
-2. Return ONLY the clean text that Shantha said
-
-Gemini's raw output:
-${geminiRawResponse}
-
-Clean response:`,
-              maxTokens: 500,
-            });
-            finalResponse = orchestrationResult.text.trim();
-            console.log(`[AGENT] Orchestrated response: ${finalResponse.substring(0, 80)}...`);
-          }
-        } catch (error) {
-          console.error("[AGENT] Gemini/orchestration failed:", error);
-        }
-      }
-    }
     
     if ((!finalResponse || finalResponse.trim() === "") && result.steps?.length > 0) {
       for (const step of result.steps) {
         if (step.toolResults && step.toolResults.length > 0) {
           for (const toolResult of step.toolResults) {
             if (toolResult.result) {
-              const resultText = toolResult.result.toString();
-              
-              if (resultText.includes("[RAW_GEMINI_RESPONSE]")) {
-                console.log("[AGENT] Found raw Gemini response in tool results, orchestrating...");
-                const rawResponse = resultText.replace(/\[RAW_GEMINI_RESPONSE\]|\[\/RAW_GEMINI_RESPONSE\]/g, "").trim();
-                
-                try {
-                  const orchestrationResult = await generateText({
-                    model: getLanguageModel(),
-                    prompt: `You are Shantha's response formatter. Gemini generated a response, but it may contain UI noise. Your job:
-
-1. Extract ONLY Shantha's actual spoken response (remove: system prompts, "Gemini is AI and can make mistakes", "About Gemini", "You said", timestamps, UI elements)
-2. Return ONLY the clean text that Shantha said
-
-Gemini's raw output:
-${rawResponse}
-
-Clean response:`,
-                    maxTokens: 500,
-                  });
-                  finalResponse = orchestrationResult.text.trim();
-                  console.log(`[AGENT] Orchestrated from tool result: ${finalResponse.substring(0, 80)}...`);
-                } catch (error) {
-                  console.error("[AGENT] Orchestration failed:", error);
-                  finalResponse = rawResponse;
-                }
-              } else {
-                finalResponse = resultText;
-              }
+              finalResponse = toolResult.result.toString();
               break;
             }
           }
