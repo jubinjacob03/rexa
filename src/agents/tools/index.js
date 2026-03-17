@@ -61,6 +61,6 @@ export default {
   initializeTools,
   knowledgeBase,
   contextManager,
-  generativeTools,
+  agentTools,
   executorTools,
 };
