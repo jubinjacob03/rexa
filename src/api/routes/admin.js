@@ -21,7 +21,7 @@ router.post("/refresh", async (req, res) => {
   }
 });
 
-// POST /api/admin/setup-verification — re-post verification embeds
+// POST /api/admin/setup-verification — re-post verification embed
 router.post("/setup-verification", async (req, res) => {
   try {
     const client = req.app.get("discordClient");
@@ -35,46 +35,26 @@ router.post("/setup-verification", async (req, res) => {
       return res.status(404).json({ success: false, error: "Verification channel not found." });
     }
 
-    const friendsEmbed = new EmbedBuilder()
-      .setColor("#0099FF")
-      .setTitle("🌟 ғʀɪᴇɴᴅs ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ")
-      .setDescription("ᴀᴘᴘʟʏ ғᴏʀ **ғʀɪᴇɴᴅs** ʀᴏʟᴇ ɪғ ʏᴏᴜ ᴀʀᴇ ᴀ **ᴠɪsɪᴛᴏʀ** ɪɴ ᴛʜᴇ sᴇʀᴠᴇʀ.")
-      .addFields(
-        { name: "ᴘᴜʀᴘᴏsᴇ", value: "ғᴏʀ ᴠɪsɪᴛᴏʀs", inline: true },
-        { name: "ᴀᴄᴄᴇss ʟᴇᴠᴇʟ", value: "ʙᴀsɪᴄ", inline: true },
-        { name: "ᴘᴇʀᴍɪssɪᴏɴs", value: "ʟɪᴍɪᴛᴇᴅ ᴄʜᴀɴɴᴇʟs", inline: true }
-      )
+    const verificationEmbed = new EmbedBuilder()
+      .setColor("#5865F2")
+      .setTitle("🔐 ʀᴏʟᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ")
+      .setDescription("ᴄʟɪᴄᴋ ᴏɴ ᴛʜᴇ ᴀᴘᴘʀᴏᴘʀɪᴀᴛᴇ ʀᴏʟᴇ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴀᴘᴘʟʏ.\n\n⚠️ **ᴍᴇᴍʙᴇʀ ɪs ғᴏʀ ɢᴜɪʟᴅᴍᴀᴛᴇs ᴏɴʟʏ!!**")
       .setTimestamp();
 
-    const friendsRow = new ActionRowBuilder().addComponents(
+    const buttonRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("verify_friends")
-        .setLabel("ᴀᴘᴘʟʏ")
-        .setStyle(ButtonStyle.Primary)
-    );
-
-    const memberEmbed = new EmbedBuilder()
-      .setColor("#00FF00")
-      .setTitle("👑 ᴍᴇᴍʙᴇʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ")
-      .setDescription("ᴀᴘᴘʟʏ ғᴏʀ **ᴍᴇᴍʙᴇʀ** ʀᴏʟᴇ ɪғ ʏᴏᴜ ᴀʀᴇ ᴀ **ɢᴜɪʟᴅᴍᴀᴛᴇ** ɪɴ sᴀɪʏᴀɴ ɢᴏᴅs.")
-      .addFields(
-        { name: "ᴘᴜʀᴘᴏsᴇ", value: "ɢᴜɪʟᴅᴍᴀᴛᴇs", inline: true },
-        { name: "ᴀᴄᴄᴇss ʟᴇᴠᴇʟ", value: "ғᴜʟʟ ᴀᴄᴄᴇss", inline: true },
-        { name: "ᴘᴇʀᴍɪssɪᴏɴs", value: "ᴀʟʟ ᴄʜᴀɴɴᴇʟs", inline: true }
-      )
-      .setTimestamp();
-
-    const memberRow = new ActionRowBuilder().addComponents(
+        .setLabel("ғʀɪᴇɴᴅs")
+        .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
         .setCustomId("verify_member")
-        .setLabel("ᴀᴘᴘʟʏ")
+        .setLabel("ᴍᴇᴍʙᴇʀ")
         .setStyle(ButtonStyle.Success)
     );
 
-    await verificationChannel.send({ embeds: [friendsEmbed], components: [friendsRow] });
-    await verificationChannel.send({ embeds: [memberEmbed], components: [memberRow] });
+    await verificationChannel.send({ embeds: [verificationEmbed], components: [buttonRow] });
 
-    res.json({ success: true, data: { message: "Verification embeds posted." } });
+    res.json({ success: true, data: { message: "Verification embed posted." } });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

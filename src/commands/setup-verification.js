@@ -15,80 +15,64 @@ export default {
                 return interaction.reply({ content: '❌ Verification channel not found!', ephemeral: true });
             }
 
-            const friendsEmbed = new EmbedBuilder()
-                .setColor('#0099FF')
-                .setTitle('🌟 ғʀɪᴇɴᴅs ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ')
-                .setDescription('ᴀᴘᴘʟʏ ғᴏʀ **ғʀɪᴇɴᴅs** ʀᴏʟᴇ ɪғ ʏᴏᴜ ᴀʀᴇ ᴀ **ᴠɪsɪᴛᴏʀ** ɪɴ ᴛʜᴇ sᴇʀᴠᴇʀ.')
-                .addFields(
-                    { name: 'ᴘᴜʀᴘᴏsᴇ', value: 'ғᴏʀ ᴠɪsɪᴛᴏʀs', inline: true },
-                    { name: 'ᴀᴄᴄᴇss ʟᴇᴠᴇʟ', value: 'ʙᴀsɪᴄ', inline: true },
-                    { name: 'ᴘᴇʀᴍɪssɪᴏɴs', value: 'ʟɪᴍɪᴛᴇᴅ ᴄʜᴀɴɴᴇʟs', inline: true }
-                )
+            const verificationEmbed = new EmbedBuilder()
+                .setColor('#5865F2')
+                .setTitle('🔐 ʀᴏʟᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ')
+                .setDescription('ᴄʟɪᴄᴋ ᴏɴ ᴛʜᴇ ᴀᴘᴘʀᴏᴘʀɪᴀᴛᴇ ʀᴏʟᴇ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴀᴘᴘʟʏ.\n\n⚠️ **ᴍᴇᴍʙᴇʀ ɪs ғᴏʀ ɢᴜɪʟᴅᴍᴀᴛᴇs ᴏɴʟʏ!!**')
                 .setTimestamp();
 
-            const friendsButton = new ActionRowBuilder()
+            const buttonRow = new ActionRowBuilder()
                 .addComponents(
                     new ButtonBuilder()
                         .setCustomId('verify_friends')
-                        .setLabel('ᴀᴘᴘʟʏ')
-                        .setStyle(ButtonStyle.Primary)
-                );
-
-            const memberEmbed = new EmbedBuilder()
-                .setColor('#00FF00')
-                .setTitle('👑 ᴍᴇᴍʙᴇʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ')
-                .setDescription('ᴀᴘᴘʟʏ ғᴏʀ **ᴍᴇᴍʙᴇʀ** ʀᴏʟᴇ ɪғ ʏᴏᴜ ᴀʀᴇ ᴀ **ɢᴜɪʟᴅᴍᴀᴛᴇ** ɪɴ sᴀɪʏᴀɴ ɢᴏᴅs.')
-                .addFields(
-                    { name: 'ᴘᴜʀᴘᴏsᴇ', value: 'ɢᴜɪʟᴅᴍᴀᴛᴇs', inline: true },
-                    { name: 'ᴀᴄᴄᴇss ʟᴇᴠᴇʟ', value: 'ғᴜʟʟ ᴀᴄᴄᴇss', inline: true },
-                    { name: 'ᴘᴇʀᴍɪssɪᴏɴs', value: 'ᴀʟʟ ᴄʜᴀɴɴᴇʟs', inline: true }
-                )
-                .setTimestamp();
-
-            const memberButton = new ActionRowBuilder()
-                .addComponents(
+                        .setLabel('ғʀɪᴇɴᴅs')
+                        .setStyle(ButtonStyle.Primary),
                     new ButtonBuilder()
                         .setCustomId('verify_member')
-                        .setLabel('ᴀᴘᴘʟʏ')
+                        .setLabel('ᴍᴇᴍʙᴇʀ')
                         .setStyle(ButtonStyle.Success)
                 );
 
             const messages = await verificationChannel.messages.fetch({ limit: 10 });
-            let friendsMessage = null;
-            let memberMessage = null;
+            let existingMessage = null;
 
             messages.forEach(msg => {
                 if (msg.author.id === interaction.client.user.id && msg.embeds.length > 0) {
                     const embedTitle = msg.embeds[0].title;
-                    if (embedTitle?.includes('ғʀɪᴇɴᴅs ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ')) {
-                        friendsMessage = msg;
-                    } else if (embedTitle?.includes('ᴍᴇᴍʙᴇʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ')) {
-                        memberMessage = msg;
+                    if (embedTitle?.includes('Role Verification') || 
+                        embedTitle?.includes('ғʀɪᴇɴᴅs ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ') || 
+                        embedTitle?.includes('ᴍᴇᴍʙᴇʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ')) {
+                        if (!existingMessage) existingMessage = msg;
                     }
                 }
             });
 
-            if (friendsMessage) {
-                await friendsMessage.edit({ embeds: [friendsEmbed], components: [friendsButton] });
-                console.log('[INFO] Updated existing Friends verification embed');
+            if (existingMessage) {
+                await existingMessage.edit({ embeds: [verificationEmbed], components: [buttonRow] });
+                console.log('[INFO] Updated existing verification embed');
+                
+                const oldMessages = messages.filter(msg => 
+                    msg.id !== existingMessage.id &&
+                    msg.author.id === interaction.client.user.id && 
+                    msg.embeds.length > 0 &&
+                    (msg.embeds[0].title?.includes('ғʀɪᴇɴᴅs ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ') || 
+                     msg.embeds[0].title?.includes('ᴍᴇᴍʙᴇʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ'))
+                );
+                
+                for (const msg of oldMessages.values()) {
+                    await msg.delete().catch(() => {});
+                    console.log('[INFO] Deleted old verification embed');
+                }
+                
+                await interaction.reply({ content: '✅ Verification embed updated successfully!', ephemeral: true });
             } else {
-                await verificationChannel.send({ embeds: [friendsEmbed], components: [friendsButton] });
-                console.log('[INFO] Created new Friends verification embed');
+                await verificationChannel.send({ embeds: [verificationEmbed], components: [buttonRow] });
+                console.log('[INFO] Created new verification embed');
+                await interaction.reply({ content: '✅ Verification embed set up successfully!', ephemeral: true });
             }
-
-            if (memberMessage) {
-                await memberMessage.edit({ embeds: [memberEmbed], components: [memberButton] });
-                console.log('[INFO] Updated existing Member verification embed');
-            } else {
-                await verificationChannel.send({ embeds: [memberEmbed], components: [memberButton] });
-                console.log('[INFO] Created new Member verification embed');
-            }
-
-            const action = (friendsMessage || memberMessage) ? 'updated' : 'set up';
-            await interaction.reply({ content: `✅ Verification embeds have been ${action} successfully!`, ephemeral: true });
         } catch (error) {
             console.error('[ERROR] Error setting up verification:', error);
-            await interaction.reply({ content: '❌ Failed to set up verification embeds.', ephemeral: true });
+            await interaction.reply({ content: '❌ Failed to set up verification embed.', ephemeral: true });
         }
     }
 };

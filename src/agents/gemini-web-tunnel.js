@@ -19,6 +19,7 @@ class GeminiWebTunnel {
     this.page = null;
     this.isAuthenticated = false;
     this.systemPromptSent = false;
+    this.initializingPersonality = null;
     this.cookiesPath = path.join(__dirname, "../../cache/gemini-cookies.json");
     this.headless = options.headless !== false;
   }
@@ -234,8 +235,20 @@ Respond naturally based on the user's language choice.`;
 
     console.log("[GEMINI TUNNEL] 🎭 Initializing Shantha personality...");
     
+    await wait(2000);
+    
     await this.page.waitForSelector('div[contenteditable="true"], textarea', {
-      timeout: 5000,
+      timeout: 10000,
+    });
+
+    await this.page.evaluate(() => {
+      const input =
+        document.querySelector('div[contenteditable="true"]') ||
+        document.querySelector("textarea");
+      if (input) {
+        input.textContent = "";
+        input.value = "";
+      }
     });
 
     const inputSelector = 'div[contenteditable="true"], textarea';
@@ -251,7 +264,9 @@ Respond naturally based on the user's language choice.`;
       await sendButton.click();
     }
 
-    await wait(2000);
+    console.log("[GEMINI TUNNEL] ⏳ Waiting for Gemini to acknowledge...");
+    await wait(5000);
+    
     console.log("[GEMINI TUNNEL] ✅ Shantha personality initialized!");
   }
 
@@ -262,14 +277,21 @@ Respond naturally based on the user's language choice.`;
 
     try {
       if (!this.systemPromptSent) {
-        await this.initializePersonality();
-        this.systemPromptSent = true;
+        if (this.initializingPersonality) {
+          console.log("[GEMINI TUNNEL] ⏳ Waiting for personality init to complete...");
+          await this.initializingPersonality;
+        } else {
+          this.initializingPersonality = this.initializePersonality();
+          await this.initializingPersonality;
+          this.systemPromptSent = true;
+          this.initializingPersonality = null;
+        }
       }
 
       console.log(`[GEMINI TUNNEL] Sending prompt (${prompt.length} chars)...`);
 
       await this.page.waitForSelector('div[contenteditable="true"], textarea', {
-        timeout: 5000,
+        timeout: 10000,
       });
 
       await this.page.evaluate(() => {
