@@ -100,27 +100,44 @@ export async function processMessage(userId, guildId, message, context = null) {
     console.log(`[AGENT] Finish reason: ${result.finishReason}`);
     console.log(`[AGENT] Steps count: ${result.steps?.length || 0}`);
 
-    if (!result.text || result.text.trim() === "") {
-      console.warn("[AGENT] Empty response generated!");
-      console.log(
-        `[AGENT] Full result:`,
-        JSON.stringify(
-          {
-            text: result.text,
-            finishReason: result.finishReason,
-            usage: result.usage,
-          },
-          null,
-          2,
-        ),
-      );
+    let finalResponse = result.text || "";
+    if ((!finalResponse || finalResponse.trim() === "") && result.steps?.length > 0) {
+      console.log("[AGENT] No direct text response, extracting from tool results...");
+
+      const toolResults = [];
+      for (const step of result.steps) {
+        if (step.toolResults && step.toolResults.length > 0) {
+          for (const toolResult of step.toolResults) {
+            const resultContent = toolResult.result;
+            if (resultContent) {
+              toolResults.push(resultContent);
+              console.log(`[AGENT] Extracted tool result from ${toolResult.toolName}: ${String(resultContent).substring(0, 100)}...`);
+            }
+          }
+        }
+      }
+
+      if (toolResults.length > 0) {
+        finalResponse = toolResults[toolResults.length - 1];
+        console.log(`[AGENT] Using tool result as response (${String(finalResponse).length} chars)`);
+      }
     }
 
-    await contextManager.addMessage(userId, guildId, "assistant", result.text);
+    if (!finalResponse || finalResponse.trim() === "") {
+      console.warn("[AGENT] Empty response even after extracting tool results!");
+      console.log(`[AGENT] Full result:`, JSON.stringify({
+        text: result.text,
+        finishReason: result.finishReason,
+        stepsCount: result.steps?.length || 0,
+        usage: result.usage,
+      }, null, 2));
+    }
+
+    await contextManager.addMessage(userId, guildId, "assistant", finalResponse);
 
     return {
       success: true,
-      response: result.text,
+      response: finalResponse,
       toolCalls: result.steps?.filter((s) => s.toolCalls?.length > 0) || [],
       finishReason: result.finishReason,
     };
