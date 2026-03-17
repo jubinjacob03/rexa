@@ -80,14 +80,20 @@ export async function processMessage(userId, guildId, message, context = null) {
       maxSteps: config.commandExecution.maxStepsPerMinute || 5,
     });
 
+    console.log(`[AGENT] Result - finishReason: ${result.finishReason}, text: ${result.text ? result.text.substring(0, 50) : 'none'}, steps: ${result.steps?.length || 0}`);
+
     let finalResponse = result.text || "";
     
     if ((!finalResponse || finalResponse.trim() === "") && result.steps?.length > 0) {
+      console.log(`[AGENT] Extracting from ${result.steps.length} steps...`);
       for (const step of result.steps) {
+        console.log(`[AGENT] Step - toolCalls: ${step.toolCalls?.length || 0}, toolResults: ${step.toolResults?.length || 0}`);
         if (step.toolResults && step.toolResults.length > 0) {
           for (const toolResult of step.toolResults) {
+            console.log(`[AGENT] Tool result - toolName: ${toolResult.toolName}, result length: ${toolResult.result?.toString().length || 0}`);
             if (toolResult.result) {
               finalResponse = toolResult.result.toString();
+              console.log(`[AGENT] Using tool result as final response (${finalResponse.length} chars)`);
               break;
             }
           }
