@@ -18,7 +18,7 @@ export default {
             const verificationEmbed = new EmbedBuilder()
                 .setColor('#00ddff')
                 .setTitle('🔐 ʀᴏʟᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ')
-                .setDescription('ᴄʟɪᴄᴋ ᴏɴ ᴛʜᴇ ᴀᴘᴘʀᴏᴘʀɪᴀᴛᴇ ʀᴏʟᴇ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴀᴘᴘʟʏ. ⚠️ **ᴍᴇᴍʙᴇʀ ɪs ғᴏʀ ɢᴜɪʟᴅᴍᴀᴛᴇs ᴏɴʟʏ!!**')
+                .setDescription("**ᴄʟɪᴄᴋ ᴏɴ ᴛʜᴇ ᴀᴘᴘʀᴏᴘʀɪᴀᴛᴇ ʀᴏʟᴇ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴀᴘᴘʟʏ.** ")
                 .setTimestamp();
 
             const buttonRow = new ActionRowBuilder()
