@@ -96,46 +96,40 @@ export async function processMessage(userId, guildId, message, context = null) {
       maxSteps: config.commandExecution.maxStepsPerMinute || 5,
     });
 
-    console.log(`[AGENT] Response text length: ${result.text?.length || 0}`);
-    console.log(`[AGENT] Finish reason: ${result.finishReason}`);
-    console.log(`[AGENT] Steps count: ${result.steps?.length || 0}`);
-
     let finalResponse = result.text || "";
+    if (result.finishReason === "tool-calls" && result.steps?.length > 0) {
+      const lastStep = result.steps[result.steps.length - 1];
+      const chatToolCall = lastStep.toolCalls?.find(tc => tc.toolName === "chat");
+      
+      if (chatToolCall && (!chatToolCall.args || !chatToolCall.args.prompt)) {
+        console.log("[AGENT] Calling Gemini for response...");
+        try {
+          const geminiResponse = await sendPromptTunnel(message);
+          if (geminiResponse && geminiResponse.trim()) {
+            finalResponse = geminiResponse;
+          }
+        } catch (error) {
+          console.error("[AGENT] Gemini call failed:", error);
+        }
+      }
+    }
+    
     if ((!finalResponse || finalResponse.trim() === "") && result.steps?.length > 0) {
-      console.log("[AGENT] No direct text response, extracting from tool results...");
-      console.log(`[AGENT] Steps structure:`, JSON.stringify(result.steps.map(s => ({
-        toolCalls: s.toolCalls?.map(tc => ({ name: tc.toolName, args: tc.args })),
-        toolResults: s.toolResults?.map(tr => ({ name: tr.toolName, hasResult: !!tr.result })),
-        text: s.text?.substring(0, 100)
-      })), null, 2));
-
-      const toolResults = [];
       for (const step of result.steps) {
         if (step.toolResults && step.toolResults.length > 0) {
           for (const toolResult of step.toolResults) {
-            const resultContent = toolResult.result;
-            if (resultContent) {
-              toolResults.push(resultContent);
-              console.log(`[AGENT] Extracted tool result from ${toolResult.toolName}: ${String(resultContent).substring(0, 100)}...`);
+            if (toolResult.result) {
+              finalResponse = toolResult.result;
+              break;
             }
           }
         }
-      }
-
-      if (toolResults.length > 0) {
-        finalResponse = toolResults[toolResults.length - 1];
-        console.log(`[AGENT] Using tool result as response (${String(finalResponse).length} chars)`);
+        if (finalResponse) break;
       }
     }
 
     if (!finalResponse || finalResponse.trim() === "") {
-      console.warn("[AGENT] Empty response even after extracting tool results!");
-      console.log(`[AGENT] Full result:`, JSON.stringify({
-        text: result.text,
-        finishReason: result.finishReason,
-        stepsCount: result.steps?.length || 0,
-        usage: result.usage,
-      }, null, 2));
+      console.warn("[AGENT] Empty response generated");
     }
 
     await contextManager.addMessage(userId, guildId, "assistant", finalResponse);

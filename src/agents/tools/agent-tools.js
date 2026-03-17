@@ -4,16 +4,20 @@ import { EmbedBuilder } from "discord.js";
 import { sendPromptTunnel, getTunnel } from "../gemini-web-tunnel.js";
 
 export const chatTool = tool({
-  description: `Generate a comprehensive chat response using Google Gemini Pro (unlimited with Pro account).
+  description: `Generate a chat response using Google Gemini Pro (unlimited with Pro account).
+    
+    CRITICAL: Call this tool for ALL user messages and pass the user's message as the 'prompt' parameter.
+    
     Use this for:
+    - Any user message and casual chat
     - Complex reasoning and analysis
     - Malayalam/Manglish conversations (Gemini has excellent Indic language support)
-    - Long-form explanations
-    - Creative writing
+    - Long-form explanations and creative writing
     - Contextual conversations
-    This tool accesses the unlimited Gemini Pro web interface, so use it freely without quota concerns.`,
+    
+    This tool accesses the unlimited Gemini Pro web interface with no quota limits.`,
   parameters: z.object({
-    prompt: z.string().describe("The prompt/question to send to Gemini Pro"),
+    prompt: z.string().describe("The user's message/question to send to Gemini Pro. Pass the user's exact message."),
     context: z
       .string()
       .optional()
@@ -21,16 +25,15 @@ export const chatTool = tool({
   }),
   execute: async ({ prompt, context }) => {
     try {
-      console.log("[CHAT TOOL] Sending prompt to Gemini Pro...");
+      if (!prompt) {
+        return "Error: No prompt provided to chat tool";
+      }
 
-      // Add context if provided
       const fullPrompt = context
         ? `Previous context: ${context}\n\nUser: ${prompt}`
         : prompt;
 
       const response = await sendPromptTunnel(fullPrompt);
-
-      console.log(`[CHAT TOOL] Received response (${response.length} chars)`);
       return response;
     } catch (error) {
       console.error("[CHAT TOOL] Error:", error);

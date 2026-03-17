@@ -271,14 +271,11 @@ class GeminiWebTunnel {
         }
       });
 
-      await wait(500);
-
-      // Type the prompt
       const inputSelector = 'div[contenteditable="true"], textarea';
       await this.page.focus(inputSelector);
-      await this.page.type(inputSelector, prompt, { delay: 10 });
+      await this.page.type(inputSelector, prompt, { delay: 5 });
 
-      await wait(500);
+      await wait(200);
 
       // Find and click send button
       const sendButton = await this.page.$(
@@ -294,17 +291,14 @@ class GeminiWebTunnel {
       console.log("[GEMINI TUNNEL] Waiting for response...");
 
       // Wait for response to start appearing
-      await wait(3000);
+      await wait(1000);
 
-      // Wait for response text to appear (polling approach)
       let responseAppeared = false;
-      for (let i = 0; i < 30; i++) {
-        // Try for up to 30 seconds
+      for (let i = 0; i < 40; i++) {
         const hasContent = await this.page.evaluate(() => {
           const main = document.querySelector("main") || document.body;
           const text = main.innerText || "";
           const lines = text.split("\n").filter((l) => l.trim().length > 10);
-          // Check if we have more than just the prompt
           return lines.length > 2;
         });
 
@@ -313,15 +307,14 @@ class GeminiWebTunnel {
           break;
         }
 
-        await wait(1000);
+        await wait(500);
       }
 
       if (!responseAppeared) {
         console.warn("[GEMINI TUNNEL] Response did not appear in time");
       }
 
-      // Additional wait for response to fully complete
-      await wait(3000);
+      await wait(1500);
 
       // Extract the response text
       const response = await this.page.evaluate(() => {
@@ -420,8 +413,13 @@ class GeminiWebTunnel {
         throw new Error("Failed to extract response from page");
       }
 
-      console.log(`[GEMINI TUNNEL] ✅ Got response (${response.length} chars)`);
-      return response;
+      let cleanedResponse = response
+        .replace(/^Gemini said\s*/i, "")
+        .replace(/You stopped this response\s*$/i, "")
+        .trim();
+
+      console.log(`[GEMINI TUNNEL] ✅ Got response (${cleanedResponse.length} chars)`);
+      return cleanedResponse;
     } catch (error) {
       console.error("[GEMINI TUNNEL] Error sending prompt:", error);
       throw error;
