@@ -125,6 +125,17 @@ export default {
     import('../agents/agent.js').then(({ initializeAgent }) => {
       initializeAgent(client).then(() => {
         console.log('[INFO] AI Agent ready to respond to mentions');
+
+        if (process.env.USE_GEMINI_TUNNEL === 'true') {
+          import('../agents/gemini-web-tunnel.js').then(({ prewarmTunnel }) => {
+            console.log('[INFO] Pre-warming Gemini tunnel...');
+            prewarmTunnel().then(() => {
+              console.log('[SUCCESS] Gemini tunnel ready - first response will be instant!');
+            }).catch(err => {
+              console.error('[ERROR] Failed to pre-warm Gemini tunnel:', err.message);
+            });
+          });
+        }
       }).catch(err => {
         console.error('[ERROR] Failed to initialize AI Agent:', err);
       });

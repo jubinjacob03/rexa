@@ -30,6 +30,7 @@ class GeminiWebTunnel {
 
       this.browser = await puppeteer.launch({
         headless: this.headless ? "new" : false,
+        protocolTimeout: 300000,
         args: [
           "--no-sandbox",
           "--disable-setuid-sandbox",
@@ -213,61 +214,70 @@ class GeminiWebTunnel {
   }
 
   async initializePersonality() {
-    const systemPrompt = `You are Shantha - a casual, friendly Gen Z Discord bot. Communication rules:
-
-1. PERSONALITY: Talk like a friend, not a formal assistant. Use "yo", "ngl", "bet", "fr", "lowkey", no corporate speak.
-
-2. LANGUAGE MIRRORING (CRITICAL):
-   - User speaks English → Respond in English only
-   - User speaks Manglish → Respond in Manglish only (use: eda, machane, pwoli, adipoli, enthada, sheriya)
-   - User speaks Malayalam → Respond in Malayalam only
-   - NEVER mix languages unless user does first
-
-3. TONE: Keep it short, casual, expressive. Use emojis when natural.
+    const systemPrompt = `You are Shantha - casual Gen Z friend in Discord. Rules:
+1. Talk casual - no formal stuff
+2. LANGUAGE (CRITICAL - DO NOT MIX):
+   - English user → Use ONLY English slang: "yo", "ngl", "bet", "fr"
+   - Manglish user → Use ONLY Manglish: "eda", "machane", "pwoli", "sheriya" (NO English slang like "fr", "ngl")
+   - Malayalam user → Use ONLY Malayalam script
+   - NEVER mix languages in same response
+3. Keep it short, use emojis
 
 Examples:
-❌ "I shall assist you with that request" 
-✅ "yo got it! 👍"
-✅ "eda sheriya wait cheyy" (Manglish)
-✅ "bet, on it rn" (English)
-
-Respond naturally based on the user's language choice.`;
+✅ English: "yo what's up! bet that's fire fr 🔥"
+✅ Manglish: "eda enthada! pwoli alle machane 🔥"
+❌ WRONG: "eda bored fr machane" (mixing Manglish + English slang)`;
 
     console.log("[GEMINI TUNNEL] 🎭 Initializing Shantha personality...");
     
-    await wait(2000);
-    
-    await this.page.waitForSelector('div[contenteditable="true"], textarea', {
-      timeout: 10000,
-    });
+    try {
+      await wait(2000);
+      
+      await this.page.waitForSelector('div[contenteditable="true"], textarea', {
+        timeout: 15000,
+      });
 
-    await this.page.evaluate(() => {
-      const input =
-        document.querySelector('div[contenteditable="true"]') ||
-        document.querySelector("textarea");
-      if (input) {
-        input.textContent = "";
-        input.value = "";
+      await this.page.evaluate(() => {
+        const input =
+          document.querySelector('div[contenteditable="true"]') ||
+          document.querySelector("textarea");
+        if (input) {
+          input.textContent = "";
+          input.value = "";
+        }
+      });
+
+      const inputSelector = 'div[contenteditable="true"], textarea';
+      
+      await this.page.evaluate((text) => {
+        const input =
+          document.querySelector('div[contenteditable="true"]') ||
+          document.querySelector("textarea");
+        if (input) {
+          input.textContent = text;
+          if (input.value !== undefined) input.value = text;
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      }, systemPrompt);
+
+      const sendButton = await this.page.$(
+        'button[aria-label*="Send"], button[type="submit"]',
+      );
+      if (!sendButton) {
+        await this.page.keyboard.press("Enter");
+      } else {
+        await sendButton.click();
       }
-    });
 
-    const inputSelector = 'div[contenteditable="true"], textarea';
-    await this.page.focus(inputSelector);
-    await this.page.type(inputSelector, systemPrompt, { delay: 0 });
-
-    const sendButton = await this.page.$(
-      'button[aria-label*="Send"], button[type="submit"]',
-    );
-    if (!sendButton) {
-      await this.page.keyboard.press("Enter");
-    } else {
-      await sendButton.click();
+      console.log("[GEMINI TUNNEL] ⏳ Waiting for Gemini to process personality...");
+      
+      await wait(3000);
+      
+      console.log("[GEMINI TUNNEL] ✅ Shantha personality initialized!");
+    } catch (error) {
+      console.error("[GEMINI TUNNEL] ❌ Personality initialization error:", error.message);
+      throw error;
     }
-
-    console.log("[GEMINI TUNNEL] ⏳ Waiting for Gemini to acknowledge...");
-    await wait(5000);
-    
-    console.log("[GEMINI TUNNEL] ✅ Shantha personality initialized!");
   }
 
   async sendPrompt(prompt, options = {}) {
@@ -279,12 +289,26 @@ Respond naturally based on the user's language choice.`;
       if (!this.systemPromptSent) {
         if (this.initializingPersonality) {
           console.log("[GEMINI TUNNEL] ⏳ Waiting for personality init to complete...");
-          await this.initializingPersonality;
-        } else {
-          this.initializingPersonality = this.initializePersonality();
-          await this.initializingPersonality;
-          this.systemPromptSent = true;
-          this.initializingPersonality = null;
+          try {
+            await this.initializingPersonality;
+          } catch (err) {
+            console.log("[GEMINI TUNNEL] ⚠️ Previous init failed, retrying...");
+            this.initializingPersonality = null;
+          }
+        }
+        
+        if (!this.systemPromptSent && !this.initializingPersonality) {
+          try {
+            this.initializingPersonality = this.initializePersonality();
+            await this.initializingPersonality;
+            this.systemPromptSent = true;
+            console.log("[GEMINI TUNNEL] ✅ Personality initialization complete");
+          } catch (err) {
+            console.error("[GEMINI TUNNEL] ❌ Personality init failed:", err.message);
+            throw err;
+          } finally {
+            this.initializingPersonality = null;
+          }
         }
       }
 
@@ -332,14 +356,22 @@ Respond naturally based on the user's language choice.`;
           const lines = allText.split("\n").map(l => l.trim()).filter(l => l.length > 0);
 
           const responseLines = [];
-          let foundPrompt = false;
+          let foundUserPrompt = false;
           for (let i = lines.length - 1; i >= 0; i--) {
             const line = lines[i];
-            if (!foundPrompt && line.length > 5 && 
+            
+            if (line.match(/^(About Gemini|Gemini App|Subscriptions|For Business|Conversation with Gemini|You said|Gemini said|Opens in a new window|Gemini is AI|can make mistakes)/i)) {
+              continue;
+            }
+            
+            if (line.startsWith("You are Shantha") || foundUserPrompt) {
+              foundUserPrompt = true;
+              continue;
+            }
+            
+            if (!foundUserPrompt && line.length > 5 && 
                 !line.match(/^(Copy|Share|Good|Bad|Tools|Fast|Balanced|Precise|Show drafts|Gemini)$/i)) {
               responseLines.unshift(line);
-            } else if (foundPrompt) {
-              break;
             }
           }
           
@@ -375,7 +407,9 @@ Respond naturally based on the user's language choice.`;
         const promptIndex = lines.findIndex(
           (l) =>
             l.includes("Hello! Please respond") ||
-            l.includes("What did I just ask"),
+            l.includes("What did I just ask") ||
+            l.includes("enna ond") ||
+            l.includes("para koche"),
         );
 
         if (promptIndex >= 0 && promptIndex < lines.length - 1) {
@@ -383,16 +417,15 @@ Respond naturally based on the user's language choice.`;
             .slice(promptIndex + 1)
             .filter(
               (l) =>
+                !l.match(/^(About Gemini|Gemini App|Subscriptions|For Business|Conversation with Gemini|You said|Gemini said|Opens in a new window|Gemini is AI|can make mistakes|Copy|Share|Good response|Bad response|Tools|Fast|Balanced|Precise|Show drafts|You are Shantha)$/i) &&
+                !l.includes("You are Shantha") &&
                 !l.includes("Gemini") &&
                 !l.includes("About") &&
-                !l.match(
-                  /^(Copy|Share|Good response|Bad response|Tools|Fast|Balanced|Precise|You said|Show drafts)$/i,
-                ) &&
                 l.length > 2,
             );
 
           if (responseLines.length > 0) {
-            return responseLines.join("\n\n").trim();
+            return responseLines.join(" ").trim();
           }
         }
 
@@ -452,8 +485,13 @@ Respond naturally based on the user's language choice.`;
       }
 
       let cleanedResponse = response
-        .replace(/^Gemini said\s*/i, "")
-        .replace(/You stopped this response\s*$/i, "")
+        .replace(/About Gemini.*?Gemini is AI and can make mistakes\./gis, "")
+        .replace(/Conversation with Gemini/gi, "")
+        .replace(/You said.*?(?=(yo|eda|onnulleda|[A-Z]))/gis, "")
+        .replace(/Gemini said/gi, "")
+        .replace(/You stopped this response/gi, "")
+        .replace(/Opens in a new window/gi, "")
+        .replace(/\s+/g, " ")
         .trim();
 
       console.log(`[GEMINI TUNNEL] ✅ Got response (${cleanedResponse.length} chars)`);
@@ -511,6 +549,23 @@ export async function getTunnel() {
 export async function sendPromptTunnel(prompt, options) {
   const tunnel = await getTunnel();
   return await tunnel.sendPrompt(prompt, options);
+}
+
+export async function prewarmTunnel() {
+  const tunnel = await getTunnel();
+  if (!tunnel.systemPromptSent && !tunnel.initializingPersonality) {
+    try {
+      tunnel.initializingPersonality = tunnel.initializePersonality();
+      await tunnel.initializingPersonality;
+      tunnel.systemPromptSent = true;
+      console.log("[GEMINI TUNNEL] ✅ Pre-warm complete - ready for messages!");
+    } catch (err) {
+      console.error("[GEMINI TUNNEL] ❌ Pre-warm failed:", err.message);
+    } finally {
+      tunnel.initializingPersonality = null;
+    }
+  }
+  return tunnel;
 }
 
 export async function closeTunnel() {
