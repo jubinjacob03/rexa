@@ -24,7 +24,7 @@ const config = {
 
   model: {
     provider: process.env.AI_MODEL_PROVIDER || "groq",
-    name: process.env.AI_MODEL_NAME || "llama-3.3-70b-versatile",
+    name: process.env.AI_MODEL_NAME || "moonshotai/kimi-k2-instruct-0905",
     preset: process.env.AI_MODEL_PRESET || "fast",
     temperature: parseFloat(process.env.AI_TEMPERATURE) || 0.7,
     maxTokens: parseInt(process.env.AI_MAX_TOKENS) || 2000,
@@ -75,15 +75,15 @@ export function getLanguageModel(
     });
     
     const groqModels = {
-      fast: "llama-3.3-70b-versatile",
-      balanced: "llama-3.3-70b-versatile", 
-      powerful: "llama-3.3-70b-versatile",
-      creative: "mixtral-8x7b-32768",
+      fast: "moonshotai/kimi-k2-instruct-0905",
+      balanced: "moonshotai/kimi-k2-instruct-0905", 
+      powerful: "moonshotai/kimi-k2-instruct-0905",
+      creative: "moonshotai/kimi-k2-instruct-0905",
     };
     
     const model = preset !== "custom" ? groqModels[preset] : modelName;
     
-    return groq(model || "llama-3.3-70b-versatile", {
+    return groq(model || "moonshotai/kimi-k2-instruct-0905", {
       temperature: config.model.temperature,
     });
   }

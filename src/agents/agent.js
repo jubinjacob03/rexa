@@ -9,7 +9,6 @@ import {
   knowledgeBase,
   contextManager,
 } from "./tools/index.js";
-import { sendPromptTunnel } from "./gemini-web-tunnel.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -84,24 +83,6 @@ export async function processMessage(userId, guildId, message, context = null) {
 
     let finalResponse = result.text || "";
     
-    if ((!finalResponse || finalResponse.trim() === "") && result.steps?.length > 0) {
-      console.log(`[AGENT] Extracting from ${result.steps.length} steps...`);
-      for (const step of result.steps) {
-        console.log(`[AGENT] Step - toolCalls: ${step.toolCalls?.length || 0}, toolResults: ${step.toolResults?.length || 0}`);
-        if (step.toolResults && step.toolResults.length > 0) {
-          for (const toolResult of step.toolResults) {
-            console.log(`[AGENT] Tool result - toolName: ${toolResult.toolName}, result length: ${toolResult.result?.toString().length || 0}`);
-            if (toolResult.result) {
-              finalResponse = toolResult.result.toString();
-              console.log(`[AGENT] Using tool result as final response (${finalResponse.length} chars)`);
-              break;
-            }
-          }
-        }
-        if (finalResponse) break;
-      }
-    }
-
     if (!finalResponse || finalResponse.trim() === "") {
       console.warn("[AGENT] Empty response generated");
     }
