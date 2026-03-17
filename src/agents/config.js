@@ -86,7 +86,7 @@ export function getLanguageModel(
     const groqModels = {
       fast: "llama-3.3-70b-versatile",
       balanced: "llama-3.3-70b-versatile", 
-      powerful: "llama-3.1-70b-versatile",
+      powerful: "llama-3.3-70b-versatile",
       creative: "mixtral-8x7b-32768",
     };
     
