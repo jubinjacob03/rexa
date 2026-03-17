@@ -1,15 +1,8 @@
-/**
- * Shantha AI Agent System - Main Export
- */
-
 import { initializeAgent, processMessage, executeCommand, getStats } from './agent.js';
 import knowledgeBase from './tools/knowledge-base.js';
 import contextManager from './tools/context-manager.js';
 import config from './config.js';
 
-/**
- * Initialize the complete agent system
- */
 export async function initializeAgentSystem(discordClient) {
   console.log('[AGENT SYSTEM] Initializing...');
   

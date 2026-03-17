@@ -26,8 +26,6 @@ class GeminiWebTunnel {
 
   async initialize() {
     try {
-      console.log("[GEMINI TUNNEL] Launching browser...");
-
       this.browser = await puppeteer.launch({
         headless: this.headless ? "new" : false,
         protocolTimeout: 300000,
@@ -355,23 +353,42 @@ Examples:
           const allText = main.innerText;
           const lines = allText.split("\n").map(l => l.trim()).filter(l => l.length > 0);
 
-          const responseLines = [];
-          let foundUserPrompt = false;
+          let lastUserMessageIndex = -1;
           for (let i = lines.length - 1; i >= 0; i--) {
+            if (lines[i] === "You said") {
+              const nextLine = lines[i + 1] || "";
+              if (!nextLine.startsWith("You are Shantha") && 
+                  !nextLine.startsWith("1. Talk casual") && 
+                  nextLine.length > 0 && nextLine.length < 100) {
+                lastUserMessageIndex = i + 1;
+                break;
+              }
+            }
+          }
+          
+          if (lastUserMessageIndex === -1) return "";
+          
+          const responseLines = [];
+          let foundResponse = false;
+          
+          for (let i = lastUserMessageIndex + 1; i < lines.length; i++) {
             const line = lines[i];
             
-            if (line.match(/^(About Gemini|Gemini App|Subscriptions|For Business|Conversation with Gemini|You said|Gemini said|Opens in a new window|Gemini is AI|can make mistakes)/i)) {
+            if (line === "Gemini said") {
+              foundResponse = true;
               continue;
             }
             
-            if (line.startsWith("You are Shantha") || foundUserPrompt) {
-              foundUserPrompt = true;
+            if (line.match(/^(About Gemini|Gemini App|Subscriptions|For Business|Conversation with Gemini|You said|Opens in a new window|Gemini is AI|can make mistakes|Copy|Share|Good|Bad|Tools|Fast|Balanced|Precise|Show drafts)$/i)) {
               continue;
             }
             
-            if (!foundUserPrompt && line.length > 5 && 
-                !line.match(/^(Copy|Share|Good|Bad|Tools|Fast|Balanced|Precise|Show drafts|Gemini)$/i)) {
-              responseLines.unshift(line);
+            if (line.startsWith("You are Shantha") || line.startsWith("1. Talk casual")) {
+              break;
+            }
+            
+            if ((foundResponse || i === lastUserMessageIndex + 1) && line.length > 1) {
+              responseLines.push(line);
             }
           }
           
@@ -404,25 +421,39 @@ Examples:
           .map((l) => l.trim())
           .filter((l) => l.length > 0);
 
-        const promptIndex = lines.findIndex(
-          (l) =>
-            l.includes("Hello! Please respond") ||
-            l.includes("What did I just ask") ||
-            l.includes("enna ond") ||
-            l.includes("para koche"),
-        );
+        let lastUserMessageIndex = -1;
+        for (let i = lines.length - 1; i >= 0; i--) {
+          if (lines[i] === "You said" && i + 1 < lines.length) {
+            const nextLine = lines[i + 1];
+            if (!nextLine.startsWith("You are Shantha") && 
+                !nextLine.startsWith("1. Talk casual") &&
+                nextLine.length > 0 && nextLine.length < 100) {
+              lastUserMessageIndex = i + 1;
+              break;
+            }
+          }
+        }
 
-        if (promptIndex >= 0 && promptIndex < lines.length - 1) {
-          const responseLines = lines
-            .slice(promptIndex + 1)
-            .filter(
-              (l) =>
-                !l.match(/^(About Gemini|Gemini App|Subscriptions|For Business|Conversation with Gemini|You said|Gemini said|Opens in a new window|Gemini is AI|can make mistakes|Copy|Share|Good response|Bad response|Tools|Fast|Balanced|Precise|Show drafts|You are Shantha)$/i) &&
-                !l.includes("You are Shantha") &&
-                !l.includes("Gemini") &&
-                !l.includes("About") &&
-                l.length > 2,
-            );
+        if (lastUserMessageIndex !== -1 && lastUserMessageIndex < lines.length - 1) {
+          const responseLines = [];
+          let foundResponse = false;
+          
+          for (let i = lastUserMessageIndex + 1; i < lines.length; i++) {
+            const line = lines[i];
+            
+            if (line === "Gemini said") {
+              foundResponse = true;
+              continue;
+            }
+            
+            if (line === "You said") break;
+            if (line.startsWith("You are Shantha") || line.startsWith("1. Talk casual")) break;
+            if (line.match(/^(About Gemini|Subscriptions|Conversation with Gemini|Opens in a new window|Gemini is AI|can make mistakes|Copy|Share|Good|Bad|Tools|Show drafts)$/i)) continue;
+            
+            if ((foundResponse || i === lastUserMessageIndex + 1) && line.length > 1 && !line.includes("Gemini is AI")) {
+              responseLines.push(line);
+            }
+          }
 
           if (responseLines.length > 0) {
             return responseLines.join(" ").trim();
@@ -485,16 +516,11 @@ Examples:
       }
 
       let cleanedResponse = response
-        .replace(/About Gemini.*?Gemini is AI and can make mistakes\./gis, "")
-        .replace(/Conversation with Gemini/gi, "")
-        .replace(/You said.*?(?=(yo|eda|onnulleda|[A-Z]))/gis, "")
-        .replace(/Gemini said/gi, "")
-        .replace(/You stopped this response/gi, "")
         .replace(/Opens in a new window/gi, "")
         .replace(/\s+/g, " ")
         .trim();
 
-      console.log(`[GEMINI TUNNEL] ✅ Got response (${cleanedResponse.length} chars)`);
+      console.log(`[GEMINI TUNNEL] ✅ Extracted raw response (${cleanedResponse.length} chars)`);
       return cleanedResponse;
     } catch (error) {
       console.error("[GEMINI TUNNEL] Error sending prompt:", error);

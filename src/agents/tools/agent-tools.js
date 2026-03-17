@@ -1,12 +1,15 @@
-import { tool } from "ai";
+import { tool, generateText } from "ai";
 import { z } from "zod";
 import { EmbedBuilder } from "discord.js";
 import { sendPromptTunnel, getTunnel } from "../gemini-web-tunnel.js";
+import { getLanguageModel } from "../config.js";
 
 export const chatTool = tool({
   description: `Generate a chat response using Google Gemini Pro (unlimited with Pro account).
     
     CRITICAL: Call this tool for ALL user messages and pass the user's message as the 'prompt' parameter.
+    
+    This tool returns RAW response from Gemini that may contain UI noise. The orchestrator will clean and format it.
     
     Use this for:
     - Any user message and casual chat
@@ -33,8 +36,8 @@ export const chatTool = tool({
         ? `Previous context: ${context}\n\nUser: ${prompt}`
         : prompt;
 
-      const response = await sendPromptTunnel(fullPrompt);
-      return response;
+      const rawResponse = await sendPromptTunnel(fullPrompt);
+      return `[RAW_GEMINI_RESPONSE]\n${rawResponse}\n[/RAW_GEMINI_RESPONSE]`;
     } catch (error) {
       console.error("[CHAT TOOL] Error:", error);
       return `Error generating response: ${error.message}`;
@@ -61,14 +64,10 @@ export const imageTool = tool({
   }),
   execute: async ({ prompt, aspectRatio }) => {
     try {
-      console.log(
-        "[IMAGE TOOL] Generating image via Gemini Pro web interface...",
-      );
+      console.log("[IMAGE TOOL] Generating image via Gemini Pro web interface...");
 
-      // Get the tunnel instance
       const tunnel = await getTunnel();
 
-      // Navigate to Gemini and request image generation
       const imagePrompt = `Generate an image: ${prompt}\nAspect ratio: ${aspectRatio}\n\n[Please generate this image]`;
 
       await tunnel.page.goto("https://gemini.google.com/app", {
@@ -76,7 +75,6 @@ export const imageTool = tool({
         timeout: 30000,
       });
 
-      // Type the image generation prompt
       await tunnel.page.waitForSelector(
         'div[contenteditable="true"], textarea',
         { timeout: 10000 },
@@ -87,14 +85,11 @@ export const imageTool = tool({
         { delay: 10 },
       );
 
-      // Press Enter to submit
       await tunnel.page.keyboard.press("Enter");
 
-      // Wait for image generation (this may take time)
       console.log("[IMAGE TOOL] Waiting for image generation...");
-      await new Promise((resolve) => setTimeout(resolve, 15000)); // Wait 15 seconds
+      await new Promise((resolve) => setTimeout(resolve, 15000));
 
-      // Try to find and extract image URL
       const imageUrl = await tunnel.page.evaluate(() => {
         const images = document.querySelectorAll(
           'img[src*="googleusercontent"], img[src*="gemini"]',
@@ -119,19 +114,16 @@ export const imageTool = tool({
 });
 
 function parseColorValue(color) {
-  if (!color) return 0x7289da; // Discord blurple default
+  if (!color) return 0x7289da;
 
-  // If it's already a number, use it
   if (typeof color === "number") return color;
 
-  // Parse hex string (#FF5733 or FF5733)
   if (typeof color === "string") {
     const hex = color.replace("#", "");
     const parsed = parseInt(hex, 16);
     if (!isNaN(parsed)) return parsed;
   }
 
-  // Fallback to default
   return 0x7289da;
 }
 

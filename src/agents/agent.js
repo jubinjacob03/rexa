@@ -1,7 +1,3 @@
-/**
- * Shantha AI Agent - Main orchestration file
- */
-
 import { generateText } from "ai";
 import fs from "fs/promises";
 import path from "path";
@@ -20,9 +16,6 @@ const __dirname = path.dirname(__filename);
 
 const promptCache = new Map();
 
-/**
- * Load prompt from markdown file
- */
 async function loadPrompt(promptName, useCache = true) {
   if (useCache && promptCache.has(promptName)) {
     return promptCache.get(promptName);
@@ -34,9 +27,6 @@ async function loadPrompt(promptName, useCache = true) {
   return content;
 }
 
-/**
- * Get system prompt with optional context
- */
 async function getSystemPrompt(context = null) {
   let prompt = await loadPrompt("master-agent");
 
@@ -50,9 +40,6 @@ async function getSystemPrompt(context = null) {
 
 let agentInitialized = false;
 
-/**
- * Initialize agent system
- */
 export async function initializeAgent(client) {
   if (agentInitialized) {
     console.log("[AGENT] Already initialized, skipping");
@@ -75,9 +62,6 @@ export async function initializeAgent(client) {
   return { processMessage, executeCommand, getStats };
 }
 
-/**
- * Process user message
- */
 export async function processMessage(userId, guildId, message, context = null) {
   console.log(`[AGENT] Processing message from user ${userId}`);
 
@@ -102,14 +86,31 @@ export async function processMessage(userId, guildId, message, context = null) {
       const chatToolCall = lastStep.toolCalls?.find(tc => tc.toolName === "chat");
       
       if (chatToolCall && (!chatToolCall.args || !chatToolCall.args.prompt)) {
-        console.log("[AGENT] Calling Gemini for response...");
+        console.log("[AGENT] Calling Gemini and letting Groq orchestrate response...");
         try {
-          const geminiResponse = await sendPromptTunnel(message);
-          if (geminiResponse && geminiResponse.trim()) {
-            finalResponse = geminiResponse;
+          const geminiRawResponse = await sendPromptTunnel(message);
+          if (geminiRawResponse && geminiRawResponse.trim()) {
+            console.log("[AGENT] Groq processing Gemini response...");
+            const orchestrationResult = await generateText({
+              model: getLanguageModel(),
+              tools,
+              maxSteps: 3,
+              prompt: `You are Shantha's response formatter. Gemini generated a response, but it may contain UI noise. Your job:
+
+1. Extract ONLY Shantha's actual spoken response (remove: system prompts, "Gemini is AI and can make mistakes", "About Gemini", "You said", timestamps, UI elements)
+2. If the response deserves a rich embed (quotes, lists, important info), call createEmbed tool
+3. Return the clean response text
+
+Gemini's raw output:
+${geminiRawResponse}
+
+Provide the clean response that should be sent to Discord:`,
+            });
+            finalResponse = orchestrationResult.text.trim();
+            console.log(`[AGENT] Orchestrated response: ${finalResponse.substring(0, 80)}...`);
           }
         } catch (error) {
-          console.error("[AGENT] Gemini call failed:", error);
+          console.error("[AGENT] Gemini/orchestration failed:", error);
         }
       }
     }
@@ -119,7 +120,37 @@ export async function processMessage(userId, guildId, message, context = null) {
         if (step.toolResults && step.toolResults.length > 0) {
           for (const toolResult of step.toolResults) {
             if (toolResult.result) {
-              finalResponse = toolResult.result;
+              const resultText = toolResult.result.toString();
+              
+              if (resultText.includes("[RAW_GEMINI_RESPONSE]")) {
+                console.log("[AGENT] Found raw Gemini response in tool results, orchestrating...");
+                const rawResponse = resultText.replace(/\[RAW_GEMINI_RESPONSE\]|\[\/RAW_GEMINI_RESPONSE\]/g, "").trim();
+                
+                try {
+                  const orchestrationResult = await generateText({
+                    model: getLanguageModel(),
+                    tools,
+                    maxSteps: 3,
+                    prompt: `You are Shantha's response formatter. Gemini generated a response, but it may contain UI noise. Your job:
+
+1. Extract ONLY Shantha's actual spoken response (remove: system prompts, "Gemini is AI and can make mistakes", "About Gemini", "You said", timestamps, UI elements)
+2. If the response deserves a rich embed (quotes, lists, important info), call createEmbed tool
+3. Return the clean response text
+
+Gemini's raw output:
+${rawResponse}
+
+Provide the clean response that should be sent to Discord:`,
+                  });
+                  finalResponse = orchestrationResult.text.trim();
+                  console.log(`[AGENT] Orchestrated from tool result: ${finalResponse.substring(0, 80)}...`);
+                } catch (error) {
+                  console.error("[AGENT] Orchestration failed:", error);
+                  finalResponse = rawResponse;
+                }
+              } else {
+                finalResponse = resultText;
+              }
               break;
             }
           }
@@ -150,9 +181,6 @@ export async function processMessage(userId, guildId, message, context = null) {
   }
 }
 
-/**
- * Execute command directly
- */
 export async function executeCommand(command, params, userId, guildId) {
   return await tools.commandExecutorTool.execute({
     command,
@@ -162,9 +190,6 @@ export async function executeCommand(command, params, userId, guildId) {
   });
 }
 
-/**
- * Get statistics
- */
 export function getStats() {
   return {
     knowledgeBase: knowledgeBase.getStats(),
@@ -177,9 +202,6 @@ export function getStats() {
   };
 }
 
-/**
- * Initialize the complete agent system
- */
 export async function initializeAgentSystem(discordClient) {
   console.log("[AGENT SYSTEM] Initializing...");
 

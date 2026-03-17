@@ -1,8 +1,3 @@
-/**
- * Agent Configuration
- * All settings for Shantha AI Agent including model configuration
- */
-
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -28,8 +23,8 @@ const config = {
   },
 
   model: {
-    provider: process.env.AI_MODEL_PROVIDER || "groq", // Default to Groq for agent orchestration
-    name: process.env.AI_MODEL_NAME || "llama-3.3-70b-versatile", // Best Groq model
+    provider: process.env.AI_MODEL_PROVIDER || "groq",
+    name: process.env.AI_MODEL_NAME || "llama-3.3-70b-versatile",
     preset: process.env.AI_MODEL_PRESET || "fast",
     temperature: parseFloat(process.env.AI_TEMPERATURE) || 0.7,
     maxTokens: parseInt(process.env.AI_MAX_TOKENS) || 2000,
@@ -67,9 +62,6 @@ const config = {
   },
 };
 
-/**
- * Get language model based on configuration
- */
 export function getLanguageModel(
   preset = config.model.preset,
   customModel = null,
@@ -77,7 +69,6 @@ export function getLanguageModel(
   const provider = config.model.provider;
   const modelName = customModel || config.model.name;
 
-  // Use Groq for agent orchestration (fast, free tool calling)
   if (provider === "groq") {
     const groq = createGroq({
       apiKey: process.env.GROQ_API_KEY,
@@ -97,7 +88,6 @@ export function getLanguageModel(
     });
   }
   
-  // Fallback to Google Gemini (for direct API usage)
   const geminiModels = {
     fast: "gemini-2.5-flash-lite",
     balanced: "gemini-2.5-flash",
@@ -113,18 +103,12 @@ export function getLanguageModel(
   });
 }
 
-/**
- * Get embedding model
- */
 export function getEmbeddingModel() {
   return google.textEmbeddingModel("text-embedding-004", {
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
   });
 }
 
-/**
- * Get image model
- */
 export function getImageModel() {
   const provider = config.imageGeneration.provider;
 
