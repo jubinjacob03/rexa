@@ -3,6 +3,7 @@ import config from "../../config.js";
 
 const WAR_RESULTS_CHANNEL = "1473075469028167814";
 const ANNOUNCEMENTS_CHANNEL = "1473075468805738540";
+const NO_MENTION_CHANNEL = "1482781492106236036";
 
 const processedMessages = new Set();
 
@@ -100,7 +101,10 @@ export default {
 
     if (message.author.bot) return;
 
-    if (message.mentions.has(message.client.user.id)) {
+    const isMentioned = message.mentions.has(message.client.user.id);
+    const isNoMentionChannel = message.channel.id === NO_MENTION_CHANNEL;
+
+    if (isMentioned || isNoMentionChannel) {
       console.log(`[DEBUG] AI mention detected - Message ID: ${message.id}`);
       
       if (processedMessages.has(message.id)) {
