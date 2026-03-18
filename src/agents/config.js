@@ -26,7 +26,7 @@ const config = {
 
   model: {
     provider: process.env.AI_MODEL_PROVIDER || "openrouter",
-    name: process.env.AI_MODEL_NAME || "openrouter/hunter-alpha",
+    name: process.env.AI_MODEL_NAME || "nvidia/nemotron-3-super-120b-a12b:free",
     preset: process.env.AI_MODEL_PRESET || "fast",
     temperature: parseFloat(process.env.AI_TEMPERATURE) || 0.7,
     maxTokens: parseInt(process.env.AI_MAX_TOKENS) || 4000,
@@ -78,15 +78,15 @@ export function getLanguageModel(
     });
     
     const openrouterModels = {
-      fast: "openrouter/hunter-alpha",
-      balanced: "openrouter/hunter-alpha", 
-      powerful: "openrouter/hunter-alpha",
-      creative: "openrouter/hunter-alpha",
+      fast: "nvidia/nemotron-3-super-120b-a12b:free",
+      balanced: "nvidia/nemotron-3-super-120b-a12b:free", 
+      powerful: "nvidia/nemotron-3-super-120b-a12b:free",
+      creative: "nvidia/nemotron-3-super-120b-a12b:free",
     };
     
     const model = preset !== "custom" ? openrouterModels[preset] : modelName;
     
-    return openrouter(model || "openrouter/hunter-alpha", {
+    return openrouter(model || "nvidia/nemotron-3-super-120b-a12b:free", {
       temperature: config.model.temperature,
     });
   }
