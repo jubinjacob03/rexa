@@ -1,126 +1,6 @@
-import { tool, generateText } from "ai";
+import { tool } from "ai";
 import { z } from "zod";
 import { EmbedBuilder } from "discord.js";
-import { sendPromptTunnel, getTunnel } from "../gemini-web-tunnel.js";
-import { getLanguageModel } from "../config.js";
-
-export const chatTool = tool({
-  description: `Generate a chat response using Google Gemini Pro (unlimited with Pro account).
-    
-    CRITICAL: Call this tool for ALL user messages and pass the user's message as the 'prompt' parameter.
-    
-    This tool returns clean response text from Gemini that you can use directly or enhance with embeds.
-    
-    Use this for:
-    - Any user message and casual chat
-    - Complex reasoning and analysis
-    - Malayalam/Manglish conversations (Gemini has excellent Indic language support)
-    - Long-form explanations and creative writing
-    - Contextual conversations
-    
-    After getting response, you can call createEmbed if the content deserves rich formatting.
-    
-    This tool accesses the unlimited Gemini Pro web interface with no quota limits.`,
-  parameters: z.object({
-    prompt: z.string().describe("The user's message/question to send to Gemini Pro. Pass the user's exact message."),
-    context: z
-      .string()
-      .optional()
-      .describe("Optional context from previous conversation"),
-  }),
-  execute: async ({ prompt, context }) => {
-    try {
-      if (!prompt) {
-        return "Error: No prompt provided to chat tool";
-      }
-
-      const fullPrompt = context
-        ? `Previous context: ${context}\n\nUser: ${prompt}`
-        : prompt;
-
-      const rawResponse = await sendPromptTunnel(fullPrompt);
-      
-      const cleanupResult = await generateText({
-        model: getLanguageModel(),
-        prompt: `Extract ONLY the actual response content. Remove any UI noise like "Gemini is AI and can make mistakes", "About Gemini", "You said", timestamps, or other interface text. Return ONLY what was said:\n\n${rawResponse}\n\nClean response:`,
-        maxTokens: 500,
-      });
-      
-      return cleanupResult.text.trim();
-    } catch (error) {
-      console.error("[CHAT TOOL] Error:", error);
-      return `Error generating response: ${error.message}`;
-    }
-  },
-});
-
-export const imageTool = tool({
-  description: `Generate images using Google Imagen through Gemini Pro web interface (unlimited with Pro account).
-    Use this for:
-    - Creating visual content
-    - Illustrations and artwork
-    - Diagrams and visualizations
-    Provide detailed descriptions for best results.`,
-  parameters: z.object({
-    prompt: z
-      .string()
-      .describe("Detailed description of the image to generate"),
-    aspectRatio: z
-      .enum(["1:1", "16:9", "9:16", "4:3", "3:4"])
-      .optional()
-      .default("1:1")
-      .describe("Image aspect ratio"),
-  }),
-  execute: async ({ prompt, aspectRatio }) => {
-    try {
-      console.log("[IMAGE TOOL] Generating image via Gemini Pro web interface...");
-
-      const tunnel = await getTunnel();
-
-      const imagePrompt = `Generate an image: ${prompt}\nAspect ratio: ${aspectRatio}\n\n[Please generate this image]`;
-
-      await tunnel.page.goto("https://gemini.google.com/app", {
-        waitUntil: "networkidle2",
-        timeout: 30000,
-      });
-
-      await tunnel.page.waitForSelector(
-        'div[contenteditable="true"], textarea',
-        { timeout: 10000 },
-      );
-      await tunnel.page.type(
-        'div[contenteditable="true"], textarea',
-        imagePrompt,
-        { delay: 10 },
-      );
-
-      await tunnel.page.keyboard.press("Enter");
-
-      console.log("[IMAGE TOOL] Waiting for image generation...");
-      await new Promise((resolve) => setTimeout(resolve, 15000));
-
-      const imageUrl = await tunnel.page.evaluate(() => {
-        const images = document.querySelectorAll(
-          'img[src*="googleusercontent"], img[src*="gemini"]',
-        );
-        if (images.length > 0) {
-          return images[images.length - 1].src;
-        }
-        return null;
-      });
-
-      if (imageUrl) {
-        console.log("[IMAGE TOOL] Image generated successfully");
-        return `Image generated: ${imageUrl}`;
-      } else {
-        return "Image generation initiated. Please check the Gemini web interface for the result.";
-      }
-    } catch (error) {
-      console.error("[IMAGE TOOL] Error:", error);
-      return `Error generating image: ${error.message}`;
-    }
-  },
-});
 
 function parseColorValue(color) {
   if (!color) return 0x7289da;
@@ -274,8 +154,6 @@ DESIGN TIPS:
 });
 
 export default {
-  chatTool,
-  imageTool,
   embedTool,
   createDiscordEmbed,
 };

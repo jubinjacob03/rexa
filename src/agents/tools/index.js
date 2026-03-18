@@ -27,9 +27,7 @@ export async function initializeTools(client = null) {
 
 export const tools = {
   createEmbed: agentTools.embedTool,
-  generateImage: agentTools.imageTool,
   ragQuery: knowledgeBase.ragTool,
-  httpRequest: executorTools.httpRequestTool,
   fetchWebPage: executorTools.webFetchTool,
   webSearch: executorTools.webSearchTool,
   executeWorkflow: executorTools.workflowTool,
