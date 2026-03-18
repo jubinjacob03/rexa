@@ -3,11 +3,13 @@ dotenv.config();
 
 import { google } from "@ai-sdk/google";
 import { createGroq } from "@ai-sdk/groq";
+import { createOpenAI } from "@ai-sdk/openai";
 
 const config = {
   apiKeys: {
     google: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
     groq: process.env.GROQ_API_KEY,
+    openrouter: process.env.OPENROUTER_API_KEY,
   },
 
   supabase: {
@@ -23,11 +25,11 @@ const config = {
   },
 
   model: {
-    provider: process.env.AI_MODEL_PROVIDER || "groq",
-    name: process.env.AI_MODEL_NAME || "moonshotai/kimi-k2-instruct-0905",
+    provider: process.env.AI_MODEL_PROVIDER || "openrouter",
+    name: process.env.AI_MODEL_NAME || "openrouter/hunter-alpha",
     preset: process.env.AI_MODEL_PRESET || "fast",
     temperature: parseFloat(process.env.AI_TEMPERATURE) || 0.7,
-    maxTokens: parseInt(process.env.AI_MAX_TOKENS) || 2000,
+    maxTokens: parseInt(process.env.AI_MAX_TOKENS) || 4000,
   },
 
   rag: {
@@ -68,6 +70,26 @@ export function getLanguageModel(
 ) {
   const provider = config.model.provider;
   const modelName = customModel || config.model.name;
+
+  if (provider === "openrouter") {
+    const openrouter = createOpenAI({
+      apiKey: process.env.OPENROUTER_API_KEY,
+      baseURL: "https://openrouter.ai/api/v1",
+    });
+    
+    const openrouterModels = {
+      fast: "openrouter/hunter-alpha",
+      balanced: "openrouter/hunter-alpha", 
+      powerful: "openrouter/hunter-alpha",
+      creative: "openrouter/hunter-alpha",
+    };
+    
+    const model = preset !== "custom" ? openrouterModels[preset] : modelName;
+    
+    return openrouter(model || "openrouter/hunter-alpha", {
+      temperature: config.model.temperature,
+    });
+  }
 
   if (provider === "groq") {
     const groq = createGroq({
