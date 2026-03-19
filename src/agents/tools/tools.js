@@ -230,24 +230,52 @@ export const musicControlTool = tool({
     guildId: z.string(),
   }),
   execute: async ({ action, query, volume, userId, guildId }) => {
-    const commands = {
-      play: { command: "play", params: { query } },
-      pause: { command: "pause", params: {} },
-      resume: { command: "resume", params: {} },
-      skip: { command: "skip", params: {} },
-      stop: { command: "stop", params: {} },
-      queue: { command: "queue", params: {} },
-      volume: { command: "volume", params: { level: volume } },
-      nowplaying: { command: "nowplaying", params: {} },
+    const baseURL = process.env.REMANI_API_URL || "http://localhost:8000";
+    const headers = {
+      "Content-Type": "application/json",
+      ...(process.env.REMANI_API_KEY
+        ? { Authorization: `Bearer ${process.env.REMANI_API_KEY}` }
+        : {}),
     };
 
-    const { command, params } = commands[action];
-    return await commandExecutorTool.execute({
-      command,
-      parameters: params,
-      userId,
-      guildId,
-    });
+    const actionMap = {
+      play: { path: "/play", body: { guildId, query, userId } },
+      pause: { path: "/pause", body: { guildId } },
+      resume: { path: "/resume", body: { guildId } },
+      skip: { path: "/skip", body: { guildId } },
+      stop: { path: "/stop", body: { guildId } },
+      queue: {
+        path: "/queue",
+        body: null,
+        method: "GET",
+        params: `?guildId=${guildId}`,
+      },
+      volume: { path: "/volume", body: { guildId, volume } },
+      nowplaying: {
+        path: "/status",
+        body: null,
+        method: "GET",
+        params: `?guildId=${guildId}`,
+      },
+    };
+
+    const { path, body, method = "POST", params = "" } = actionMap[action];
+
+    try {
+      const url = `${baseURL}${path}${params}`;
+      const options = {
+        method,
+        headers,
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      };
+      const res = await fetch(url, options);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok)
+        return { success: false, error: data?.error || `HTTP ${res.status}` };
+      return { success: true, action, ...data };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   },
 });
 

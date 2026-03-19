@@ -122,6 +122,7 @@ export async function processMessage(userId, guildId, message) {
     );
 
     let finalResponse = result.text || "";
+    let pendingEmbeds = [];
 
     // When finishReason is 'tool-calls', the model made a tool call but its post-tool
     // LLM pass returned empty. result.text only has the pre-tool "I'll check" text.
@@ -164,6 +165,7 @@ export async function processMessage(userId, guildId, message) {
       }
 
       if (toolResults.length > 0) {
+        const collectedEmbeds = [];
         const formattedResults = toolResults
           .map((tr) => {
             const resultData = tr.result;
@@ -196,7 +198,18 @@ export async function processMessage(userId, guildId, message) {
                   return `📚 **Knowledge**: ${resultData.context.substring(0, 300)}...`;
                 }
               } else if (tr.tool === "createEmbed") {
-                return `✅ **Embed created**: ${resultData.preview || "Success"}`;
+                if (resultData.embed) {
+                  collectedEmbeds.push(resultData.embed);
+                  return null;
+                }
+              } else if (tr.tool === "fetchWebPage") {
+                if (resultData.content) {
+                  return resultData.content.trim();
+                }
+              } else if (tr.tool === "musicControl") {
+                if (resultData.success) {
+                  return `🎵 ${resultData.action === "play" ? "Now playing!" : `${resultData.action} done.`}`;
+                }
               } else if (tr.tool === "webSearch") {
                 if (resultData.answer) {
                   return `🔍 **${resultData.query}**:\n${resultData.answer}${
@@ -216,9 +229,13 @@ export async function processMessage(userId, guildId, message) {
             }
             return `**${tr.tool}**: ${resultData}`;
           })
+          .filter((r) => r !== null)
           .join("\n\n");
 
         finalResponse = formattedResults;
+        if (collectedEmbeds.length > 0) {
+          pendingEmbeds = collectedEmbeds;
+        }
         console.log("[AGENT] Formatted tool results into response");
       }
     }
@@ -240,6 +257,7 @@ export async function processMessage(userId, guildId, message) {
     return {
       success: true,
       response: finalResponse,
+      embeds: pendingEmbeds,
       toolCalls: result.steps?.filter((s) => s.toolCalls?.length > 0) || [],
       finishReason: result.finishReason,
     };

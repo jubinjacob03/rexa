@@ -153,7 +153,12 @@ export default {
 
           const response = result.response;
 
-          if (response.length <= 2000) {
+          if (result.embeds?.length > 0) {
+            await message.reply({
+              content: response || undefined,
+              embeds: result.embeds,
+            });
+          } else if (response.length <= 2000) {
             await message.reply(response);
           } else {
             const chunks = response.match(/[\s\S]{1,1900}/g) || [response];
