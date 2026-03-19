@@ -121,14 +121,21 @@ export default {
     console.log(`[SUCCESS] Shantha logged in as ${client.user.tag}`);
     console.log(`[INFO] Serving ${client.guilds.cache.size} guild(s)`);
 
-    // Initialize AI Agent
-    import('../agents/agent.js').then(({ initializeAgent }) => {
-      initializeAgent(client).then(() => {
-        console.log('[INFO] AI Agent ready to respond to mentions');
-      }).catch(err => {
-        console.error('[ERROR] Failed to initialize AI Agent:', err);
-      });
-    });
+    try {
+      console.log("[INFO] Initializing AI Agent and tools...");
+      const { initializeAgent } = await import("../agents/agent.js");
+      await initializeAgent(client);
+      console.log("[SUCCESS] AI Agent and all tools initialized successfully");
+      console.log("[INFO] Agent is ready to:");
+      console.log("  • Search knowledge base (RAG)");
+      console.log("  • Get server info (members, roles, stats)");
+      console.log("  • Execute commands (Shantha & Remani)");
+      console.log("  • Search the web and fetch URLs");
+      console.log("  • Create rich embeds");
+    } catch (err) {
+      console.error("[ERROR] Failed to initialize AI Agent:", err);
+      console.error("[ERROR] Agent will not be available for this session");
+    }
 
     startStatusUpdater(client);
     startApiServer(client);

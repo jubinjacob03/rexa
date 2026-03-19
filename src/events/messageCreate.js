@@ -106,49 +106,53 @@ export default {
 
     if (isMentioned || isNoMentionChannel) {
       console.log(`[DEBUG] AI mention detected - Message ID: ${message.id}`);
-      
+
       if (processedMessages.has(message.id)) {
         console.log(`[AI] Skipping duplicate message ${message.id}`);
         return;
       }
       processedMessages.add(message.id);
-      console.log(`[DEBUG] Added message ${message.id} to processed set (size: ${processedMessages.size})`);
-      
+      console.log(
+        `[DEBUG] Added message ${message.id} to processed set (size: ${processedMessages.size})`,
+      );
+
       if (processedMessages.size > 100) {
         const firstId = processedMessages.values().next().value;
         processedMessages.delete(firstId);
       }
-      
+
       try {
         await message.channel.sendTyping();
 
         const question = message.content
-          .replace(new RegExp(`<@!?${message.client.user.id}>`, 'g'), '')
+          .replace(new RegExp(`<@!?${message.client.user.id}>`, "g"), "")
           .trim();
 
         if (!question) {
-          await message.reply('Yes? How can I help you? 🤔');
+          await message.reply("Yes? How can I help you? 🤔");
           return;
         }
 
         console.log(`[AI] Question from ${message.author.tag}: ${question}`);
 
-        const { processMessage } = await import('../agents/agent.js');
+        const { processMessage } = await import("../agents/agent.js");
         const result = await processMessage(
           message.author.id,
-          message.guild?.id || 'dm',
-          question
+          message.guild?.id || "dm",
+          question,
         );
 
         if (result.success) {
-          if (!result.response || result.response.trim() === '') {
+          if (!result.response || result.response.trim() === "") {
             console.warn(`[AI] Empty response for question: "${question}"`);
-            await message.reply('Sorry, I understood your question but couldn\'t generate a proper response. Can you try asking in a different way?');
+            await message.reply(
+              "Sorry, I understood your question but couldn't generate a proper response. Can you try asking in a different way?",
+            );
             return;
           }
-          
+
           const response = result.response;
-          
+
           if (response.length <= 2000) {
             await message.reply(response);
           } else {
@@ -161,12 +165,16 @@ export default {
 
           console.log(`[AI] Responded to ${message.author.tag}`);
         } else {
-          await message.reply('Sorry, I encountered an error processing your request. Please try again.');
-          console.error('[AI] Error:', result.error);
+          await message.reply(
+            "Sorry, I encountered an error processing your request. Please try again.",
+          );
+          console.error("[AI] Error:", result.error);
         }
       } catch (error) {
-        console.error('[AI] Failed to process message:', error);
-        await message.reply('Sorry, something went wrong. Please try again later.').catch(() => {});
+        console.error("[AI] Failed to process message:", error);
+        await message
+          .reply("Sorry, something went wrong. Please try again later.")
+          .catch(() => {});
       }
       return;
     }

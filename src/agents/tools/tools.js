@@ -8,7 +8,6 @@ import { z } from "zod";
 import { EmbedBuilder } from "discord.js";
 import knowledgeBase from "./knowledge-base.js";
 import config from "../config.js";
-import { httpRequestTool } from "./http-request.js";
 
 // Discord client reference
 let client = null;
@@ -108,13 +107,32 @@ export const commandExecutorTool = tool({
  * Server Info Tool
  */
 export const serverInfoTool = tool({
-  description: `Get real-time Discord server information: stats, member data, channels, or search members.`,
+  description: `Get Discord server or member information. Use this tool to:
+  - Get server stats (infoType="stats")  
+  - Get specific member info (infoType="member", targetId=user_id)
+  - Get channel info (infoType="channel", targetId=channel_id)
+  - Search members (infoType="search", searchQuery="name_to_search")
+  
+  REQUIRED: Always provide guildId (server ID) and infoType.
+  For member queries, provide targetId with the user's ID.`,
   parameters: z.object({
-    infoType: z.enum(["stats", "member", "channel", "search"]),
-    guildId: z.string(),
-    targetId: z.string().optional(),
-    searchQuery: z.string().optional(),
-    limit: z.number().optional().default(10),
+    infoType: z
+      .enum(["stats", "member", "channel", "search"])
+      .describe(
+        "Type of info: stats (server stats), member (user info), channel (channel info), or search (find members)",
+      ),
+    guildId: z.string().describe("The Discord server/guild ID"),
+    targetId: z
+      .string()
+      .optional()
+      .describe("User ID for member queries or channel ID for channel queries"),
+    searchQuery: z
+      .string()
+      .optional()
+      .describe(
+        "Search term for finding members (only with infoType='search')",
+      ),
+    limit: z.number().optional().default(10).describe("Max results for search"),
   }),
   execute: async ({ infoType, guildId, targetId, searchQuery, limit }) => {
     if (!client) return { success: false, error: "Client not initialized" };
@@ -142,8 +160,11 @@ export const serverInfoTool = tool({
           success: true,
           username: member.user.username,
           displayName: member.displayName,
+          userId: member.user.id,
           roles: member.roles.cache.map((r) => r.name),
+          roleIds: member.roles.cache.map((r) => r.id),
           status: member.presence?.status || "offline",
+          joinedAt: member.joinedAt,
         };
       }
 
@@ -299,13 +320,6 @@ export const embedGeneratorTool = tool({
   },
 });
 
-/**
- * Image Generator Tool
- * Uses generative-tools.js implementation (Google Imagen 4 or Pollinations.ai)
- */
-import { imageGenerationTool as googleImageTool } from "./generative-tools.js";
-export const imageGeneratorTool = googleImageTool;
-
 // Export all tools as object
 export default {
   ragTool,
@@ -313,6 +327,4 @@ export default {
   serverInfoTool,
   musicControlTool,
   embedGeneratorTool,
-  imageGeneratorTool,
-  httpRequestTool,
 };

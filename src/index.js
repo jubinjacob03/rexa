@@ -1,4 +1,4 @@
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
 dotenv.config();
 
 import { Client, GatewayIntentBits, Collection, Events } from "discord.js";
@@ -61,9 +61,11 @@ console.log(`[DEBUG] Found ${eventFiles.length} event files to load`);
 for (const file of eventFiles) {
   const filePath = join(eventsPath, file);
   const event = await import(`file://${filePath}`);
-  
-  console.log(`[DEBUG] Registering event: ${event.default.name} from ${file} (once: ${!!event.default.once})`);
-  
+
+  console.log(
+    `[DEBUG] Registering event: ${event.default.name} from ${file} (once: ${!!event.default.once})`,
+  );
+
   if (event.default.once) {
     client.once(event.default.name, (...args) =>
       event.default.execute(...args),
@@ -142,6 +144,30 @@ client.on(Events.InteractionCreate, async (interaction) => {
 });
 
 // Ready event handled by src/events/ready.js
+
+// Graceful shutdown handlers for conversation persistence
+import contextManager from "./agents/tools/context-manager.js";
+
+async function gracefulShutdown(signal) {
+  console.log(
+    `\n[${signal}] Received shutdown signal, saving conversations...`,
+  );
+  try {
+    await contextManager.shutdown();
+    console.log("[SHUTDOWN] All conversations saved to Supabase");
+    process.exit(0);
+  } catch (error) {
+    console.error("[SHUTDOWN] Error during shutdown:", error);
+    process.exit(1);
+  }
+}
+
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("beforeExit", () => {
+  console.log("[SHUTDOWN] Process before exit, forcing save...");
+  contextManager.forceSaveAll().catch(console.error);
+});
 
 client.login(config.token);
 

@@ -26,7 +26,7 @@ const config = {
 
   model: {
     provider: process.env.AI_MODEL_PROVIDER || "openrouter",
-    name: process.env.AI_MODEL_NAME || "nvidia/nemotron-3-super-120b-a12b:free",
+    name: process.env.AI_MODEL_NAME || "stepfun/step-3.5-flash:free",
     preset: process.env.AI_MODEL_PRESET || "fast",
     temperature: parseFloat(process.env.AI_TEMPERATURE) || 0.7,
     maxTokens: parseInt(process.env.AI_MAX_TOKENS) || 4000,
@@ -34,8 +34,8 @@ const config = {
 
   rag: {
     enabled: process.env.RAG_ENABLED !== "false",
-    embeddingModel: process.env.EMBEDDING_MODEL || "text-embedding-004",
-    embeddingDimensions: 768,
+    embeddingModel: process.env.EMBEDDING_MODEL || "gemini-embedding-001",
+    embeddingDimensions: 3072,
     topK: parseInt(process.env.RAG_TOP_K) || 5,
     similarityThreshold:
       parseFloat(process.env.RAG_SIMILARITY_THRESHOLD) || 0.7,
@@ -76,17 +76,18 @@ export function getLanguageModel(
       apiKey: process.env.OPENROUTER_API_KEY,
       baseURL: "https://openrouter.ai/api/v1",
     });
-    
+
     const openrouterModels = {
-      fast: "nvidia/nemotron-3-super-120b-a12b:free",
-      balanced: "nvidia/nemotron-3-super-120b-a12b:free", 
-      powerful: "nvidia/nemotron-3-super-120b-a12b:free",
-      creative: "nvidia/nemotron-3-super-120b-a12b:free",
+      fast: "stepfun/step-3.5-flash:free",
+      balanced: "stepfun/step-3.5-flash:free",
+      powerful: "stepfun/step-3.5-flash:free",
+      creative: "stepfun/step-3.5-flash:free",
     };
-    
+
     const model = preset !== "custom" ? openrouterModels[preset] : modelName;
-    
-    return openrouter(model || "nvidia/nemotron-3-super-120b-a12b:free", {
+
+    // Use .chat() to force standard Chat Completions API instead of Responses API
+    return openrouter.chat(model || "stepfun/step-3.5-flash:free", {
       temperature: config.model.temperature,
     });
   }
@@ -95,21 +96,21 @@ export function getLanguageModel(
     const groq = createGroq({
       apiKey: process.env.GROQ_API_KEY,
     });
-    
+
     const groqModels = {
       fast: "moonshotai/kimi-k2-instruct-0905",
-      balanced: "moonshotai/kimi-k2-instruct-0905", 
+      balanced: "moonshotai/kimi-k2-instruct-0905",
       powerful: "moonshotai/kimi-k2-instruct-0905",
       creative: "moonshotai/kimi-k2-instruct-0905",
     };
-    
+
     const model = preset !== "custom" ? groqModels[preset] : modelName;
-    
+
     return groq(model || "moonshotai/kimi-k2-instruct-0905", {
       temperature: config.model.temperature,
     });
   }
-  
+
   const geminiModels = {
     fast: "gemini-2.5-flash-lite",
     balanced: "gemini-2.5-flash",

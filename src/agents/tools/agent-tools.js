@@ -40,7 +40,7 @@ export function createDiscordEmbed(options) {
     const colorValue = parseColorValue(color);
     embed.setColor(colorValue);
 
-    if (fields && fields.length > 0) {
+    if (fields && Array.isArray(fields) && fields.length > 0) {
       fields.forEach((field) => {
         embed.addFields({
           name: field.name,
@@ -100,7 +100,7 @@ USE EMBEDS FOR:
 
 DESIGN TIPS:
 - Use ANY hex color: '#FF5733' (coral), '#00BFFF' (sky blue), '#FF1493' (hot pink)
-- Add emojis in titles: "Stats 📊", "Success! ✅", "Error! ❌"
+- Add emojis in titles for flair (e.g. "🎉 Event Update")
 - Use fields for organized data (inline=true for side-by-side)
 - Keep it concise and visually appealing`,
 

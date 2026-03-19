@@ -3,10 +3,10 @@
  * Comprehensive document management with FREE Gemini embeddings
  */
 
-import { tool } from 'ai';
-import { z } from 'zod';
-import { createClient } from '@supabase/supabase-js';
-import config, { getLanguageModel, getEmbeddingModel } from '../config.js';
+import { tool } from "ai";
+import { z } from "zod";
+import { createClient } from "@supabase/supabase-js";
+import config, { getLanguageModel, getEmbeddingModel } from "../config.js";
 
 /**
  * Supabase client for vector storage
@@ -34,33 +34,34 @@ const documentMetadata = new Map();
  */
 async function initialize() {
   if (initialized) {
-    console.log('[KNOWLEDGE BASE] Already initialized');
+    console.log("[KNOWLEDGE BASE] Already initialized");
     return;
   }
-  
+
   if (initializationPromise) {
-    console.log('[KNOWLEDGE BASE] Initialization in progress, waiting...');
+    console.log("[KNOWLEDGE BASE] Initialization in progress, waiting...");
     return initializationPromise;
   }
-  
+
   initializationPromise = (async () => {
     try {
-      console.log('[KNOWLEDGE BASE] Initializing Supabase pgvector...');
-      
+      console.log("[KNOWLEDGE BASE] Initializing Supabase pgvector...");
+
       await ensureVectorTable();
-      
+
       initialized = true;
-      console.log('[KNOWLEDGE BASE] Supabase initialized successfully');
-      
-      console.log('[KNOWLEDGE BASE] Skipping default knowledge load (embeddings disabled)');
-      
+      console.log("[KNOWLEDGE BASE] Supabase initialized successfully");
+
+      console.log(
+        "[KNOWLEDGE BASE] Skipping default knowledge load (embeddings disabled)",
+      );
     } catch (error) {
-      console.error('[KNOWLEDGE BASE] Initialization error:', error);
+      console.error("[KNOWLEDGE BASE] Initialization error:", error);
       initializationPromise = null;
       throw error;
     }
   })();
-  
+
   return initializationPromise;
 }
 
@@ -70,13 +71,16 @@ async function initialize() {
 async function ensureVectorTable() {
   try {
     const { error } = await supabase
-      .from('knowledge_embeddings')
-      .select('id')
+      .from("knowledge_embeddings")
+      .select("id")
       .limit(1);
-    
-    if (error && error.code !== 'PGRST116') {
-      console.error('[KNOWLEDGE BASE] Vector table check error:', error.message);
-      console.log('[KNOWLEDGE BASE] Please run the following SQL in Supabase:');
+
+    if (error && error.code !== "PGRST116") {
+      console.error(
+        "[KNOWLEDGE BASE] Vector table check error:",
+        error.message,
+      );
+      console.log("[KNOWLEDGE BASE] Please run the following SQL in Supabase:");
       console.log(`
 -- Enable pgvector extension
 CREATE EXTENSION IF NOT EXISTS vector;
@@ -85,7 +89,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE TABLE IF NOT EXISTS knowledge_embeddings (
   id TEXT PRIMARY KEY,
   content TEXT NOT NULL,
-  embedding vector(768),
+  embedding vector(3072),
   category TEXT,
   tags TEXT[],
   metadata JSONB,
@@ -93,15 +97,16 @@ CREATE TABLE IF NOT EXISTS knowledge_embeddings (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create index for similarity search
-CREATE INDEX IF NOT EXISTS knowledge_embeddings_embedding_idx 
-ON knowledge_embeddings 
-USING ivfflat (embedding vector_cosine_ops)
-WITH (lists = 100);
+-- Create index for similarity search (skip for small KBs - sequential scan is fine)
+-- CREATE INDEX IF NOT EXISTS knowledge_embeddings_embedding_idx 
+-- ON knowledge_embeddings 
+-- USING ivfflat (embedding vector_cosine_ops)
+-- WITH (lists = 100);
+-- Note: ivfflat max 2000 dims; gemini-embedding-001 uses 3072. Use hnsw or no index.
 
 -- Create function for similarity search
 CREATE OR REPLACE FUNCTION match_knowledge_embeddings(
-  query_embedding vector(768),
+  query_embedding vector(3072),
   match_threshold float,
   match_count int,
   filter_category text DEFAULT NULL,
@@ -137,10 +142,10 @@ END;
 $$;
       `);
     } else {
-      console.log('[KNOWLEDGE BASE] Vector table verified');
+      console.log("[KNOWLEDGE BASE] Vector table verified");
     }
   } catch (error) {
-    console.error('[KNOWLEDGE BASE] Table verification error:', error);
+    console.error("[KNOWLEDGE BASE] Table verification error:", error);
   }
 }
 
@@ -148,11 +153,11 @@ $$;
  * Load default knowledge about Shantha and Remani
  */
 async function loadDefaultKnowledge() {
-  console.log('[KNOWLEDGE BASE] Loading default knowledge...');
-  
+  console.log("[KNOWLEDGE BASE] Loading default knowledge...");
+
   const defaultDocs = [
     {
-      id: 'shantha-intro',
+      id: "shantha-intro",
       content: `# Shantha Bot Overview
       
 Shantha is a Discord server management bot that handles verification, private voice channels, 
@@ -164,12 +169,12 @@ Key Features:
 - Server statistics tracking
 - Administrative commands
 - Integration with Remani music bot`,
-      category: 'shantha',
-      tags: ['intro', 'overview'],
+      category: "shantha",
+      tags: ["intro", "overview"],
     },
-    
+
     {
-      id: 'shantha-verification',
+      id: "shantha-verification",
       content: `# Verification System
       
 The verification system requires new members to verify before accessing the server.
@@ -185,12 +190,12 @@ Features:
 - Verification logging
 - Welcome messages
 - Member tracking`,
-      category: 'verification',
-      tags: ['commands', 'security'],
+      category: "verification",
+      tags: ["commands", "security"],
     },
-    
+
     {
-      id: 'shantha-private-vc',
+      id: "shantha-private-vc",
       content: `# Private Voice Channels
       
 Shantha manages private voice channels that users can create and control.
@@ -205,12 +210,12 @@ Features:
 - Owner-controlled permissions
 - Auto-delete when empty
 - Custom channel names`,
-      category: 'private_vc',
-      tags: ['voice', 'channels'],
+      category: "private_vc",
+      tags: ["voice", "channels"],
     },
-    
+
     {
-      id: 'remani-intro',
+      id: "remani-intro",
       content: `# Remani Music Bot
       
 Remani is a music bot that plays music in Discord voice channels using Lavalink.
@@ -222,12 +227,12 @@ Key Features:
 - Audio filters
 - Volume control
 - Loop modes (track, queue, off)`,
-      category: 'remani',
-      tags: ['music', 'intro'],
+      category: "remani",
+      tags: ["music", "intro"],
     },
-    
+
     {
-      id: 'remani-commands',
+      id: "remani-commands",
       content: `# Remani Music Commands
       
 Playback Commands:
@@ -253,12 +258,12 @@ Audio Commands:
 - /loop <mode> - Set loop mode
 - /filter <name> - Apply audio filter
 - /seek <time> - Seek to position in track`,
-      category: 'commands',
-      tags: ['remani', 'music'],
+      category: "commands",
+      tags: ["remani", "music"],
     },
-    
+
     {
-      id: 'server-stats',
+      id: "server-stats",
       content: `# Server Statistics
       
 Shantha tracks various server metrics:
@@ -279,25 +284,27 @@ Server Info:
 - Role count
 - Emoji count
 - Boost level`,
-      category: 'server',
-      tags: ['stats', 'info'],
+      category: "server",
+      tags: ["stats", "info"],
     },
   ];
-  
+
   for (const doc of defaultDocs) {
     try {
       await addDocumentToSupabase(doc.id, doc.content, {
         category: doc.category,
         tags: doc.tags,
       });
-      
+
       console.log(`[KNOWLEDGE BASE] Loaded: ${doc.id}`);
     } catch (error) {
       console.error(`[KNOWLEDGE BASE] Error loading ${doc.id}:`, error.message);
     }
   }
-  
-  console.log(`[KNOWLEDGE BASE] Loaded ${defaultDocs.length} default documents`);
+
+  console.log(
+    `[KNOWLEDGE BASE] Loaded ${defaultDocs.length} default documents`,
+  );
 }
 
 /**
@@ -305,17 +312,20 @@ Server Info:
  */
 async function generateEmbedding(text) {
   try {
-    const { embedMany } = await import('ai');
-    const { google } = await import('@ai-sdk/google');
-    
-    const { embeddings } = await embedMany({
-      model: google.textEmbeddingModel('text-embedding-004'), // FREE Gemini embeddings (768 dims)
-      values: [text],
+    const { embedMany } = await import("ai");
+    const { createGoogleGenerativeAI } = await import("@ai-sdk/google");
+
+    const google = createGoogleGenerativeAI({
+      apiKey: config.apiKeys.google,
     });
-    
+
+    const { embeddings } = await embedMany({
+      model: google.textEmbeddingModel("gemini-embedding-001"),
+    });
+
     return embeddings[0];
   } catch (error) {
-    console.error('[KNOWLEDGE BASE] Embedding generation error:', error);
+    console.error("[KNOWLEDGE BASE] Embedding generation error:", error);
     throw error;
   }
 }
@@ -325,10 +335,9 @@ async function generateEmbedding(text) {
  */
 async function addDocumentToSupabase(id, content, metadata = {}) {
   const embedding = await generateEmbedding(content);
-  
-  const { error } = await supabase
-    .from('knowledge_embeddings')
-    .upsert({
+
+  const { error } = await supabase.from("knowledge_embeddings").upsert(
+    {
       id,
       content,
       embedding,
@@ -336,12 +345,14 @@ async function addDocumentToSupabase(id, content, metadata = {}) {
       tags: metadata.tags || [],
       metadata: metadata,
       updated_at: new Date().toISOString(),
-    }, {
-      onConflict: 'id'
-    });
-  
+    },
+    {
+      onConflict: "id",
+    },
+  );
+
   if (error) throw error;
-  
+
   documentMetadata.set(id, {
     ...metadata,
     addedAt: new Date().toISOString(),
@@ -353,13 +364,12 @@ async function addDocumentToSupabase(id, content, metadata = {}) {
  */
 export async function addDocument(id, content, metadata = {}) {
   await initialize();
-  
+
   try {
     await addDocumentToSupabase(id, content, metadata);
-    
+
     console.log(`[KNOWLEDGE BASE] Added document: ${id}`);
     return { success: true, id };
-    
   } catch (error) {
     console.error(`[KNOWLEDGE BASE] Error adding document:`, error);
     return { success: false, error: error.message };
@@ -371,25 +381,24 @@ export async function addDocument(id, content, metadata = {}) {
  */
 export async function addWebPage(url, metadata = {}) {
   await initialize();
-  
+
   try {
-    const { fetchWebPage } = await import('./executor-tools.js');
+    const { fetchWebPage } = await import("./executor-tools.js");
     const result = await fetchWebPage(url);
-    
+
     if (!result.success) {
-      throw new Error(result.error || 'Failed to fetch web page');
+      throw new Error(result.error || "Failed to fetch web page");
     }
-    
+
     const id = `web:${url}`;
     await addDocumentToSupabase(id, result.text, {
       ...metadata,
       url,
-      type: 'web',
+      type: "web",
     });
-    
+
     console.log(`[KNOWLEDGE BASE] Added web page: ${url}`);
     return { success: true, id, url };
-    
   } catch (error) {
     console.error(`[KNOWLEDGE BASE] Error adding web page:`, error);
     return { success: false, error: error.message };
@@ -401,42 +410,43 @@ export async function addWebPage(url, metadata = {}) {
  */
 export async function query(question, options = {}) {
   await initialize();
-  
+
   const {
     topK = config.rag.topK || 5,
     category = null,
     tags = null,
     threshold = 0.5,
   } = options;
-  
+
   try {
     console.log(`[KNOWLEDGE BASE] Query: "${question}"`);
-    
+
     const queryEmbedding = await generateEmbedding(question);
-    
-    const { data, error } = await supabase.rpc('match_knowledge_embeddings', {
+
+    const { data, error } = await supabase.rpc("match_knowledge_embeddings", {
       query_embedding: queryEmbedding,
       match_threshold: threshold,
       match_count: topK,
       filter_category: category,
       filter_tags: tags,
     });
-    
+
     if (error) throw error;
-    
+
     if (!data || data.length === 0) {
       return {
         success: true,
-        answer: 'I could not find relevant information to answer your question.',
+        answer:
+          "I could not find relevant information to answer your question.",
         sources: [],
         hasResults: false,
       };
     }
-    
-    const context = data.map(doc => doc.content).join('\n\n---\n\n');
+
+    const context = data.map((doc) => doc.content).join("\n\n---\n\n");
     const model = getLanguageModel();
-    
-    const { generateText } = await import('ai');
+
+    const { generateText } = await import("ai");
     const result = await generateText({
       model,
       prompt: `Based on the following knowledge base context, answer the question concisely and accurately.
@@ -449,11 +459,11 @@ Question: ${question}
 Answer:`,
       temperature: 0.1,
     });
-    
+
     return {
       success: true,
       answer: result.text,
-      sources: data.map(doc => ({
+      sources: data.map((doc) => ({
         id: doc.id,
         content: doc.content.substring(0, 200),
         category: doc.category,
@@ -462,7 +472,6 @@ Answer:`,
       hasResults: true,
       query: question,
     };
-    
   } catch (error) {
     console.error(`[KNOWLEDGE BASE] Query error:`, error);
     return {
@@ -478,32 +487,32 @@ Answer:`,
  */
 export async function search(queryText, options = {}) {
   await initialize();
-  
+
   const {
     topK = config.rag.topK || 5,
     category = null,
     tags = null,
     threshold = 0.5,
   } = options;
-  
+
   try {
     console.log(`[KNOWLEDGE BASE] Search: "${queryText}"`);
-    
+
     const queryEmbedding = await generateEmbedding(queryText);
-    
-    const { data, error } = await supabase.rpc('match_knowledge_embeddings', {
+
+    const { data, error } = await supabase.rpc("match_knowledge_embeddings", {
       query_embedding: queryEmbedding,
       match_threshold: threshold,
       match_count: topK,
       filter_category: category,
       filter_tags: tags,
     });
-    
+
     if (error) throw error;
-    
+
     return {
       success: true,
-      results: (data || []).map(doc => ({
+      results: (data || []).map((doc) => ({
         id: doc.id,
         text: doc.content,
         relevance: doc.similarity,
@@ -514,7 +523,6 @@ export async function search(queryText, options = {}) {
       totalMatches: data?.length || 0,
       query: queryText,
     };
-    
   } catch (error) {
     console.error(`[KNOWLEDGE BASE] Search error:`, error);
     return {
@@ -531,18 +539,18 @@ export async function search(queryText, options = {}) {
 export async function getDocuments() {
   try {
     const { data, error } = await supabase
-      .from('knowledge_embeddings')
-      .select('id, category, tags, metadata, created_at, updated_at')
-      .order('created_at', { ascending: false });
-    
+      .from("knowledge_embeddings")
+      .select("id, category, tags, metadata, created_at, updated_at")
+      .order("created_at", { ascending: false });
+
     if (error) throw error;
-    
+
     return {
       success: true,
       documents: data || [],
     };
   } catch (error) {
-    console.error('[KNOWLEDGE BASE] Error fetching documents:', error);
+    console.error("[KNOWLEDGE BASE] Error fetching documents:", error);
     return {
       success: false,
       error: error.message,
@@ -556,23 +564,23 @@ export async function getDocuments() {
 export async function deleteDocument(id) {
   try {
     const { error } = await supabase
-      .from('knowledge_embeddings')
+      .from("knowledge_embeddings")
       .delete()
-      .eq('id', id);
-    
+      .eq("id", id);
+
     if (error) throw error;
-    
+
     documentMetadata.delete(id);
-    
-    return { 
-      success: true, 
-      message: 'Document deleted successfully' 
+
+    return {
+      success: true,
+      message: "Document deleted successfully",
     };
   } catch (error) {
-    console.error('[KNOWLEDGE BASE] Error deleting document:', error);
-    return { 
-      success: false, 
-      error: error.message 
+    console.error("[KNOWLEDGE BASE] Error deleting document:", error);
+    return {
+      success: false,
+      error: error.message,
     };
   }
 }
@@ -583,27 +591,27 @@ export async function deleteDocument(id) {
 export async function getStats() {
   try {
     const { count, error: countError } = await supabase
-      .from('knowledge_embeddings')
-      .select('*', { count: 'exact', head: true });
-    
+      .from("knowledge_embeddings")
+      .select("*", { count: "exact", head: true });
+
     const { data, error } = await supabase
-      .from('knowledge_embeddings')
-      .select('category, tags');
-    
+      .from("knowledge_embeddings")
+      .select("category, tags");
+
     if (error || countError) throw error || countError;
-    
+
     const categories = {};
     const tags = new Set();
-    
-    (data || []).forEach(doc => {
-      const cat = doc.category || 'uncategorized';
+
+    (data || []).forEach((doc) => {
+      const cat = doc.category || "uncategorized";
       categories[cat] = (categories[cat] || 0) + 1;
-      
+
       if (doc.tags) {
-        doc.tags.forEach(tag => tags.add(tag));
+        doc.tags.forEach((tag) => tags.add(tag));
       }
     });
-    
+
     return {
       totalDocuments: count || 0,
       initialized,
@@ -612,7 +620,7 @@ export async function getStats() {
       tags: Array.from(tags),
     };
   } catch (error) {
-    console.error('[KNOWLEDGE BASE] Error getting stats:', error);
+    console.error("[KNOWLEDGE BASE] Error getting stats:", error);
     return {
       totalDocuments: 0,
       initialized,
@@ -629,20 +637,20 @@ export async function getStats() {
 export async function reset() {
   try {
     const { error } = await supabase
-      .from('knowledge_embeddings')
+      .from("knowledge_embeddings")
       .delete()
-      .neq('id', ''); // Delete all
-    
+      .neq("id", ""); // Delete all
+
     if (error) throw error;
-    
+
     documentMetadata.clear();
-    
-    return { 
-      success: true, 
-      message: 'Knowledge base reset successfully' 
+
+    return {
+      success: true,
+      message: "Knowledge base reset successfully",
     };
   } catch (error) {
-    console.error('[KNOWLEDGE BASE] Error resetting:', error);
+    console.error("[KNOWLEDGE BASE] Error resetting:", error);
     return {
       success: false,
       error: error.message,
@@ -656,32 +664,51 @@ export async function reset() {
 export const ragTool = tool({
   description: `Search knowledge base for information about Shantha, Remani, commands, and server features. 
 Uses advanced RAG with embedJS for accurate, contextual answers. Returns both answers and source documents.`,
-  
+
   parameters: z.object({
-    query: z.string().describe('Search query or question'),
-    category: z.enum(['server', 'shantha', 'remani', 'commands', 'verification', 'private_vc', 'music', 'general']).optional(),
+    query: z.string().describe("Search query or question"),
+    category: z
+      .enum([
+        "server",
+        "shantha",
+        "remani",
+        "commands",
+        "verification",
+        "private_vc",
+        "music",
+        "general",
+      ])
+      .optional(),
     tags: z.array(z.string()).optional(),
     topK: z.number().min(1).max(10).optional().default(5),
-    mode: z.enum(['query', 'search']).optional().default('query').describe('query=get answer, search=get documents only'),
+    mode: z
+      .enum(["query", "search"])
+      .optional()
+      .default("query")
+      .describe("query=get answer, search=get documents only"),
   }),
-  
+
   execute: async ({ query, category, tags, topK, mode }) => {
     try {
-      if (mode === 'search') {
+      if (mode === "search") {
         const result = await search(query, { category, tags, topK });
-        return result.success ? {
-          results: result.results.map(r => ({ 
-            text: r.text, 
-            relevance: r.relevance,
-          })),
-          totalMatches: result.totalMatches,
-        } : { error: result.error };
+        return result.success
+          ? {
+              results: result.results.map((r) => ({
+                text: r.text,
+                relevance: r.relevance,
+              })),
+              totalMatches: result.totalMatches,
+            }
+          : { error: result.error };
       } else {
         const result = await query(query, { topK });
-        return result.success ? {
-          answer: result.answer,
-          sources: result.sources,
-        } : { error: result.error };
+        return result.success
+          ? {
+              answer: result.answer,
+              sources: result.sources,
+            }
+          : { error: result.error };
       }
     } catch (error) {
       return { error: error.message };
@@ -689,8 +716,8 @@ Uses advanced RAG with embedJS for accurate, contextual answers. Returns both an
   },
 });
 
-initialize().catch(error => {
-  console.error('[KNOWLEDGE BASE] Failed to initialize:', error);
+initialize().catch((error) => {
+  console.error("[KNOWLEDGE BASE] Failed to initialize:", error);
 });
 
 export default {
