@@ -2,6 +2,7 @@ import {
   SlashCommandBuilder,
   PermissionFlagsBits,
   EmbedBuilder,
+  MessageFlags,
 } from "discord.js";
 import config from "../../config.js";
 
@@ -131,11 +132,11 @@ export default {
     if (!interaction.member.roles.cache.has(config.ownerRoleId)) {
       return interaction.reply({
         content: "❌ This command is restricted to server owners only.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const channel = interaction.options.getChannel("channel");
     const mode = interaction.options.getString("mode");

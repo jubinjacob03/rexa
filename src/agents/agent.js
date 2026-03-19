@@ -198,15 +198,21 @@ export async function processMessage(userId, guildId, message) {
               } else if (tr.tool === "createEmbed") {
                 return `✅ **Embed created**: ${resultData.preview || "Success"}`;
               } else if (tr.tool === "webSearch") {
-                if (resultData.results?.length > 0) {
-                  return `🔍 **Search Results**:\n${resultData.results
-                    .slice(0, 3)
-                    .map((r) => `• ${r.title}`)
+                if (resultData.answer) {
+                  return `🔍 **${resultData.query}**:\n${resultData.answer}${
+                    resultData.url ? `\n[Source](${resultData.url})` : ""
+                  }`;
+                } else if (resultData.relatedTopics?.length > 0) {
+                  return `🔍 **Search Results for "${resultData.query}"**:\n${resultData.relatedTopics
+                    .slice(0, 5)
+                    .map((r) => `• ${r.text}`)
                     .join("\n")}`;
+                } else {
+                  return `🔍 No search results found for: "${resultData.query}". The search engine returned no data — try asking me to fetch a specific page instead.`;
                 }
               }
 
-              return `**${tr.tool}**: ${JSON.stringify(resultData, null, 2)}`;
+              return `[Tool: ${tr.tool}] ${JSON.stringify(resultData)}`;
             }
             return `**${tr.tool}**: ${resultData}`;
           })

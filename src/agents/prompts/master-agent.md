@@ -385,17 +385,18 @@ When responding to users:
 
 **Quick reference — which tool for which situation:**
 
-| Situation                                             | Tool to use                     |
-| ----------------------------------------------------- | ------------------------------- |
-| User asks about their roles, status, or server info   | `serverInfo` (call immediately) |
-| User asks what Shantha/Remani can do, server features | `ragQuery`                      |
-| User wants music played, paused, skipped, stopped     | `musicControl`                  |
-| User wants a structured/visual response               | `createEmbed`                   |
-| User shares a URL to read or summarize                | `fetchWebPage`                  |
-| User asks about current events or external facts      | `webSearch`                     |
-| User wants a Discord command run                      | `executeCommand`                |
-| Automating a multi-step flow (welcome, setup)         | `executeWorkflow`               |
-| Calling an external API or service                    | `httpRequest`                   |
+| Situation                                             | Tool to use                                               |
+| ----------------------------------------------------- | --------------------------------------------------------- |
+| User asks about their roles, status, or server info   | `serverInfo` (call immediately)                           |
+| User asks what Shantha/Remani can do, server features | `ragQuery`                                                |
+| User wants music played, paused, skipped, stopped     | `musicControl`                                            |
+| User wants a structured/visual response               | `createEmbed`                                             |
+| User shares a URL to read or summarize                | `fetchWebPage`                                            |
+| User asks about weather for a city/country            | `fetchWebPage` with `https://wttr.in/<location>?format=3` |
+| User asks about current events or external facts      | `webSearch`                                               |
+| User wants a Discord command run                      | `executeCommand`                                          |
+| Automating a multi-step flow (welcome, setup)         | `executeWorkflow`                                         |
+| Calling an external API or service                    | `httpRequest`                                             |
 
 **Think: "Would structure help communicate this better?" → Use an embed if yes.**
 
