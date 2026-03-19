@@ -123,13 +123,28 @@ export async function processMessage(userId, guildId, message) {
 
     let finalResponse = result.text || "";
 
-    if (
-      (!finalResponse || finalResponse.trim() === "") &&
-      result.steps?.length > 0
-    ) {
-      console.log(
-        "[AGENT] No text response but have tool results, formatting...",
-      );
+    // When finishReason is 'tool-calls', the model made a tool call but its post-tool
+    // LLM pass returned empty. result.text only has the pre-tool "I'll check" text.
+    // We must override it with the actual tool results from the steps.
+    const toolWasExecuted = result.steps?.some(
+      (s) => s.toolResults?.length > 0,
+    );
+    const shouldUseToolResults =
+      toolWasExecuted &&
+      (result.finishReason === "tool-calls" ||
+        !finalResponse ||
+        finalResponse.trim() === "");
+
+    if (shouldUseToolResults) {
+      if (result.finishReason === "tool-calls" && finalResponse) {
+        console.log(
+          "[AGENT] finishReason=tool-calls with pre-tool text — overriding with tool results...",
+        );
+      } else {
+        console.log(
+          "[AGENT] No text response but have tool results, formatting...",
+        );
+      }
       const toolResults = [];
 
       for (const step of result.steps) {

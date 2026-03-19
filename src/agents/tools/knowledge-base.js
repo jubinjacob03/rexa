@@ -321,6 +321,7 @@ async function generateEmbedding(text) {
 
     const { embeddings } = await embedMany({
       model: google.textEmbeddingModel("gemini-embedding-001"),
+      values: [text],
     });
 
     return embeddings[0];
