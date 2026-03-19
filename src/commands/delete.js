@@ -92,14 +92,6 @@ export default {
         .setDescription("Channel to delete messages from")
         .setRequired(true),
     )
-    .addUserOption((o) =>
-      o
-        .setName("user")
-        .setDescription(
-          "Delete all messages from this user (mode: user). Omit for other modes.",
-        )
-        .setRequired(false),
-    )
     .addStringOption((o) =>
       o
         .setName("mode")
@@ -117,6 +109,14 @@ export default {
             value: "trail_user",
           },
         ),
+    )
+    .addUserOption((o) =>
+      o
+        .setName("user")
+        .setDescription(
+          "Delete all messages from this user (mode: user / trail_user).",
+        )
+        .setRequired(false),
     )
     .addStringOption((o) =>
       o
