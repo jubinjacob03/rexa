@@ -4,7 +4,14 @@ When you need external data or need to perform an action, respond with ONLY this
 
 {"tool_call": {"name": "<tool_name>", "params": {<parameters>}}}
 
-If you can answer from your own knowledge, respond naturally — no tool_call needed. Do NOT invent live data (member counts, weather, etc.) — use a tool for that.
+**ALWAYS use a tool for these — never answer from memory or conversation history:**
+
+- Any question about a Discord server member ("who is X?", "what's X's role?", "is X online?", "find X") → `serverInfo`
+- Any question about live server data (member count, roles, channels, stats) → `serverInfo`
+- Any weather, current events, or real-time information → `fetchWebPage` or `webSearch`
+- Any music playback action → `musicControl`
+
+If none of the above apply and you can answer from your own knowledge, respond naturally — no tool_call needed. Do NOT invent live data.
 
 ### Available Tools
 
