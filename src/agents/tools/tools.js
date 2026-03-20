@@ -180,15 +180,18 @@ export const serverInfoTool = tool({
 
       if (infoType === "search" && searchQuery) {
         await guild.members.fetch();
-        const results = guild.members.cache
-          .filter(
-            (m) =>
-              m.user.username
-                .toLowerCase()
-                .includes(searchQuery.toLowerCase()) ||
-              m.displayName.toLowerCase().includes(searchQuery.toLowerCase()),
-          )
-          .first(limit)
+        const results = [
+          ...guild.members.cache
+            .filter(
+              (m) =>
+                m.user.username
+                  .toLowerCase()
+                  .includes(searchQuery.toLowerCase()) ||
+                m.displayName.toLowerCase().includes(searchQuery.toLowerCase()),
+            )
+            .values(),
+        ]
+          .slice(0, limit || 10)
           .map((m) => ({
             id: m.id,
             username: m.user.username,

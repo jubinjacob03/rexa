@@ -144,7 +144,11 @@ function extractToolCall(text) {
       while ((m = paramRegex.exec(text)) !== null) {
         const key = m[1];
         const val = m[2].trim();
-        params[key] = val !== "" && !isNaN(val) ? Number(val) : val;
+        const isSmallInt =
+          val !== "" &&
+          /^\d+$/.test(val) &&
+          BigInt(val) <= BigInt(Number.MAX_SAFE_INTEGER);
+        params[key] = isSmallInt ? Number(val) : val;
       }
       return { name: toolName, params };
     }
@@ -268,7 +272,20 @@ export async function processMessage(userId, guildId, message) {
       maxSteps: 1,
     });
 
-    const finalResponse = (pass2.text || "").trim();
+    let finalResponse = (pass2.text || "").trim();
+    // Strip any XML tool call the model may have emitted in Pass 2
+    const xmlIdx = finalResponse.indexOf("<tool_call>");
+    const funcIdx = finalResponse.indexOf("<function=");
+    const cutIdx =
+      xmlIdx !== -1 && funcIdx !== -1
+        ? Math.min(xmlIdx, funcIdx)
+        : Math.max(xmlIdx, funcIdx);
+    if (cutIdx !== -1) {
+      finalResponse = finalResponse.substring(0, cutIdx).trim();
+      if (!finalResponse)
+        finalResponse =
+          "I looked into it but couldn't get the information right now. Please try again!";
+    }
     console.log(
       `[AGENT] Pass 2 synthesized: ${finalResponse.substring(0, 120)}`,
     );
