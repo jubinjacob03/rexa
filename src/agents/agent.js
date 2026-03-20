@@ -109,31 +109,48 @@ const MUSIC_CONFIRMATIONS = {
 };
 
 function extractToolCall(text) {
+  // Try JSON format: {"tool_call": {"name": "...", "params": {...}}}
   const stripped = text.replace(/```(?:json)?\s*\n?/gi, "").trim();
   const idx = stripped.indexOf('{"tool_call"');
-  if (idx === -1) return null;
-
-  let depth = 0;
-  let end = -1;
-  for (let i = idx; i < stripped.length; i++) {
-    if (stripped[i] === "{") depth++;
-    else if (stripped[i] === "}") {
-      depth--;
-      if (depth === 0) {
-        end = i;
-        break;
+  if (idx !== -1) {
+    let depth = 0;
+    let end = -1;
+    for (let i = idx; i < stripped.length; i++) {
+      if (stripped[i] === "{") depth++;
+      else if (stripped[i] === "}") {
+        depth--;
+        if (depth === 0) {
+          end = i;
+          break;
+        }
       }
     }
+    if (end !== -1) {
+      try {
+        const parsed = JSON.parse(stripped.slice(idx, end + 1));
+        if (parsed.tool_call?.name) return parsed.tool_call;
+      } catch {}
+    }
   }
-  if (end === -1) return null;
 
-  try {
-    const parsed = JSON.parse(stripped.slice(idx, end + 1));
-    if (parsed.tool_call?.name) return parsed.tool_call;
-    return null;
-  } catch {
-    return null;
+  // Try XML format emitted by stepfun: <tool_call><function=NAME><parameter=KEY>VAL</parameter></function></tool_call>
+  if (text.includes("<tool_call>") || text.includes("<function=")) {
+    const funcMatch = text.match(/<function=(\w+)>/);
+    if (funcMatch) {
+      const toolName = funcMatch[1];
+      const params = {};
+      const paramRegex = /<parameter=(\w+)>\s*([\s\S]*?)\s*<\/parameter>/g;
+      let m;
+      while ((m = paramRegex.exec(text)) !== null) {
+        const key = m[1];
+        const val = m[2].trim();
+        params[key] = val !== "" && !isNaN(val) ? Number(val) : val;
+      }
+      return { name: toolName, params };
+    }
   }
+
+  return null;
 }
 
 async function executeToolByName(toolName, params) {
