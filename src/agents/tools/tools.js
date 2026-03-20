@@ -142,13 +142,13 @@ export const serverInfoTool = tool({
       const guild = await client.guilds.fetch(guildId);
 
       if (infoType === "stats") {
-        await guild.members.fetch();
+        const fetched = await guild.members.fetch();
         return {
           success: true,
           serverName: guild.name,
           memberCount: guild.memberCount,
-          onlineCount: guild.members.cache.filter(
-            (m) => m.presence?.status !== "offline",
+          onlineCount: fetched.filter(
+            (m) => !m.user.bot && m.presence?.status !== "offline",
           ).size,
           channelCount: guild.channels.cache.size,
           roleCount: guild.roles.cache.size,
@@ -181,15 +181,16 @@ export const serverInfoTool = tool({
       }
 
       if (infoType === "search" && searchQuery) {
-        await guild.members.fetch();
+        const fetched = await guild.members.fetch();
         const q = searchQuery.toLowerCase();
         const results = [
-          ...guild.members.cache
+          ...fetched
             .filter(
               (m) =>
-                m.user.username.toLowerCase().includes(q) ||
-                m.displayName.toLowerCase().includes(q) ||
-                (m.nickname && m.nickname.toLowerCase().includes(q)),
+                !m.user.bot &&
+                (m.user.username.toLowerCase().includes(q) ||
+                  m.displayName.toLowerCase().includes(q) ||
+                  (m.nickname && m.nickname.toLowerCase().includes(q))),
             )
             .values(),
         ]
@@ -200,22 +201,27 @@ export const serverInfoTool = tool({
             displayName: m.displayName,
             nickname: m.nickname || null,
             status: m.presence?.status || "offline",
+            roles: m.roles.cache
+              .filter((r) => r.name !== "@everyone")
+              .map((r) => r.name),
           }));
         return { success: true, results, count: results.length };
       }
 
       if (infoType === "members") {
-        await guild.members.fetch();
-        const members = [...guild.members.cache.values()].map((m) => ({
-          id: m.id,
-          username: m.user.username,
-          displayName: m.displayName,
-          nickname: m.nickname || null,
-          status: m.presence?.status || "offline",
-          roles: m.roles.cache
-            .filter((r) => r.name !== "@everyone")
-            .map((r) => ({ id: r.id, name: r.name })),
-        }));
+        const fetched = await guild.members.fetch();
+        const members = [...fetched.filter((m) => !m.user.bot).values()].map(
+          (m) => ({
+            id: m.id,
+            username: m.user.username,
+            displayName: m.displayName,
+            nickname: m.nickname || null,
+            status: m.presence?.status || "offline",
+            roles: m.roles.cache
+              .filter((r) => r.name !== "@everyone")
+              .map((r) => ({ id: r.id, name: r.name })),
+          }),
+        );
         return { success: true, members, count: members.length };
       }
 

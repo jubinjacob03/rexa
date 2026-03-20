@@ -269,7 +269,7 @@ export async function processMessage(userId, guildId, message) {
 
     const pass2 = await generateText({
       model,
-      system: `${contextualPromptNoTools}\n\n---\nThe following data was fetched to answer the user's query. Reply naturally and helpfully using this data. Do NOT call any tools or output any tool_call XML.\n\n${toolContext}`,
+      system: `${contextualPromptNoTools}\n\n---\nYou just retrieved the following data to answer the user's question. Think carefully about what the user actually asked, then give a concise, natural, conversational answer using only the relevant parts of this data. Do NOT dump raw lists or JSON — synthesize the information into a helpful response as if you already know it. Do NOT call any tools or output any tool_call XML.\n\n${toolContext}`,
       messages: [...history, { role: "user", content: message }],
       maxSteps: 1,
     });
