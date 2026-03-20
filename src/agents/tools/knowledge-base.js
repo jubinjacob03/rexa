@@ -689,10 +689,10 @@ Uses advanced RAG with embedJS for accurate, contextual answers. Returns both an
       .describe("query=get answer, search=get documents only"),
   }),
 
-  execute: async ({ query, category, tags, topK, mode }) => {
+  execute: async ({ query: queryText, category, tags, topK, mode }) => {
     try {
       if (mode === "search") {
-        const result = await search(query, { category, tags, topK });
+        const result = await search(queryText, { category, tags, topK });
         return result.success
           ? {
               results: result.results.map((r) => ({
@@ -703,7 +703,7 @@ Uses advanced RAG with embedJS for accurate, contextual answers. Returns both an
             }
           : { error: result.error };
       } else {
-        const result = await query(query, { topK });
+        const result = await query(queryText, { topK });
         return result.success
           ? {
               answer: result.answer,

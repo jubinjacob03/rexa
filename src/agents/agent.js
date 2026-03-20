@@ -27,9 +27,7 @@ async function loadPrompt(promptName, useCache = true) {
 }
 
 async function getSystemPrompt() {
-  // Load master prompt + all context prompts
-  // The AI will naturally use the relevant sections based on the situation
-  const [master, music, creative, moderation, welcome, info] =
+  const [master, music, creative, moderation, welcome, info, toolsCtx] =
     await Promise.all([
       loadPrompt("master-agent"),
       loadPrompt("music-context"),
@@ -37,9 +35,9 @@ async function getSystemPrompt() {
       loadPrompt("moderation-context"),
       loadPrompt("welcome-context"),
       loadPrompt("info-context"),
+      loadPrompt("tools-context"),
     ]);
 
-  // Combine all contexts - AI will intelligently use what's relevant
   return `${master}
 
 ---
@@ -65,7 +63,11 @@ ${welcome}
 ---
 
 ## 📚 Information & Help
-${info}`;
+${info}
+
+---
+
+${toolsCtx}`;
 }
 
 let agentInitialized = false;
@@ -85,6 +87,7 @@ export async function initializeAgent(client) {
     loadPrompt("welcome-context"),
     loadPrompt("creative-context"),
     loadPrompt("info-context"),
+    loadPrompt("tools-context"),
   ]);
 
   agentInitialized = true;
@@ -92,11 +95,67 @@ export async function initializeAgent(client) {
   return { processMessage, executeCommand, getStats };
 }
 
+// ── Manual Tool Calling ─────────────────────────────────────────────────────
+
+const MUSIC_INFO_ACTIONS = new Set(["nowplaying", "queue"]);
+
+const ACTION_ONLY_TOOLS = new Set(["executeCommand", "executeWorkflow"]);
+
+const MUSIC_CONFIRMATIONS = {
+  play: "▶️ On it!",
+  pause: "⏸️ Paused.",
+  resume: "▶️ Resumed.",
+  skip: "⏭️ Skipped.",
+  stop: "⏹️ Stopped.",
+  volume: "🔊 Volume updated.",
+};
+
+function extractToolCall(text) {
+  const stripped = text.replace(/```(?:json)?\s*\n?/gi, "").trim();
+  const idx = stripped.indexOf('{"tool_call"');
+  if (idx === -1) return null;
+
+  let depth = 0;
+  let end = -1;
+  for (let i = idx; i < stripped.length; i++) {
+    if (stripped[i] === "{") depth++;
+    else if (stripped[i] === "}") {
+      depth--;
+      if (depth === 0) {
+        end = i;
+        break;
+      }
+    }
+  }
+  if (end === -1) return null;
+
+  try {
+    const parsed = JSON.parse(stripped.slice(idx, end + 1));
+    if (parsed.tool_call?.name) return parsed.tool_call;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function executeToolByName(toolName, params) {
+  try {
+    const toolObj = tools[toolName];
+    if (!toolObj?.execute) {
+      return { success: false, error: `Unknown tool: ${toolName}` };
+    }
+    const result = await toolObj.execute(params);
+    return result ?? { success: true };
+  } catch (err) {
+    console.error(`[AGENT] Tool execution error (${toolName}):`, err);
+    return { success: false, error: err.message };
+  }
+}
+
 export async function processMessage(userId, guildId, message) {
   console.log(`[AGENT] Processing message from user ${userId}`);
 
   try {
-    // Get history BEFORE adding current message to avoid duplication
     const history = contextManager.getFormattedHistory(userId, guildId, 10);
     const systemPrompt = await getSystemPrompt();
     const model = getLanguageModel();
@@ -107,94 +166,97 @@ export async function processMessage(userId, guildId, message) {
 
 - **User ID**: \`${userId}\`
 - **Guild ID**: \`${guildId}\`
-- **Note**: When using tools that require \`userId\`, \`guildId\`, or \`targetId\`, use these values above.`;
+- **Note**: When calling musicControl or any tool that requires userId/guildId, use the values above.`;
 
-    const result = await generateText({
+    // Pass 1: model decides whether to call a tool or answer directly
+    const pass1 = await generateText({
       model,
       system: contextualPrompt,
       messages: [...history, { role: "user", content: message }],
-      tools,
-      maxSteps: config.commandExecution.maxStepsPerMinute || 5,
+      maxSteps: 1,
     });
 
+    const rawOutput = (pass1.text || "").trim();
     console.log(
-      `[AGENT] Result - finishReason: ${result.finishReason}, text: ${result.text ? result.text.substring(0, 50) : "none"}, steps: ${result.steps?.length || 0}`,
+      `[AGENT] Pass 1 output (${pass1.finishReason}): ${rawOutput.substring(0, 150)}`,
     );
 
-    let finalResponse = result.text || "";
-    let pendingEmbeds = [];
+    const toolCall = extractToolCall(rawOutput);
 
-    // When finishReason is 'tool-calls', the model made a tool call but its post-tool
-    // LLM pass returned empty. result.text only has the pre-tool "I'll check" text.
-    // We must override it with the actual tool results from the steps.
-    const toolWasExecuted = result.steps?.some(
-      (s) => s.toolResults?.length > 0,
+    if (!toolCall) {
+      console.log("[AGENT] No tool call — using direct response");
+      await contextManager.addMessage(userId, guildId, "user", message);
+      await contextManager.addMessage(userId, guildId, "assistant", rawOutput);
+      return { success: true, response: rawOutput, embeds: [] };
+    }
+
+    const { name: toolName, params: toolParams = {} } = toolCall;
+    console.log(
+      `[AGENT] Tool call: ${toolName}`,
+      JSON.stringify(toolParams).substring(0, 120),
     );
-    const shouldUseToolResults =
-      toolWasExecuted &&
-      (result.finishReason === "tool-calls" ||
-        !finalResponse ||
-        finalResponse.trim() === "");
 
-    if (shouldUseToolResults) {
-      console.log(
-        "[AGENT] Tool results available — synthesizing natural response...",
+    const enrichedParams = { ...toolParams, userId, guildId };
+
+    const toolResult = await executeToolByName(toolName, enrichedParams);
+    console.log(
+      `[AGENT] Tool result (${toolName}):`,
+      JSON.stringify(toolResult).substring(0, 150),
+    );
+
+    if (toolName === "createEmbed") {
+      const embeds = toolResult?.embed ? [toolResult.embed] : [];
+      const errMsg =
+        toolResult?.success === false
+          ? toolResult.error || "Couldn't create the embed."
+          : "";
+      await contextManager.addMessage(userId, guildId, "user", message);
+      await contextManager.addMessage(
+        userId,
+        guildId,
+        "assistant",
+        errMsg || "[embed]",
       );
-
-      const collectedEmbeds = [];
-      const toolResultsForSynthesis = [];
-
-      for (const step of result.steps) {
-        if (step.toolResults) {
-          for (const toolResult of step.toolResults) {
-            const resultData = toolResult.output || toolResult.result;
-            console.log(
-              `[AGENT] Tool: ${toolResult.toolName}`,
-              JSON.stringify(resultData).substring(0, 100),
-            );
-
-            if (toolResult.toolName === "createEmbed" && resultData?.embed) {
-              collectedEmbeds.push(resultData.embed);
-            } else {
-              toolResultsForSynthesis.push({
-                tool: toolResult.toolName,
-                result: resultData,
-              });
-            }
-          }
-        }
-      }
-
-      pendingEmbeds = collectedEmbeds;
-
-      if (toolResultsForSynthesis.length > 0) {
-        const toolContext = toolResultsForSynthesis
-          .map((tr) => `[${tr.tool}]:\n${JSON.stringify(tr.result, null, 2)}`)
-          .join("\n\n");
-
-        try {
-          const synthesisResult = await generateText({
-            model,
-            system: `${contextualPrompt}\n\n---\nThe following data has already been fetched via tools. Use it to answer the user naturally. Do NOT call any tools.\n\nTool Results:\n${toolContext}`,
-            messages: [...history, { role: "user", content: message }],
-            maxSteps: 1,
-          });
-          finalResponse = synthesisResult.text || "";
-          console.log("[AGENT] Synthesized natural response from tool results");
-        } catch (err) {
-          console.error("[AGENT] Synthesis failed:", err.message);
-          finalResponse = toolResultsForSynthesis
-            .map((tr) => JSON.stringify(tr.result))
-            .join("\n");
-        }
-      }
+      return { success: true, response: errMsg, embeds };
     }
 
-    if (!finalResponse || finalResponse.trim() === "") {
-      console.warn(
-        "[AGENT] Empty response generated even after tool result formatting",
-      );
+    if (ACTION_ONLY_TOOLS.has(toolName)) {
+      const finalResp =
+        toolResult?.success === false
+          ? toolResult.error || "Sorry, that didn't work."
+          : "✅ Done!";
+      await contextManager.addMessage(userId, guildId, "user", message);
+      await contextManager.addMessage(userId, guildId, "assistant", finalResp);
+      return { success: true, response: finalResp, embeds: [] };
     }
+
+    if (
+      toolName === "musicControl" &&
+      !MUSIC_INFO_ACTIONS.has(toolParams.action)
+    ) {
+      const finalResp =
+        toolResult?.success === false
+          ? toolResult.error || "Sorry, that didn't work."
+          : MUSIC_CONFIRMATIONS[toolParams.action] || "✅ Done!";
+      await contextManager.addMessage(userId, guildId, "user", message);
+      await contextManager.addMessage(userId, guildId, "assistant", finalResp);
+      return { success: true, response: finalResp, embeds: [] };
+    }
+
+    // Pass 2: feed tool result back for natural language synthesis
+    const toolContext = `[${toolName} result]:\n${JSON.stringify(toolResult, null, 2)}`;
+
+    const pass2 = await generateText({
+      model,
+      system: `${contextualPrompt}\n\n---\nThe following data was fetched to answer the user's query. Reply naturally and helpfully using this data. Do NOT output any tool_call JSON.\n\n${toolContext}`,
+      messages: [...history, { role: "user", content: message }],
+      maxSteps: 1,
+    });
+
+    const finalResponse = (pass2.text || "").trim();
+    console.log(
+      `[AGENT] Pass 2 synthesized: ${finalResponse.substring(0, 120)}`,
+    );
 
     await contextManager.addMessage(userId, guildId, "user", message);
     await contextManager.addMessage(
@@ -203,14 +265,7 @@ export async function processMessage(userId, guildId, message) {
       "assistant",
       finalResponse,
     );
-
-    return {
-      success: true,
-      response: finalResponse,
-      embeds: pendingEmbeds,
-      toolCalls: result.steps?.filter((s) => s.toolCalls?.length > 0) || [],
-      finishReason: result.finishReason,
-    };
+    return { success: true, response: finalResponse, embeds: [] };
   } catch (error) {
     console.error("[AGENT] Error:", error);
     return {
