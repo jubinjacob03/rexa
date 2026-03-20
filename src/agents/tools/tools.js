@@ -194,7 +194,8 @@ export const serverInfoTool = tool({
             )
             .values(),
         ]
-          .slice(0, limit || 10)
+          .sort((a, b) => b.roles.cache.size - a.roles.cache.size) // members with more roles first
+          .slice(0, limit || 5)
           .map((m) => ({
             id: m.id,
             username: m.user.username,

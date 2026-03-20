@@ -185,7 +185,7 @@ export async function processMessage(userId, guildId, message) {
     ]);
     const model = getLanguageModel();
 
-    const currentContext = `\n\n## Current Context\n\n- **User ID**: \`${userId}\`\n- **Guild ID**: \`${guildId}\`\n- **Note**: When calling musicControl or any tool that requires userId/guildId, use the values above.`;
+    const currentContext = `\n\n## Current Context\n\n- **User ID**: \`${userId}\`\n- **Guild ID**: \`${guildId}\`\n- **Note**: When calling musicControl or any tool that requires userId/guildId, use the values above.\n- **CRITICAL**: Conversation history may contain old/stale responses. For ANY question about server members, roles, or live server data — you MUST call the appropriate tool right now to get fresh data. Never rely on previous responses in the conversation history for this.`;
     const contextualPrompt = `${systemPrompt}${currentContext}`;
     const contextualPromptNoTools = `${systemPromptNoTools}${currentContext}`;
 
