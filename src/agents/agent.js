@@ -95,8 +95,6 @@ export async function initializeAgent(client) {
   return { processMessage, executeCommand, getStats };
 }
 
-// ── Manual Tool Calling ─────────────────────────────────────────────────────
-
 const MUSIC_INFO_ACTIONS = new Set(["nowplaying", "queue"]);
 
 const ACTION_ONLY_TOOLS = new Set(["executeCommand", "executeWorkflow"]);
@@ -277,7 +275,7 @@ export async function processMessage(userId, guildId, message) {
 }
 
 export async function executeCommand(command, params, userId, guildId) {
-  return await tools.commandExecutorTool.execute({
+  return await tools.executeCommand.execute({
     command,
     parameters: params,
     userId,
