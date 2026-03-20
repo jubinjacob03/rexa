@@ -26,13 +26,16 @@ router.post("/setup-verification", async (req, res) => {
   try {
     const client = req.app.get("discordClient");
     const guild = client.guilds.cache.get(config.guildId);
-    if (!guild) return res.status(503).json({ success: false, error: "Guild not found" });
+    if (!guild)
+      return res.status(503).json({ success: false, error: "Guild not found" });
 
     const verificationChannel = await guild.channels
       .fetch(config.verificationChannelId)
       .catch(() => null);
     if (!verificationChannel) {
-      return res.status(404).json({ success: false, error: "Verification channel not found." });
+      return res
+        .status(404)
+        .json({ success: false, error: "Verification channel not found." });
     }
 
     const verificationEmbed = new EmbedBuilder()
@@ -43,18 +46,28 @@ router.post("/setup-verification", async (req, res) => {
 
     const buttonRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
+        .setCustomId("dev_check")
+        .setLabel("ᴅᴇᴠ ᴄʜᴇᴄᴋ")
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
         .setCustomId("verify_friends")
         .setLabel("ғʀɪᴇɴᴅs")
         .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
         .setCustomId("verify_member")
-        .setLabel("ᴍᴇᴍʙᴇʀ")
-        .setStyle(ButtonStyle.Success)
+        .setLabel("ɢᴜɪʟᴅ-ᴍᴇᴍʙᴇʀ")
+        .setStyle(ButtonStyle.Success),
     );
 
-    await verificationChannel.send({ embeds: [verificationEmbed], components: [buttonRow] });
+    await verificationChannel.send({
+      embeds: [verificationEmbed],
+      components: [buttonRow],
+    });
 
-    res.json({ success: true, data: { message: "Verification embed posted." } });
+    res.json({
+      success: true,
+      data: { message: "Verification embed posted." },
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

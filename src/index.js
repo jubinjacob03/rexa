@@ -85,6 +85,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
+    if (interaction.customId === "dev_check") {
+      await interaction.reply({
+        content:
+          "✅ You're all set for your device check! Feel free to explore.",
+        ephemeral: true,
+      });
+      return;
+    }
+
     if (
       interaction.customId === "verify_friends" ||
       interaction.customId === "verify_member"
