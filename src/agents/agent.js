@@ -26,8 +26,8 @@ async function loadPrompt(promptName, useCache = true) {
   return content;
 }
 
-async function getSystemPrompt() {
-  const [master, music, creative, moderation, welcome, info, toolsCtx] =
+async function getSystemPromptWithoutTools() {
+  const [master, music, creative, moderation, welcome, info] =
     await Promise.all([
       loadPrompt("master-agent"),
       loadPrompt("music-context"),
@@ -35,7 +35,6 @@ async function getSystemPrompt() {
       loadPrompt("moderation-context"),
       loadPrompt("welcome-context"),
       loadPrompt("info-context"),
-      loadPrompt("tools-context"),
     ]);
 
   return `${master}
@@ -63,11 +62,15 @@ ${welcome}
 ---
 
 ## 📚 Information & Help
-${info}
+${info}`;
+}
 
----
-
-${toolsCtx}`;
+async function getSystemPrompt() {
+  const [base, toolsCtx] = await Promise.all([
+    getSystemPromptWithoutTools(),
+    loadPrompt("tools-context"),
+  ]);
+  return `${base}\n\n---\n\n${toolsCtx}`;
 }
 
 let agentInitialized = false;
@@ -176,16 +179,15 @@ export async function processMessage(userId, guildId, message) {
 
   try {
     const history = contextManager.getFormattedHistory(userId, guildId, 10);
-    const systemPrompt = await getSystemPrompt();
+    const [systemPrompt, systemPromptNoTools] = await Promise.all([
+      getSystemPrompt(),
+      getSystemPromptWithoutTools(),
+    ]);
     const model = getLanguageModel();
 
-    const contextualPrompt = `${systemPrompt}
-
-## Current Context
-
-- **User ID**: \`${userId}\`
-- **Guild ID**: \`${guildId}\`
-- **Note**: When calling musicControl or any tool that requires userId/guildId, use the values above.`;
+    const currentContext = `\n\n## Current Context\n\n- **User ID**: \`${userId}\`\n- **Guild ID**: \`${guildId}\`\n- **Note**: When calling musicControl or any tool that requires userId/guildId, use the values above.`;
+    const contextualPrompt = `${systemPrompt}${currentContext}`;
+    const contextualPromptNoTools = `${systemPromptNoTools}${currentContext}`;
 
     // Pass 1: model decides whether to call a tool or answer directly
     const pass1 = await generateText({
@@ -267,7 +269,7 @@ export async function processMessage(userId, guildId, message) {
 
     const pass2 = await generateText({
       model,
-      system: `${contextualPrompt}\n\n---\nThe following data was fetched to answer the user's query. Reply naturally and helpfully using this data. Do NOT output any tool_call JSON.\n\n${toolContext}`,
+      system: `${contextualPromptNoTools}\n\n---\nThe following data was fetched to answer the user's query. Reply naturally and helpfully using this data. Do NOT call any tools or output any tool_call XML.\n\n${toolContext}`,
       messages: [...history, { role: "user", content: message }],
       maxSteps: 1,
     });
