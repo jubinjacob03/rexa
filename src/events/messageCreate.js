@@ -101,7 +101,9 @@ export default {
 
     if (message.author.bot) return;
 
-    const isMentioned = message.mentions.has(message.client.user.id);
+    const isMentioned = message.mentions.has(message.client.user.id, {
+      ignoreEveryone: true,
+    });
     const isNoMentionChannel = message.channel.id === NO_MENTION_CHANNEL;
     const isBroadcastMention = message.mentions.everyone; // true for both @everyone and @here
 
