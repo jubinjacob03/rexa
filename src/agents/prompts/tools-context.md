@@ -12,7 +12,13 @@ If you can answer from your own knowledge, respond naturally — no tool_call ne
 params: { "query": "string (required)", "category": "server"|"shantha"|"remani"|"commands"|"verification"|"private_vc"|"music"|"general" (optional) }
 
 **serverInfo** — Get live Discord server/member/channel info
-params: { "infoType": "stats"|"member"|"channel"|"search" (required), "targetId": "user or channel ID (for member/channel)", "searchQuery": "name (for search)", "limit": number (optional) }
+params: { "infoType": "stats"|"member"|"channel"|"search"|"members" (required), "targetId": "user or channel ID (for member/channel)", "searchQuery": "name (for search)", "limit": number (optional) }
+
+- infoType="stats" → server stats (member count, online count, channels, roles)
+- infoType="member" → single member details (requires targetId)
+- infoType="channel" → channel details (requires targetId)
+- infoType="search" → find members by name/displayName (requires searchQuery)
+- infoType="members" → list ALL members with id, username, displayName, nickname, status, and roles (id+name each)
 
 **webSearch** — Search the web for general or current information
 params: { "query": "string (required)", "maxResults": number (optional) }

@@ -112,14 +112,15 @@ export const serverInfoTool = tool({
   - Get specific member info (infoType="member", targetId=user_id)
   - Get channel info (infoType="channel", targetId=channel_id)
   - Search members (infoType="search", searchQuery="name_to_search")
+  - List all members with IDs, roles, nicknames, and online status (infoType="members")
   
   REQUIRED: Always provide guildId (server ID) and infoType.
   For member queries, provide targetId with the user's ID.`,
   parameters: z.object({
     infoType: z
-      .enum(["stats", "member", "channel", "search"])
+      .enum(["stats", "member", "channel", "search", "members"])
       .describe(
-        "Type of info: stats (server stats), member (user info), channel (channel info), or search (find members)",
+        "Type of info: stats (server stats), member (user info), channel (channel info), search (find members), or members (list all members with roles and status)",
       ),
     guildId: z.string().describe("The Discord server/guild ID"),
     targetId: z
@@ -160,6 +161,7 @@ export const serverInfoTool = tool({
           success: true,
           username: member.user.username,
           displayName: member.displayName,
+          nickname: member.nickname || null,
           userId: member.user.id,
           roles: member.roles.cache.map((r) => r.name),
           roleIds: member.roles.cache.map((r) => r.id),
@@ -180,14 +182,14 @@ export const serverInfoTool = tool({
 
       if (infoType === "search" && searchQuery) {
         await guild.members.fetch();
+        const q = searchQuery.toLowerCase();
         const results = [
           ...guild.members.cache
             .filter(
               (m) =>
-                m.user.username
-                  .toLowerCase()
-                  .includes(searchQuery.toLowerCase()) ||
-                m.displayName.toLowerCase().includes(searchQuery.toLowerCase()),
+                m.user.username.toLowerCase().includes(q) ||
+                m.displayName.toLowerCase().includes(q) ||
+                (m.nickname && m.nickname.toLowerCase().includes(q)),
             )
             .values(),
         ]
@@ -196,9 +198,25 @@ export const serverInfoTool = tool({
             id: m.id,
             username: m.user.username,
             displayName: m.displayName,
+            nickname: m.nickname || null,
             status: m.presence?.status || "offline",
           }));
         return { success: true, results, count: results.length };
+      }
+
+      if (infoType === "members") {
+        await guild.members.fetch();
+        const members = [...guild.members.cache.values()].map((m) => ({
+          id: m.id,
+          username: m.user.username,
+          displayName: m.displayName,
+          nickname: m.nickname || null,
+          status: m.presence?.status || "offline",
+          roles: m.roles.cache
+            .filter((r) => r.name !== "@everyone")
+            .map((r) => ({ id: r.id, name: r.name })),
+        }));
+        return { success: true, members, count: members.length };
       }
 
       return {
