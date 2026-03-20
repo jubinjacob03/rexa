@@ -238,8 +238,22 @@ export const musicControlTool = tool({
         : {}),
     };
 
+    // Resolve the user's current voice channel for the play action
+    let voiceChannelId = null;
+    if (action === "play") {
+      const guild = client?.guilds.cache.get(guildId);
+      const member = guild?.members.cache.get(userId);
+      voiceChannelId = member?.voice?.channelId || null;
+      if (!voiceChannelId) {
+        return {
+          success: false,
+          error: "You must be in a voice channel to play music.",
+        };
+      }
+    }
+
     const actionMap = {
-      play: { path: "/play", body: { guildId, query, userId } },
+      play: { path: "/play", body: { guildId, query, userId, voiceChannelId } },
       pause: { path: "/pause", body: { guildId } },
       resume: { path: "/resume", body: { guildId } },
       skip: { path: "/skip", body: { guildId } },

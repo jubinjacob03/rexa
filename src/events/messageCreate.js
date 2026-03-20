@@ -103,6 +103,10 @@ export default {
 
     const isMentioned = message.mentions.has(message.client.user.id);
     const isNoMentionChannel = message.channel.id === NO_MENTION_CHANNEL;
+    const isBroadcastMention = message.mentions.everyone; // true for both @everyone and @here
+
+    // Ignore @everyone / @here pings unless the bot is explicitly mentioned by ID
+    if (isBroadcastMention && !isMentioned) return;
 
     if (isMentioned || isNoMentionChannel) {
       console.log(`[DEBUG] AI mention detected - Message ID: ${message.id}`);

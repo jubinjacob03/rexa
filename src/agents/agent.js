@@ -137,106 +137,56 @@ export async function processMessage(userId, guildId, message) {
         finalResponse.trim() === "");
 
     if (shouldUseToolResults) {
-      if (result.finishReason === "tool-calls" && finalResponse) {
-        console.log(
-          "[AGENT] finishReason=tool-calls with pre-tool text — overriding with tool results...",
-        );
-      } else {
-        console.log(
-          "[AGENT] No text response but have tool results, formatting...",
-        );
-      }
-      const toolResults = [];
+      console.log(
+        "[AGENT] Tool results available — synthesizing natural response...",
+      );
+
+      const collectedEmbeds = [];
+      const toolResultsForSynthesis = [];
 
       for (const step of result.steps) {
         if (step.toolResults) {
           for (const toolResult of step.toolResults) {
+            const resultData = toolResult.output || toolResult.result;
             console.log(
-              `[AGENT] Tool result structure:`,
-              JSON.stringify(toolResult, null, 2).substring(0, 200),
+              `[AGENT] Tool: ${toolResult.toolName}`,
+              JSON.stringify(resultData).substring(0, 100),
             );
-            toolResults.push({
-              tool: toolResult.toolName,
-              args: toolResult.args,
-              result: toolResult.output || toolResult.result,
-            });
+
+            if (toolResult.toolName === "createEmbed" && resultData?.embed) {
+              collectedEmbeds.push(resultData.embed);
+            } else {
+              toolResultsForSynthesis.push({
+                tool: toolResult.toolName,
+                result: resultData,
+              });
+            }
           }
         }
       }
 
-      if (toolResults.length > 0) {
-        const collectedEmbeds = [];
-        const formattedResults = toolResults
-          .map((tr) => {
-            const resultData = tr.result;
+      pendingEmbeds = collectedEmbeds;
 
-            if (resultData && typeof resultData === "object") {
-              if (resultData.success === false) {
-                return `**${tr.tool}**: ❌ Error: ${resultData.error || "Failed"}`;
-              }
-
-              if (tr.tool === "serverInfo") {
-                if (resultData.username) {
-                  const parts = [
-                    `👤 **User**: ${resultData.displayName || resultData.username}`,
-                    resultData.roles?.length > 0
-                      ? `🎭 **Roles**: ${resultData.roles.join(", ")}`
-                      : null,
-                    resultData.status
-                      ? `🟢 **Status**: ${resultData.status}`
-                      : null,
-                    resultData.memberCount
-                      ? `👥 **Members**: ${resultData.memberCount}`
-                      : null,
-                  ].filter(Boolean);
-                  return parts.join("\n");
-                } else if (resultData.serverName) {
-                  return `🏰 **Server**: ${resultData.serverName}\n👥 **Members**: ${resultData.memberCount || "Unknown"}`;
-                }
-              } else if (tr.tool === "ragQuery") {
-                if (resultData.context) {
-                  return `📚 **Knowledge**: ${resultData.context.substring(0, 300)}...`;
-                }
-              } else if (tr.tool === "createEmbed") {
-                if (resultData.embed) {
-                  collectedEmbeds.push(resultData.embed);
-                  return null;
-                }
-              } else if (tr.tool === "fetchWebPage") {
-                if (resultData.content) {
-                  return resultData.content.trim();
-                }
-              } else if (tr.tool === "musicControl") {
-                if (resultData.success) {
-                  return `🎵 ${resultData.action === "play" ? "Now playing!" : `${resultData.action} done.`}`;
-                }
-              } else if (tr.tool === "webSearch") {
-                if (resultData.answer) {
-                  return `🔍 **${resultData.query}**:\n${resultData.answer}${
-                    resultData.url ? `\n[Source](${resultData.url})` : ""
-                  }`;
-                } else if (resultData.relatedTopics?.length > 0) {
-                  return `🔍 **Search Results for "${resultData.query}"**:\n${resultData.relatedTopics
-                    .slice(0, 5)
-                    .map((r) => `• ${r.text}`)
-                    .join("\n")}`;
-                } else {
-                  return `🔍 No search results found for: "${resultData.query}". The search engine returned no data — try asking me to fetch a specific page instead.`;
-                }
-              }
-
-              return `[Tool: ${tr.tool}] ${JSON.stringify(resultData)}`;
-            }
-            return `**${tr.tool}**: ${resultData}`;
-          })
-          .filter((r) => r !== null)
+      if (toolResultsForSynthesis.length > 0) {
+        const toolContext = toolResultsForSynthesis
+          .map((tr) => `[${tr.tool}]:\n${JSON.stringify(tr.result, null, 2)}`)
           .join("\n\n");
 
-        finalResponse = formattedResults;
-        if (collectedEmbeds.length > 0) {
-          pendingEmbeds = collectedEmbeds;
+        try {
+          const synthesisResult = await generateText({
+            model,
+            system: `${contextualPrompt}\n\n---\nThe following data has already been fetched via tools. Use it to answer the user naturally. Do NOT call any tools.\n\nTool Results:\n${toolContext}`,
+            messages: [...history, { role: "user", content: message }],
+            maxSteps: 1,
+          });
+          finalResponse = synthesisResult.text || "";
+          console.log("[AGENT] Synthesized natural response from tool results");
+        } catch (err) {
+          console.error("[AGENT] Synthesis failed:", err.message);
+          finalResponse = toolResultsForSynthesis
+            .map((tr) => JSON.stringify(tr.result))
+            .join("\n");
         }
-        console.log("[AGENT] Formatted tool results into response");
       }
     }
 
