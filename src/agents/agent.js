@@ -161,6 +161,13 @@ function extractToolCall(text) {
         const parsed = JSON.parse(stripped.slice(idx, end + 1));
         if (parsed.tool_call?.name) return parsed.tool_call;
       } catch {}
+    } else {
+      for (let extra = 1; extra <= 3; extra++) {
+        try {
+          const parsed = JSON.parse(stripped.slice(idx) + "}".repeat(extra));
+          if (parsed.tool_call?.name) return parsed.tool_call;
+        } catch {}
+      }
     }
   }
 
@@ -227,11 +234,18 @@ export async function processMessage(userId, guildId, message) {
 
     if (!toolCall) {
       console.log("[AGENT] No tool call — using direct response");
+      const looksLikeToolCall =
+        /^\s*\{[\s\S]*"(?:tool_call|tool|name)"\s*:/.test(rawOutput);
+      const safeResponse = looksLikeToolCall
+        ? "I'm not sure how to help with that right now. Could you rephrase?"
+        : rawOutput;
+      if (looksLikeToolCall)
+        console.log("[AGENT] Suppressed raw JSON tool-call from Pass 1 output");
       await Promise.all([
         contextManager.addMessage(userId, guildId, "user", message),
-        contextManager.addMessage(userId, guildId, "assistant", rawOutput),
+        contextManager.addMessage(userId, guildId, "assistant", safeResponse),
       ]);
-      return { success: true, response: rawOutput, embeds: [] };
+      return { success: true, response: safeResponse, embeds: [] };
     }
 
     const { name: toolName, params: toolParams = {} } = toolCall;
