@@ -377,7 +377,7 @@ export async function processMessage(userId, guildId, message) {
     // Strip any tool_call (XML or JSON) that the model may have emitted in Pass 2
     const xmlIdx = finalResponse.indexOf("<tool_call>");
     const funcIdx = finalResponse.indexOf("<function=");
-    const jsonIdx = finalResponse.search(/\{\s*"tool_call"/);
+    const jsonIdx = finalResponse.search(/\{\s*"(?:tool_call|tool|name)"\s*:/);
     const allCuts = [xmlIdx, funcIdx, jsonIdx].filter((i) => i !== -1);
     const cutIdx = allCuts.length > 0 ? Math.min(...allCuts) : -1;
     if (cutIdx !== -1) {
