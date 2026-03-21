@@ -139,10 +139,10 @@ export const serverInfoTool = tool({
     if (!client) return { success: false, error: "Client not initialized" };
 
     try {
-      const guild = await client.guilds.fetch(guildId);
+      const guild = await client.guilds.fetch({ guild: guildId, force: true });
 
       if (infoType === "stats") {
-        const fetched = await guild.members.fetch();
+        const fetched = await guild.members.fetch({ force: true });
         return {
           success: true,
           serverName: guild.name,
@@ -156,7 +156,10 @@ export const serverInfoTool = tool({
       }
 
       if (infoType === "member" && targetId) {
-        const member = await guild.members.fetch(targetId);
+        const member = await guild.members.fetch({
+          user: targetId,
+          force: true,
+        });
         return {
           success: true,
           username: member.user.username,
@@ -181,7 +184,7 @@ export const serverInfoTool = tool({
       }
 
       if (infoType === "search" && searchQuery) {
-        const fetched = await guild.members.fetch();
+        const fetched = await guild.members.fetch({ force: true });
         const q = searchQuery.toLowerCase();
         const results = [
           ...fetched
@@ -194,7 +197,7 @@ export const serverInfoTool = tool({
             )
             .values(),
         ]
-          .sort((a, b) => b.roles.cache.size - a.roles.cache.size) // members with more roles first
+          .sort((a, b) => b.roles.cache.size - a.roles.cache.size)
           .slice(0, limit || 5)
           .map((m) => ({
             id: m.id,
@@ -210,7 +213,7 @@ export const serverInfoTool = tool({
       }
 
       if (infoType === "members") {
-        const fetched = await guild.members.fetch();
+        const fetched = await guild.members.fetch({ force: true });
         const members = [...fetched.filter((m) => !m.user.bot).values()].map(
           (m) => ({
             id: m.id,

@@ -179,6 +179,7 @@ export async function processMessage(userId, guildId, message) {
 
   try {
     const history = contextManager.getFormattedHistory(userId, guildId, 10);
+    const pass1History = history.filter((m) => m.role === "user");
     const [systemPrompt, systemPromptNoTools] = await Promise.all([
       getSystemPrompt(),
       getSystemPromptWithoutTools(),
@@ -193,7 +194,7 @@ export async function processMessage(userId, guildId, message) {
     const pass1 = await generateText({
       model,
       system: contextualPrompt,
-      messages: [...history, { role: "user", content: message }],
+      messages: [...pass1History, { role: "user", content: message }],
       maxSteps: 1,
     });
 
