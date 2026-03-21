@@ -31,6 +31,12 @@ async function fetchMembersWithCache(guild) {
   return members;
 }
 
+async function fetchMembersFresh(guild) {
+  const members = await guild.members.fetch({ force: true });
+  memberCacheMap.set(guild.id, { members, timestamp: Date.now() });
+  return members;
+}
+
 /**
  * RAG Tool - Knowledge base search using AI SDK embeddings
  */
@@ -156,7 +162,7 @@ export const serverInfoTool = tool({
       const guild = await client.guilds.fetch({ guild: guildId, force: true });
 
       if (infoType === "stats") {
-        const fetched = await fetchMembersWithCache(guild);
+        const fetched = await fetchMembersFresh(guild);
         return {
           success: true,
           serverName: guild.name,

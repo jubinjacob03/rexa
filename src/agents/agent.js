@@ -175,11 +175,11 @@ function extractToolCall(text) {
       while ((m = paramRegex.exec(text)) !== null) {
         const key = m[1];
         const val = m[2].trim();
-        const isSmallInt =
-          val !== "" &&
-          /^\d+$/.test(val) &&
-          BigInt(val) <= BigInt(Number.MAX_SAFE_INTEGER);
-        params[key] = isSmallInt ? Number(val) : val;
+        const numVal = Number(val);
+        params[key] =
+          val !== "" && /^\d+$/.test(val) && Number.isSafeInteger(numVal)
+            ? numVal
+            : val;
       }
       return { name: toolName, params };
     }
@@ -227,8 +227,10 @@ export async function processMessage(userId, guildId, message) {
 
     if (!toolCall) {
       console.log("[AGENT] No tool call — using direct response");
-      await contextManager.addMessage(userId, guildId, "user", message);
-      await contextManager.addMessage(userId, guildId, "assistant", rawOutput);
+      await Promise.all([
+        contextManager.addMessage(userId, guildId, "user", message),
+        contextManager.addMessage(userId, guildId, "assistant", rawOutput),
+      ]);
       return { success: true, response: rawOutput, embeds: [] };
     }
 
@@ -316,13 +318,15 @@ export async function processMessage(userId, guildId, message) {
         finalToolResult?.success === false
           ? finalToolResult.error || "Couldn't create the embed."
           : "";
-      await contextManager.addMessage(userId, guildId, "user", message);
-      await contextManager.addMessage(
-        userId,
-        guildId,
-        "assistant",
-        errMsg || "[embed]",
-      );
+      await Promise.all([
+        contextManager.addMessage(userId, guildId, "user", message),
+        contextManager.addMessage(
+          userId,
+          guildId,
+          "assistant",
+          errMsg || "[embed]",
+        ),
+      ]);
       return { success: true, response: errMsg, embeds };
     }
 
@@ -331,8 +335,10 @@ export async function processMessage(userId, guildId, message) {
         finalToolResult?.success === false
           ? finalToolResult.error || "Sorry, that didn't work."
           : "✅ Done!";
-      await contextManager.addMessage(userId, guildId, "user", message);
-      await contextManager.addMessage(userId, guildId, "assistant", finalResp);
+      await Promise.all([
+        contextManager.addMessage(userId, guildId, "user", message),
+        contextManager.addMessage(userId, guildId, "assistant", finalResp),
+      ]);
       return { success: true, response: finalResp, embeds: [] };
     }
 
@@ -344,8 +350,10 @@ export async function processMessage(userId, guildId, message) {
         finalToolResult?.success === false
           ? finalToolResult.error || "Sorry, that didn't work."
           : MUSIC_CONFIRMATIONS[toolParams.action] || "✅ Done!";
-      await contextManager.addMessage(userId, guildId, "user", message);
-      await contextManager.addMessage(userId, guildId, "assistant", finalResp);
+      await Promise.all([
+        contextManager.addMessage(userId, guildId, "user", message),
+        contextManager.addMessage(userId, guildId, "assistant", finalResp),
+      ]);
       return { success: true, response: finalResp, embeds: [] };
     }
 
@@ -366,13 +374,12 @@ export async function processMessage(userId, guildId, message) {
     });
 
     let finalResponse = (pass2.text || "").trim();
-    // Strip any XML tool call the model may have emitted in Pass 2
+    // Strip any tool_call (XML or JSON) that the model may have emitted in Pass 2
     const xmlIdx = finalResponse.indexOf("<tool_call>");
     const funcIdx = finalResponse.indexOf("<function=");
-    const cutIdx =
-      xmlIdx !== -1 && funcIdx !== -1
-        ? Math.min(xmlIdx, funcIdx)
-        : Math.max(xmlIdx, funcIdx);
+    const jsonIdx = finalResponse.search(/\{\s*"tool_call"/);
+    const allCuts = [xmlIdx, funcIdx, jsonIdx].filter((i) => i !== -1);
+    const cutIdx = allCuts.length > 0 ? Math.min(...allCuts) : -1;
     if (cutIdx !== -1) {
       finalResponse = finalResponse.substring(0, cutIdx).trim();
       if (!finalResponse)
@@ -383,13 +390,10 @@ export async function processMessage(userId, guildId, message) {
       `[AGENT] Pass 2 synthesized: ${finalResponse.substring(0, 120)}`,
     );
 
-    await contextManager.addMessage(userId, guildId, "user", message);
-    await contextManager.addMessage(
-      userId,
-      guildId,
-      "assistant",
-      finalResponse,
-    );
+    await Promise.all([
+      contextManager.addMessage(userId, guildId, "user", message),
+      contextManager.addMessage(userId, guildId, "assistant", finalResponse),
+    ]);
     return { success: true, response: finalResponse, embeds: [] };
   } catch (error) {
     console.error("[AGENT] Error:", error);

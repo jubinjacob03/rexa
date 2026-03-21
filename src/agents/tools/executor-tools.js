@@ -189,6 +189,7 @@ export async function executeHttpRequest(options, retryCount = 0) {
     auth = null,
     timeout = HTTP_CONFIG.timeout,
     parseAs = "json",
+    maxRetries = HTTP_CONFIG.maxRetries,
   } = options;
 
   if (!isAllowedDomain(url)) {
@@ -273,7 +274,7 @@ export async function executeHttpRequest(options, retryCount = 0) {
   } catch (error) {
     console.error(`[EXECUTOR] HTTP error: ${error.message}`);
 
-    if (retryCount < HTTP_CONFIG.maxRetries) {
+    if (retryCount < maxRetries) {
       const isRetryable =
         error.message.includes("timeout") ||
         error.message.includes("ECONNREFUSED") ||
@@ -382,6 +383,8 @@ export async function webSearch(query, options = {}) {
       url,
       method: "GET",
       parseAs: "json",
+      timeout: 30000,
+      maxRetries: 0,
     });
 
     if (!result.success) {
