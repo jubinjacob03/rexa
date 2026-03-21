@@ -112,9 +112,12 @@ const MUSIC_CONFIRMATIONS = {
 };
 
 function extractToolCall(text) {
-  // Try JSON format: {"tool_call": {"name": "...", "params": {...}}}
   const stripped = text.replace(/```(?:json)?\s*\n?/gi, "").trim();
-  const idx = stripped.indexOf('{"tool_call"');
+  try {
+    const parsed = JSON.parse(stripped);
+    if (parsed.tool_call?.name) return parsed.tool_call;
+  } catch {}
+  const idx = stripped.search(/\{\s*"tool_call"/);
   if (idx !== -1) {
     let depth = 0;
     let end = -1;
