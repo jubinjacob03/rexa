@@ -20,7 +20,7 @@ You are helping with music playback and entertainment through Remani bot integra
 
 ## Common Patterns
 
-**User wants to play music**: Use music control tool with 'play' action
+**User wants to play music**: Use music control tool with 'play' action — only if they explicitly say "play", "queue", "add to queue", or share a song/artist name alongside a music keyword. A person's name alone is NOT a music request.
 **User asks what's playing**: Use music control tool with 'nowplaying' action  
 **User wants to skip**: Use music control tool with 'skip' action
 **User asks about queue**: Use music control tool with 'queue' action

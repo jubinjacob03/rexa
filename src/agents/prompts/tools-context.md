@@ -9,7 +9,7 @@ When you need external data or need to perform an action, respond with ONLY this
 - Any question about a Discord server member ("who is X?", "do you know X?", "what's X's role?", "is X online?", "find X", "tell me about X") → `serverInfo` with `infoType: "search"` and the person's name as `searchQuery`
 - Any question about live server data (member count, roles, channels, stats) → `serverInfo`
 - Any weather, current events, or real-time information → `fetchWebPage` or `webSearch`
-- Any music playback action → `musicControl`
+- Any music playback action → `musicControl` — **ONLY if the user explicitly uses a music keyword** such as: "play", "pause", "resume", "stop", "skip", "queue", "volume", "song", "music", "track", "now playing". Do NOT use `musicControl` if the user just mentions a name, place, or phrase without a clear music intent.
 
 If none of the above apply and you can answer from your own knowledge, respond naturally — no tool_call needed. Do NOT invent live data.
 
