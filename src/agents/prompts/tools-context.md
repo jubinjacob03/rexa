@@ -51,14 +51,29 @@ params: { "action": "play"|"pause"|"resume"|"skip"|"stop"|"queue"|"volume"|"nowp
 - Only use `musicControl volume:0` if the user explicitly says to set volume to 0 or silence the music.
 
 **discordAction** — Perform a real Discord moderation/admin action directly via the API
-params: { "action": "voice-mute"|"voice-unmute"|"timeout"|"remove-timeout"|"change-bot-nickname" (required), "guildId": "server ID", "targetName": "display name or username (fuzzy match)", "durationMinutes": number (for timeout, default 5), "reason": "string", "nickname": "string (for change-bot-nickname)" }
+params: { "action": (required, see below), "guildId": "server ID", "targetName": "display name or username (fuzzy match)", "durationMinutes": number (for timeout, default 5), "deleteDays": 0-7 (for ban, messages to delete), "reason": "string", "nickname": "string (for change-nickname/change-bot-nickname)" }
 
-- `voice-mute` / `voice-unmute` → server-mutes/unmutes a member who is in a voice channel
-- `timeout` → temporarily restricts a member from sending messages/joining voice (default 5 min)
-- `remove-timeout` → removes an active timeout
-- `change-bot-nickname` → changes Shantha's own server nickname
-- Kick and ban are disabled. Use `timeout` as the muting/moderation action.
-- `targetName` is fuzzy-matched against displayName, nickname, and username
+**Moderator-level actions** (requires mod role — auto-enforced in tool):
+
+- `voice-mute` / `voice-unmute` → server-mutes or unmutes a member in a voice channel
+- `voice-deafen` / `voice-undeafen` → server-deafens or undeafens a member in a voice channel
+- `timeout` → temporarily restricts a member (default 5 min, max 28 days)
+- `remove-timeout` → removes an active timeout from a member
+- `change-nickname` → change any member's server nickname (omit nickname param to reset)
+- `change-bot-nickname` → change Shantha's own server nickname (omit nickname param to reset)
+
+**Owner-only actions** (requires owner role — auto-enforced in tool):
+
+- `kick` → kicks a member from the server
+- `ban` → permanently bans a member (optional deleteDays 0-7 for message purge)
+
+**IMPORTANT moderation flow:**
+
+1. For any mod/owner action: FIRST use `serverInfo` with `infoType: "member"` and the **invoker's** userId to verify their roles
+2. Check `roleIds` in the response against: owner=`1473075468088377352`, mod=`1473075468088377349`/`1473075468088377350`/`1473075468088377352`
+3. If unauthorized → deny with a polite explanation (do NOT call discordAction)
+4. If authorized → call `discordAction` (the tool also enforces roles internally as defense-in-depth)
+5. `targetName` is fuzzy-matched against displayName, nickname, and username
 
 **executeCommand** — Execute one of Shantha's slash commands (private VC management only)
 params: { "command": "add"|"remove"|"join"|"leave"|"delete"|"refresh"|"status"|"setup-verification"|"private" (required), "parameters": { key: value } (optional) }

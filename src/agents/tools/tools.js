@@ -501,26 +501,68 @@ export const createPrivateVCTool = tool({
   },
 });
 
+// ── Moderation permission role IDs (from moderation-context.md) ──────────────
+const OWNER_ROLE_ID = "1473075468088377352";
+const MOD_ROLE_IDS = new Set([
+  "1473075468088377349",
+  "1473075468088377350",
+  "1473075468088377352",
+]);
+
+/**
+ * Check if a guild member (by userId) has the required permission level.
+ * level: "owner" | "mod"
+ */
+async function checkModPermission(guild, userId, level) {
+  if (!userId) return false;
+  const invoker = await guild.members
+    .fetch({ user: userId, force: false })
+    .catch(() => null);
+  if (!invoker) return false;
+  const roleIds = invoker.roles.cache.map((r) => r.id);
+  if (level === "owner") return roleIds.includes(OWNER_ROLE_ID);
+  if (level === "mod") return roleIds.some((id) => MOD_ROLE_IDS.has(id));
+  return true;
+}
+
 /**
  * Discord Action Tool — real Discord API moderation/admin actions
- * Handles: voice-mute, voice-unmute, timeout, remove-timeout, change-bot-nickname
+ *
+ * Mod-level (voice-mute/unmute, voice-deafen/undeafen, timeout, remove-timeout,
+ *            change-nickname, change-bot-nickname):
+ *   Requires one of roles: 1473075468088377349 | 1473075468088377350 | 1473075468088377352
+ *
+ * Owner-level (kick, ban):
+ *   Requires role: 1473075468088377352
  */
 export const discordActionTool = tool({
   description: `Perform a real Discord moderation or administration action directly via the Discord API.
-Use for: voice-muting/unmuting a member in a voice channel, timing out (temporarily restricting) a member,
-removing a timeout, or changing the bot's own server nickname.
-Do NOT use for kick or ban — those are disabled.`,
+Available actions:
+  Mod-level: voice-mute, voice-unmute, voice-deafen, voice-undeafen, timeout, remove-timeout, change-nickname, change-bot-nickname
+  Owner-level: kick, ban
+The tool enforces role-based permissions internally. Always pass userId (invoker) so permissions can be verified.`,
   parameters: z.object({
     action: z
       .enum([
         "voice-mute",
         "voice-unmute",
+        "voice-deafen",
+        "voice-undeafen",
         "timeout",
         "remove-timeout",
+        "kick",
+        "ban",
+        "change-nickname",
         "change-bot-nickname",
       ])
       .describe("The Discord action to perform"),
     guildId: z.string().describe("The Discord guild/server ID"),
+    userId: z
+      .string()
+      .optional()
+      .describe(
+        "The invoking user's Discord ID (auto-provided — used for permission check)",
+      ),
     targetName: z
       .string()
       .optional()
@@ -531,19 +573,29 @@ Do NOT use for kick or ban — those are disabled.`,
       .number()
       .optional()
       .describe("Timeout duration in minutes (1–40320). Defaults to 5."),
-    reason: z.string().optional().describe("Reason for the action"),
+    deleteDays: z
+      .number()
+      .min(0)
+      .max(7)
+      .optional()
+      .describe(
+        "For ban: number of days of messages to delete (0–7, default 0).",
+      ),
+    reason: z.string().optional().describe("Audit-log reason for the action"),
     nickname: z
       .string()
       .optional()
       .describe(
-        "New nickname for the bot (change-bot-nickname only). Omit to reset.",
+        "New nickname. For change-nickname: the target user's new nickname (omit to reset). For change-bot-nickname: the bot's new nickname.",
       ),
   }),
   execute: async ({
     action,
     guildId,
+    userId,
     targetName,
     durationMinutes = 5,
+    deleteDays = 0,
     reason = "Requested via Shantha",
     nickname,
   }) => {
@@ -551,7 +603,40 @@ Do NOT use for kick or ban — those are disabled.`,
 
     try {
       const guild = await client.guilds.fetch({ guild: guildId, force: true });
+      await guild.members.fetch({ force: true });
 
+      // ── Permission level required per action ─────────────────────────────
+      const ownerActions = new Set(["kick", "ban"]);
+      const modActions = new Set([
+        "voice-mute",
+        "voice-unmute",
+        "voice-deafen",
+        "voice-undeafen",
+        "timeout",
+        "remove-timeout",
+        "change-nickname",
+        "change-bot-nickname",
+      ]);
+
+      if (ownerActions.has(action)) {
+        const allowed = await checkModPermission(guild, userId, "owner");
+        if (!allowed)
+          return {
+            success: false,
+            error:
+              "🔒 Permission denied. Only the server Owner can perform kick/ban actions.",
+          };
+      } else if (modActions.has(action)) {
+        const allowed = await checkModPermission(guild, userId, "mod");
+        if (!allowed)
+          return {
+            success: false,
+            error:
+              "🔒 Permission denied. You need a Moderator or higher role to perform this action.",
+          };
+      }
+
+      // ── change-bot-nickname (no target member needed) ─────────────────────
       if (action === "change-bot-nickname") {
         const me = await guild.members.fetchMe();
         await me.setNickname(nickname ?? null, reason);
@@ -563,8 +648,7 @@ Do NOT use for kick or ban — those are disabled.`,
         };
       }
 
-      // Resolve target member by fuzzy name match
-      await guild.members.fetch({ force: true });
+      // ── Resolve target member by fuzzy name match ─────────────────────────
       const q = (targetName || "").toLowerCase();
       const member = q
         ? guild.members.cache.find(
@@ -581,6 +665,10 @@ Do NOT use for kick or ban — those are disabled.`,
           success: false,
           error: `Member "${targetName}" not found in this server.`,
         };
+
+      // ── Prevent actions on the bot itself ────────────────────────────────
+      if (member.id === client.user.id)
+        return { success: false, error: "I can't moderate myself." };
 
       switch (action) {
         case "voice-mute":
@@ -604,7 +692,31 @@ Do NOT use for kick or ban — those are disabled.`,
           await member.voice.setMute(false, reason);
           return {
             success: true,
-            message: `${member.displayName} has been unmuted in voice.`,
+            message: `${member.displayName} has been server-unmuted.`,
+          };
+
+        case "voice-deafen":
+          if (!member.voice?.channel)
+            return {
+              success: false,
+              error: `${member.displayName} is not in a voice channel.`,
+            };
+          await member.voice.setDeaf(true, reason);
+          return {
+            success: true,
+            message: `${member.displayName} has been server-deafened.`,
+          };
+
+        case "voice-undeafen":
+          if (!member.voice?.channel)
+            return {
+              success: false,
+              error: `${member.displayName} is not in a voice channel.`,
+            };
+          await member.voice.setDeaf(false, reason);
+          return {
+            success: true,
+            message: `${member.displayName} has been server-undeafened.`,
           };
 
         case "timeout": {
@@ -621,6 +733,32 @@ Do NOT use for kick or ban — those are disabled.`,
           return {
             success: true,
             message: `${member.displayName}'s timeout has been removed.`,
+          };
+
+        case "kick":
+          await member.kick(reason);
+          return {
+            success: true,
+            message: `${member.displayName} has been kicked from the server.`,
+          };
+
+        case "ban":
+          await member.ban({
+            reason,
+            deleteMessageSeconds: deleteDays * 86400,
+          });
+          return {
+            success: true,
+            message: `${member.displayName} has been banned from the server.`,
+          };
+
+        case "change-nickname":
+          await member.setNickname(nickname ?? null, reason);
+          return {
+            success: true,
+            message: nickname
+              ? `${member.displayName}'s nickname has been changed to "${nickname}".`
+              : `${member.displayName}'s nickname has been reset.`,
           };
 
         default:
