@@ -17,6 +17,20 @@ export function initializeTools(discordClient) {
   console.log("[TOOLS] Initialized with Discord client");
 }
 
+// Member cache: avoid force-fetching on every call (Discord rate limits)
+const memberCacheMap = new Map();
+const MEMBER_CACHE_TTL = 60_000;
+
+async function fetchMembersWithCache(guild) {
+  const cached = memberCacheMap.get(guild.id);
+  if (cached && Date.now() - cached.timestamp < MEMBER_CACHE_TTL) {
+    return cached.members;
+  }
+  const members = await guild.members.fetch({ force: true });
+  memberCacheMap.set(guild.id, { members, timestamp: Date.now() });
+  return members;
+}
+
 /**
  * RAG Tool - Knowledge base search using AI SDK embeddings
  */
@@ -142,7 +156,7 @@ export const serverInfoTool = tool({
       const guild = await client.guilds.fetch({ guild: guildId, force: true });
 
       if (infoType === "stats") {
-        const fetched = await guild.members.fetch({ force: true });
+        const fetched = await fetchMembersWithCache(guild);
         return {
           success: true,
           serverName: guild.name,
@@ -184,7 +198,7 @@ export const serverInfoTool = tool({
       }
 
       if (infoType === "search" && searchQuery) {
-        const fetched = await guild.members.fetch({ force: true });
+        const fetched = await fetchMembersWithCache(guild);
         const q = searchQuery.toLowerCase();
         const results = [
           ...fetched
@@ -213,7 +227,7 @@ export const serverInfoTool = tool({
       }
 
       if (infoType === "members") {
-        const fetched = await guild.members.fetch({ force: true });
+        const fetched = await fetchMembersWithCache(guild);
         const members = [...fetched.filter((m) => !m.user.bot).values()].map(
           (m) => ({
             id: m.id,

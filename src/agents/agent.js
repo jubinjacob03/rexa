@@ -178,7 +178,7 @@ export async function processMessage(userId, guildId, message) {
   console.log(`[AGENT] Processing message from user ${userId}`);
 
   try {
-    const history = contextManager.getFormattedHistory(userId, guildId, 10);
+    const history = contextManager.getFormattedHistory(userId, guildId, 3);
     const pass1History = history.filter((m) => m.role === "user");
     const [systemPrompt, systemPromptNoTools] = await Promise.all([
       getSystemPrompt(),

@@ -7,6 +7,18 @@ const NO_MENTION_CHANNEL = "1482781492106236036";
 
 const processedMessages = new Set();
 
+// Per-user queue: prevents concurrent processing for the same user
+const userQueues = new Map();
+function enqueueForUser(userId, fn) {
+  const prev = userQueues.get(userId) || Promise.resolve();
+  const next = prev.then(fn, fn);
+  userQueues.set(userId, next);
+  next.finally(() => {
+    if (userQueues.get(userId) === next) userQueues.delete(userId);
+  });
+  return next;
+}
+
 const GUARANTEED_EMOJIS = ["🔥", "❤️", "💪", "👏", "⚡", "✨"];
 const RANDOM_EMOJIS = [
   "😍",
@@ -127,66 +139,87 @@ export default {
         processedMessages.delete(firstId);
       }
 
-      try {
-        await message.channel.sendTyping();
+      enqueueForUser(message.author.id, async () => {
+        try {
+          await message.channel.sendTyping();
 
-        const question = message.content
-          .replace(new RegExp(`<@!?${message.client.user.id}>`, "g"), "")
-          .trim();
+          const question = message.content
+            .replace(new RegExp(`<@!?${message.client.user.id}>`, "g"), "")
+            .trim();
 
-        if (!question) {
-          await message.reply("Yes? How can I help you? 🤔");
-          return;
-        }
-
-        console.log(`[AI] Question from ${message.author.tag}: ${question}`);
-
-        const { processMessage } = await import("../agents/agent.js");
-        const result = await processMessage(
-          message.author.id,
-          message.guild?.id || "dm",
-          question,
-        );
-
-        if (result.success) {
-          if (!result.response || result.response.trim() === "") {
-            console.warn(`[AI] Empty response for question: "${question}"`);
-            await message.reply(
-              "Sorry, I understood your question but couldn't generate a proper response. Can you try asking in a different way?",
-            );
+          if (!question) {
+            await message.reply("Yes? How can I help you? 🤔");
             return;
           }
 
-          const response = result.response;
+          console.log(`[AI] Question from ${message.author.tag}: ${question}`);
 
-          if (result.embeds?.length > 0) {
-            await message.reply({
-              content: response || undefined,
-              embeds: result.embeds,
-            });
-          } else if (response.length <= 2000) {
-            await message.reply(response);
-          } else {
-            const chunks = response.match(/[\s\S]{1,1900}/g) || [response];
-            await message.reply(chunks[0]);
-            for (let i = 1; i < chunks.length; i++) {
-              await message.channel.send(chunks[i]);
-            }
-          }
-
-          console.log(`[AI] Responded to ${message.author.tag}`);
-        } else {
-          await message.reply(
-            "Sorry, I encountered an error processing your request. Please try again.",
+          const { processMessage } = await import("../agents/agent.js");
+          const result = await processMessage(
+            message.author.id,
+            message.guild?.id || "dm",
+            question,
           );
-          console.error("[AI] Error:", result.error);
+
+          const safeReply = async (payload) => {
+            try {
+              return await message.reply(payload);
+            } catch (err) {
+              if (err.code === 50035) {
+                const content =
+                  typeof payload === "string" ? payload : payload.content;
+                return await message.channel.send(
+                  typeof payload === "string" ? payload : payload,
+                );
+              }
+              throw err;
+            }
+          };
+
+          if (result.success) {
+            if (!result.response || result.response.trim() === "") {
+              console.warn(`[AI] Empty response for question: "${question}"`);
+              await safeReply(
+                "Sorry, I understood your question but couldn't generate a proper response. Can you try asking in a different way?",
+              );
+              return;
+            }
+
+            const response = result.response;
+
+            if (result.embeds?.length > 0) {
+              await safeReply({
+                content: response || undefined,
+                embeds: result.embeds,
+              });
+            } else if (response.length <= 2000) {
+              await safeReply(response);
+            } else {
+              const chunks = response.match(/[\s\S]{1,1900}/g) || [response];
+              await safeReply(chunks[0]);
+              for (let i = 1; i < chunks.length; i++) {
+                await message.channel.send(chunks[i]);
+              }
+            }
+
+            console.log(`[AI] Responded to ${message.author.tag}`);
+          } else {
+            await safeReply(
+              "Sorry, I encountered an error processing your request. Please try again.",
+            );
+            console.error("[AI] Error:", result.error);
+          }
+        } catch (error) {
+          console.error("[AI] Failed to process message:", error);
+          await message
+            .reply("Sorry, something went wrong. Please try again later.")
+            .catch(() =>
+              message.channel
+                .send("Sorry, something went wrong. Please try again later.")
+                .catch(() => {}),
+            );
         }
-      } catch (error) {
-        console.error("[AI] Failed to process message:", error);
-        await message
-          .reply("Sorry, something went wrong. Please try again later.")
-          .catch(() => {});
-      }
+      });
       return;
     }
 
