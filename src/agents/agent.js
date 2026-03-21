@@ -125,7 +125,7 @@ export async function initializeAgent(client) {
 
 const MUSIC_INFO_ACTIONS = new Set(["nowplaying", "queue"]);
 
-const ACTION_ONLY_TOOLS = new Set(["executeCommand", "executeWorkflow"]);
+const ACTION_ONLY_TOOLS = new Set(["executeCommand", "executeWorkflow", "createPrivateVC"]);
 
 const MUSIC_CONFIRMATIONS = {
   play: "▶️ On it!",

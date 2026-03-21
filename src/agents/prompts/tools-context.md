@@ -44,8 +44,14 @@ params: { "action": "play"|"pause"|"resume"|"skip"|"stop"|"queue"|"volume"|"nowp
 **executeCommand** — Execute a Discord bot command (e.g. add/remove roles, manage channels)
 params: { "command": "string (required)", "parameters": { key: value } (optional) }
 
-**executeWorkflow** — Run a predefined multi-step workflow
-params: { "workflowName": "welcome-new-member"|"setup-private-vc"|"play-music"|"server-stats"|"fetch-web-data" (required), "context": {} (optional) }
+**createPrivateVC** — Create a real private voice channel for a user and optional other members
+params: { "guildId": "server ID", "invokerUserId": "user ID of requester", "memberNames": ["name1", "name2"] (optional list of display names to invite) }
+- Use this INSTEAD of executeWorkflow for any private VC creation request
+- memberNames are fuzzy-matched against display names, nicknames, and usernames
+- If user says "create a private vc for me and [name]" → invokerUserId = userId from context, memberNames = ["[name]"]
+
+**executeWorkflow** — Run a predefined multi-step workflow (NOT for private VC — use createPrivateVC instead)
+params: { "workflowName": "welcome-new-member"|"play-music"|"server-stats"|"fetch-web-data" (required), "context": {} (optional) }
 
 **createEmbed** — Create a formatted Discord embed card for structured/visual info
 params: { "title": "string", "description": "string", "color": "#hexcolor", "fields": [{"name":"string","value":"string","inline":false}] }

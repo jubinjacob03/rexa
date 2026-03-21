@@ -8,6 +8,11 @@ import { z } from "zod";
 import { EmbedBuilder } from "discord.js";
 import knowledgeBase from "./knowledge-base.js";
 import config from "../config.js";
+import {
+  createPrivateVC,
+  canCreate,
+  getVCByMember,
+} from "../../utils/privateVCManager.js";
 
 // Discord client reference
 let client = null;
@@ -414,10 +419,71 @@ export const embedGeneratorTool = tool({
 });
 
 // Export all tools as object
+export const createPrivateVCTool = tool({
+  description: `Create a real private voice channel for specified members. Resolves member names to Discord members and calls the actual private VC system. Use this whenever a user asks to create a private VC for themselves and/or others.`,
+  parameters: z.object({
+    guildId: z.string().describe("The Discord server/guild ID"),
+    invokerUserId: z.string().describe("The user ID of the person requesting the private VC"),
+    memberNames: z.array(z.string()).optional().describe("Display names or usernames of additional members to invite (besides the invoker)"),
+  }),
+  execute: async ({ guildId, invokerUserId, memberNames = [] }) => {
+    if (!client) return { success: false, error: "Client not initialized" };
+
+    try {
+      const guild = await client.guilds.fetch({ guild: guildId, force: true });
+      await guild.members.fetch({ force: true });
+
+      const invoker = await guild.members.fetch({ user: invokerUserId, force: true }).catch(() => null);
+      if (!invoker) return { success: false, error: "Invoker not found in server" };
+
+      if (getVCByMember(invokerUserId)) {
+        return { success: false, error: "You already have an active private VC. Leave it first." };
+      }
+      if (!canCreate()) {
+        return { success: false, error: "Maximum simultaneous private VCs reached. Wait for one to close." };
+      }
+
+      // Resolve additional member names → GuildMember objects
+      const memberMap = new Map([[invokerUserId, invoker]]);
+      for (const name of memberNames) {
+        const q = name.toLowerCase();
+        const found = guild.members.cache.find(
+          (m) =>
+            !m.user.bot &&
+            (m.user.username.toLowerCase().includes(q) ||
+              m.displayName.toLowerCase().includes(q) ||
+              (m.nickname && m.nickname.toLowerCase().includes(q))),
+        );
+        if (found) memberMap.set(found.id, found);
+      }
+
+      const members = [...memberMap.values()];
+      const channel = await createPrivateVC(guild, members);
+      if (!channel) {
+        return { success: false, error: "Failed to create private VC — please try again." };
+      }
+
+      const invited = members.filter((m) => m.id !== invokerUserId).map((m) => m.displayName);
+      return {
+        success: true,
+        channelId: channel.id,
+        channelName: channel.name,
+        members: members.map((m) => m.displayName),
+        message: invited.length
+          ? `Private VC "${channel.name}" created for you and ${invited.join(", ")}.`
+          : `Private VC "${channel.name}" created for you.`,
+      };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+});
+
 export default {
   ragTool,
   commandExecutorTool,
   serverInfoTool,
   musicControlTool,
   embedGeneratorTool,
+  createPrivateVCTool,
 };

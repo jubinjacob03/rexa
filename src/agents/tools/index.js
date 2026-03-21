@@ -39,6 +39,7 @@ export const tools = {
   serverInfo: discordTools.serverInfoTool,
   executeCommand: discordTools.commandExecutorTool,
   musicControl: discordTools.musicControlTool,
+  createPrivateVC: discordTools.createPrivateVCTool,
 
   // Web tools
   fetchWebPage: executorTools.webFetchTool,
