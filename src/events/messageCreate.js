@@ -139,9 +139,12 @@ export default {
         processedMessages.delete(firstId);
       }
 
+      // Fire typing immediately — outside the queue so user sees it right away,
+      // even if a previous message from this user is still being processed.
+      message.channel.sendTyping().catch(() => {});
+
       enqueueForUser(message.author.id, async () => {
         try {
-          await message.channel.sendTyping();
 
           const question = message.content
             .replace(new RegExp(`<@!?${message.client.user.id}>`, "g"), "")

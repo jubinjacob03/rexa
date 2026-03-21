@@ -82,6 +82,22 @@ async function getSystemPrompt() {
   return _cachedFullPrompt;
 }
 
+// Pass 1: just tools-context + 2-line instruction
+async function getPass1BasePrompt() {
+  if (_cachedPass1Base) return _cachedPass1Base;
+  const toolsCtx = await loadPrompt("tools-context");
+  _cachedPass1Base = `You are Shantha, a Discord bot. Your ONLY task right now: read the user's message and output the correct JSON tool_call, or answer directly if no tool is needed. When calling a tool, output ONLY the JSON — no extra text.\n\n${toolsCtx}`;
+  return _cachedPass1Base;
+}
+
+// Pass 2: master-agent personality + short synthesis rule
+async function getPass2BasePrompt() {
+  if (_cachedPass2Base) return _cachedPass2Base;
+  const master = await loadPrompt("master-agent");
+  _cachedPass2Base = `${master}\n\nKeep your response short (1–3 sentences), casual, and conversational. Do NOT output raw JSON, IDs, or object dumps. Do NOT call any tools.`;
+  return _cachedPass2Base;
+}
+
 let agentInitialized = false;
 
 export async function initializeAgent(client) {
@@ -92,8 +108,12 @@ export async function initializeAgent(client) {
 
   await initializeTools(client);
 
-  // Build assembled prompts once — warms all file caches + assembled string caches + model
-  await getSystemPrompt();
+  // Warm all prompt caches concurrently at startup
+  await Promise.all([
+    getSystemPrompt(),
+    getPass1BasePrompt(),
+    getPass2BasePrompt(),
+  ]);
   _model = getLanguageModel();
 
   agentInitialized = true;
@@ -184,21 +204,15 @@ export async function processMessage(userId, guildId, message) {
   console.log(`[AGENT] Processing message from user ${userId}`);
 
   try {
-    const history = contextManager.getFormattedHistory(userId, guildId, 6);
-    const pass1History = history.filter((m) => m.role === "user");
-    const systemPrompt = await getSystemPrompt();
-    const systemPromptNoTools = await getSystemPromptWithoutTools();
-    const model = _model;
-
-    const currentContext = `\n\n## Current Context\n\n- **User ID**: \`${userId}\`\n- **Guild ID**: \`${guildId}\`\n- **Note**: When calling musicControl or any tool that requires userId/guildId, use the values above.\n- **CRITICAL**: Conversation history may contain old/stale responses. For ANY question about server members, roles, or live server data — you MUST call the appropriate tool right now to get fresh data. Never rely on previous responses in the conversation history for this.`;
-    const contextualPrompt = `${systemPrompt}${currentContext}`;
-    const contextualPromptNoTools = `${systemPromptNoTools}${currentContext}`;
-
-    // Pass 1: model decides whether to call a tool or answer directly
+    const model = _model ?? getLanguageModel();
+    const pass1Base = await getPass1BasePrompt();
+    const pass1System = `${pass1Base}\n\n- userId: \`${userId}\`\n- guildId: \`${guildId}\`\n- Use these exact IDs when a tool requires them.`;
+    const pass2Base = await getPass2BasePrompt();
     const pass1 = await generateText({
       model,
-      system: contextualPrompt,
-      messages: [...pass1History, { role: "user", content: message }],
+      system: pass1System,
+      messages: [{ role: "user", content: message }],
+      maxTokens: 300,
       maxSteps: 1,
     });
 
@@ -343,8 +357,9 @@ export async function processMessage(userId, guildId, message) {
 
     const pass2 = await generateText({
       model,
-      system: `${contextualPromptNoTools}\n\n---\nYou just retrieved the following data to answer the user's question. Think carefully about what the user actually asked, then give a concise, natural, conversational answer using only the relevant parts of this data. Do NOT dump raw lists or JSON — synthesize the information into a helpful response as if you already know it. Do NOT call any tools or output any tool_call XML.\n\n${toolContext}`,
+      system: `${pass2Base}\n\n${toolContext}`,
       messages: [{ role: "user", content: message }],
+      maxTokens: 400,
       maxSteps: 1,
     });
 
