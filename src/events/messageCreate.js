@@ -154,7 +154,6 @@ export default {
         setTimeout(keepTyping, 9000);
 
         try {
-
           const question = message.content
             .replace(new RegExp(`<@!?${message.client.user.id}>`, "g"), "")
             .trim();
@@ -230,7 +229,7 @@ export default {
                 .catch(() => {}),
             );
         } finally {
-          typingDone = true;  // Stop the keep-typing loop
+          typingDone = true; // Stop the keep-typing loop
         }
       });
       return;
