@@ -53,10 +53,6 @@ export async function createStatusEmbed(guild, client) {
     })
     .setTimestamp();
 
-  if (guild.banner) {
-    embed.setImage(guild.bannerURL({ size: 1024 }));
-  }
-
   return embed;
 }
 
