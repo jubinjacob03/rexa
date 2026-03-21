@@ -6,7 +6,7 @@ When you need external data or need to perform an action, respond with ONLY this
 
 **ALWAYS use a tool for these — never answer from memory or conversation history:**
 
-- Any question about a Discord server member ("who is X?", "what's X's role?", "is X online?", "find X") → `serverInfo`
+- Any question about a Discord server member ("who is X?", "do you know X?", "what's X's role?", "is X online?", "find X", "tell me about X") → `serverInfo` with `infoType: "search"` and the person's name as `searchQuery`
 - Any question about live server data (member count, roles, channels, stats) → `serverInfo`
 - Any weather, current events, or real-time information → `fetchWebPage` or `webSearch`
 - Any music playback action → `musicControl`
@@ -24,8 +24,10 @@ params: { "infoType": "stats"|"member"|"channel"|"search"|"members" (required), 
 - infoType="stats" → server stats (member count, online count, channels, roles)
 - infoType="member" → single member details (requires targetId)
 - infoType="channel" → channel details (requires targetId)
-- infoType="search" → find members by name/displayName (requires searchQuery)
-- infoType="members" → list ALL members with id, username, displayName, nickname, status, and roles (id+name each)
+- infoType="search" → find members by name/displayName (requires searchQuery) — **USE THIS whenever a specific person's name is mentioned**
+- infoType="members" → list ALL members — **USE THIS ONLY when user explicitly wants a full member list** (e.g. "list everyone", "who are all the members")
+
+**CRITICAL:** If user says "do you know X?", "who is X?", "tell me about X", "find X" — ALWAYS use `infoType: "search"` with `searchQuery: "X"`. NEVER use `infoType: "members"` for specific-person queries.
 
 **webSearch** — Search the web for general or current information
 params: { "query": "string (required)", "maxResults": number (optional) }

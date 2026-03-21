@@ -220,7 +220,32 @@ export async function processMessage(userId, guildId, message) {
 
     const enrichedParams = { ...toolParams, userId, guildId };
 
-    const toolResult = await executeToolByName(toolName, enrichedParams);
+    let toolResult = await executeToolByName(toolName, enrichedParams);
+    if (toolName === "serverInfo" && toolParams.infoType === "members") {
+      const personMatch = message.match(
+        /(?:who\s+is|do\s+you\s+know|find|tell\s+me\s+about|what(?:'s|\s+is)(?:\s+up\s+with)?)\s+([\w.\-]+)/i,
+      );
+      if (personMatch) {
+        const searchTerm = personMatch[1].trim();
+        console.log(
+          `[AGENT] Redirecting infoType=members → search for: "${searchTerm}"`,
+        );
+        const searchResult = await executeToolByName("serverInfo", {
+          ...enrichedParams,
+          infoType: "search",
+          searchQuery: searchTerm,
+        });
+        if (searchResult?.success && searchResult.results?.length > 0) {
+          toolResult = searchResult;
+          enrichedParams.infoType = "search";
+          enrichedParams.searchQuery = searchTerm;
+          console.log(
+            `[AGENT] Redirected search result: ${JSON.stringify(searchResult).substring(0, 100)}`,
+          );
+        }
+      }
+    }
+
     console.log(
       `[AGENT] Tool result (${toolName}):`,
       JSON.stringify(toolResult).substring(0, 150),
