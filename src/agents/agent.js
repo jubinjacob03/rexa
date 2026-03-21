@@ -226,11 +226,50 @@ export async function processMessage(userId, guildId, message) {
       JSON.stringify(toolResult).substring(0, 150),
     );
 
-    if (toolName === "createEmbed") {
-      const embeds = toolResult?.embed ? [toolResult.embed] : [];
+    let finalToolName = toolName;
+    let finalToolResult = toolResult;
+    if (
+      toolName === "serverInfo" &&
+      enrichedParams.infoType === "search" &&
+      toolResult?.success &&
+      (toolResult.count === 0 || toolResult.results?.length === 0)
+    ) {
+      console.log("[AGENT] serverInfo returned no results — trying ragQuery");
+      const ragResult = await executeToolByName("ragQuery", {
+        query: enrichedParams.searchQuery,
+        userId,
+        guildId,
+      });
+      const ragHasContent =
+        ragResult?.success &&
+        ragResult.answer &&
+        !ragResult.answer.toLowerCase().includes("no relevant") &&
+        !ragResult.answer.toLowerCase().includes("couldn't find");
+
+      if (ragHasContent) {
+        finalToolName = "ragQuery";
+        finalToolResult = ragResult;
+        console.log("[AGENT] Identity fallback: using ragQuery result");
+      } else {
+        console.log("[AGENT] ragQuery empty — trying webSearch");
+        const webResult = await executeToolByName("webSearch", {
+          query: `${enrichedParams.searchQuery} site:discord.com OR gamer OR streamer`,
+          userId,
+          guildId,
+        });
+        if (webResult?.success) {
+          finalToolName = "webSearch";
+          finalToolResult = webResult;
+          console.log("[AGENT] Identity fallback: using webSearch result");
+        }
+      }
+    }
+
+    if (finalToolName === "createEmbed") {
+      const embeds = finalToolResult?.embed ? [finalToolResult.embed] : [];
       const errMsg =
-        toolResult?.success === false
-          ? toolResult.error || "Couldn't create the embed."
+        finalToolResult?.success === false
+          ? finalToolResult.error || "Couldn't create the embed."
           : "";
       await contextManager.addMessage(userId, guildId, "user", message);
       await contextManager.addMessage(
@@ -242,10 +281,10 @@ export async function processMessage(userId, guildId, message) {
       return { success: true, response: errMsg, embeds };
     }
 
-    if (ACTION_ONLY_TOOLS.has(toolName)) {
+    if (ACTION_ONLY_TOOLS.has(finalToolName)) {
       const finalResp =
-        toolResult?.success === false
-          ? toolResult.error || "Sorry, that didn't work."
+        finalToolResult?.success === false
+          ? finalToolResult.error || "Sorry, that didn't work."
           : "✅ Done!";
       await contextManager.addMessage(userId, guildId, "user", message);
       await contextManager.addMessage(userId, guildId, "assistant", finalResp);
@@ -253,12 +292,12 @@ export async function processMessage(userId, guildId, message) {
     }
 
     if (
-      toolName === "musicControl" &&
+      finalToolName === "musicControl" &&
       !MUSIC_INFO_ACTIONS.has(toolParams.action)
     ) {
       const finalResp =
-        toolResult?.success === false
-          ? toolResult.error || "Sorry, that didn't work."
+        finalToolResult?.success === false
+          ? finalToolResult.error || "Sorry, that didn't work."
           : MUSIC_CONFIRMATIONS[toolParams.action] || "✅ Done!";
       await contextManager.addMessage(userId, guildId, "user", message);
       await contextManager.addMessage(userId, guildId, "assistant", finalResp);
@@ -266,7 +305,7 @@ export async function processMessage(userId, guildId, message) {
     }
 
     // Pass 2: feed tool result back for natural language synthesis
-    const toolContext = `[${toolName} result]:\n${JSON.stringify(toolResult, null, 2)}`;
+    const toolContext = `[${finalToolName} result]:\n${JSON.stringify(finalToolResult, null, 2)}`;
 
     const pass2 = await generateText({
       model,
