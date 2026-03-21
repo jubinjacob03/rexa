@@ -125,7 +125,11 @@ export async function initializeAgent(client) {
 
 const MUSIC_INFO_ACTIONS = new Set(["nowplaying", "queue"]);
 
-const ACTION_ONLY_TOOLS = new Set(["executeCommand", "executeWorkflow", "createPrivateVC"]);
+const ACTION_ONLY_TOOLS = new Set([
+  "executeCommand",
+  "executeWorkflow",
+  "createPrivateVC",
+]);
 
 const MUSIC_CONFIRMATIONS = {
   play: "▶️ On it!",
@@ -215,7 +219,11 @@ export async function processMessage(userId, guildId, message) {
   try {
     const model = _model ?? getLanguageModel();
     const pass1Base = await getPass1BasePrompt();
-    const nowUtc = new Date().toLocaleString("en-US", { timeZone: "UTC", dateStyle: "full", timeStyle: "short" });
+    const nowUtc = new Date().toLocaleString("en-US", {
+      timeZone: "UTC",
+      dateStyle: "full",
+      timeStyle: "short",
+    });
     const pass1System = `${pass1Base}\n\n- userId: \`${userId}\`\n- guildId: \`${guildId}\`\n- Use these exact IDs when a tool requires them.\n- Current date/time: ${nowUtc} UTC (use this year for any search queries, not your training cutoff year).`;
     const pass2Base = await getPass2BasePrompt();
     const pass1 = await generateText({
@@ -390,7 +398,7 @@ export async function processMessage(userId, guildId, message) {
 
     let finalResponse = (pass2.text || "").trim();
     // Strip any tool_call (XML or JSON) that the model may have emitted in Pass 2
-    const xmlIdx = finalResponse.search(/<tool_call(?:s_section)?[_\s>]/i);
+    const xmlIdx = finalResponse.search(/<\|?tool_call(?:s_section)?[_|\s>]/i);
     const funcIdx = finalResponse.indexOf("<function=");
     const jsonIdx = finalResponse.search(/\{\s*"(?:tool_call|tool|name)"\s*:/);
     const allCuts = [xmlIdx, funcIdx, jsonIdx].filter((i) => i !== -1);

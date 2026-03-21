@@ -39,13 +39,20 @@ params: { "url": "string (required)" }
 params: { "url": "string (required)", "method": "GET"|"POST"|"PUT"|"DELETE"|"PATCH", "headers": {}, "body": any, "parseAs": "json"|"text" }
 
 **musicControl** — Control Remani music bot
-params: { "action": "play"|"pause"|"resume"|"skip"|"stop"|"queue"|"volume"|"nowplaying" (required), "query": "string (for play only)", "volume": 0-100 (for volume only) }
+params: { "action": "play"|"pause"|"resume"|"skip"|"stop"|"queue"|"volume"|"nowplaying" (required), "query": "string (required for play)", "volume": 0-100 (for volume only) }
+
+**CRITICAL musicControl rules:**
+
+- `play` action REQUIRES a `query` (song name). If user says just "play" or "resume" with no song name → use `action: "resume"` instead.
+- NEVER use `musicControl` when user says "mute [person name]", "unmute [person name]" — that is a Discord moderation request, not music control. Even if the person named is Remani (the music bot), "mute remani" in a moderation context means Discord-mute, not pause/volume.
+- Only use `musicControl volume:0` if the user explicitly says to set volume to 0 or silence the music.
 
 **executeCommand** — Execute a Discord bot command (e.g. add/remove roles, manage channels)
 params: { "command": "string (required)", "parameters": { key: value } (optional) }
 
 **createPrivateVC** — Create a real private voice channel for a user and optional other members
 params: { "guildId": "server ID", "invokerUserId": "user ID of requester", "memberNames": ["name1", "name2"] (optional list of display names to invite) }
+
 - Use this INSTEAD of executeWorkflow for any private VC creation request
 - memberNames are fuzzy-matched against display names, nicknames, and usernames
 - If user says "create a private vc for me and [name]" → invokerUserId = userId from context, memberNames = ["[name]"]
