@@ -215,7 +215,8 @@ export async function processMessage(userId, guildId, message) {
   try {
     const model = _model ?? getLanguageModel();
     const pass1Base = await getPass1BasePrompt();
-    const pass1System = `${pass1Base}\n\n- userId: \`${userId}\`\n- guildId: \`${guildId}\`\n- Use these exact IDs when a tool requires them.`;
+    const nowUtc = new Date().toLocaleString("en-US", { timeZone: "UTC", dateStyle: "full", timeStyle: "short" });
+    const pass1System = `${pass1Base}\n\n- userId: \`${userId}\`\n- guildId: \`${guildId}\`\n- Use these exact IDs when a tool requires them.\n- Current date/time: ${nowUtc} UTC (use this year for any search queries, not your training cutoff year).`;
     const pass2Base = await getPass2BasePrompt();
     const pass1 = await generateText({
       model,

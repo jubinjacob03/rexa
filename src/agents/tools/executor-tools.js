@@ -375,7 +375,51 @@ export async function fetchWebPage(url) {
  */
 export async function webSearch(query, options = {}) {
   const { maxResults = 5 } = options;
+  const braveKey = process.env.BRAVE_API_KEY;
 
+  // --- Brave Search (preferred) ---
+  if (braveKey) {
+    try {
+      const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=${maxResults}&search_lang=en`;
+      const result = await executeHttpRequest({
+        url,
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "Accept-Encoding": "gzip",
+          "X-Subscription-Token": braveKey,
+        },
+        parseAs: "json",
+        timeout: 15000,
+        maxRetries: 0,
+      });
+
+      if (result.success && result.data?.web?.results?.length) {
+        const results = result.data.web.results.slice(0, maxResults);
+        return {
+          success: true,
+          query,
+          answer: results[0]?.description || null,
+          source:
+            results[0]?.profile?.name || results[0]?.meta_url?.hostname || null,
+          url: results[0]?.url || null,
+          relatedTopics: results.map((r) => ({
+            text: r.title + (r.description ? ` — ${r.description}` : ""),
+            url: r.url,
+          })),
+        };
+      }
+      console.log(
+        "[EXECUTOR] Brave Search returned no results, falling back to DuckDuckGo",
+      );
+    } catch (error) {
+      console.error(
+        `[EXECUTOR] Brave Search error: ${error.message}, falling back to DuckDuckGo`,
+      );
+    }
+  }
+
+  // --- DuckDuckGo fallback (instant answers only) ---
   try {
     const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1`;
 
