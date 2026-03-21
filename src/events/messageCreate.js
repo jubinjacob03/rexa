@@ -144,6 +144,15 @@ export default {
       message.channel.sendTyping().catch(() => {});
 
       enqueueForUser(message.author.id, async () => {
+        // Keep typing indicator alive (expires after 10s) for the duration of processing
+        let typingDone = false;
+        const keepTyping = () => {
+          if (typingDone) return;
+          message.channel.sendTyping().catch(() => {});
+          setTimeout(keepTyping, 9000);
+        };
+        setTimeout(keepTyping, 9000);
+
         try {
 
           const question = message.content
@@ -220,6 +229,8 @@ export default {
                 .send("Sorry, something went wrong. Please try again later.")
                 .catch(() => {}),
             );
+        } finally {
+          typingDone = true;  // Stop the keep-typing loop
         }
       });
       return;
