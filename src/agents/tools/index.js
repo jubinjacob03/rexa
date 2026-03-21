@@ -40,6 +40,7 @@ export const tools = {
   executeCommand: discordTools.commandExecutorTool,
   musicControl: discordTools.musicControlTool,
   createPrivateVC: discordTools.createPrivateVCTool,
+  discordAction: discordTools.discordActionTool,
 
   // Web tools
   fetchWebPage: executorTools.webFetchTool,

@@ -129,6 +129,7 @@ const ACTION_ONLY_TOOLS = new Set([
   "executeCommand",
   "executeWorkflow",
   "createPrivateVC",
+  "discordAction",
 ]);
 
 const MUSIC_CONFIRMATIONS = {
@@ -357,7 +358,7 @@ export async function processMessage(userId, guildId, message) {
       const finalResp =
         finalToolResult?.success === false
           ? finalToolResult.error || "Sorry, that didn't work."
-          : "✅ Done!";
+          : finalToolResult?.message || "✅ Done!";
       await Promise.all([
         contextManager.addMessage(userId, guildId, "user", message),
         contextManager.addMessage(userId, guildId, "assistant", finalResp),

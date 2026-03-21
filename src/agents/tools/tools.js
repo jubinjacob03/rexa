@@ -423,8 +423,15 @@ export const createPrivateVCTool = tool({
   description: `Create a real private voice channel for specified members. Resolves member names to Discord members and calls the actual private VC system. Use this whenever a user asks to create a private VC for themselves and/or others.`,
   parameters: z.object({
     guildId: z.string().describe("The Discord server/guild ID"),
-    invokerUserId: z.string().describe("The user ID of the person requesting the private VC"),
-    memberNames: z.array(z.string()).optional().describe("Display names or usernames of additional members to invite (besides the invoker)"),
+    invokerUserId: z
+      .string()
+      .describe("The user ID of the person requesting the private VC"),
+    memberNames: z
+      .array(z.string())
+      .optional()
+      .describe(
+        "Display names or usernames of additional members to invite (besides the invoker)",
+      ),
   }),
   execute: async ({ guildId, invokerUserId, memberNames = [] }) => {
     if (!client) return { success: false, error: "Client not initialized" };
@@ -433,14 +440,24 @@ export const createPrivateVCTool = tool({
       const guild = await client.guilds.fetch({ guild: guildId, force: true });
       await guild.members.fetch({ force: true });
 
-      const invoker = await guild.members.fetch({ user: invokerUserId, force: true }).catch(() => null);
-      if (!invoker) return { success: false, error: "Invoker not found in server" };
+      const invoker = await guild.members
+        .fetch({ user: invokerUserId, force: true })
+        .catch(() => null);
+      if (!invoker)
+        return { success: false, error: "Invoker not found in server" };
 
       if (getVCByMember(invokerUserId)) {
-        return { success: false, error: "You already have an active private VC. Leave it first." };
+        return {
+          success: false,
+          error: "You already have an active private VC. Leave it first.",
+        };
       }
       if (!canCreate()) {
-        return { success: false, error: "Maximum simultaneous private VCs reached. Wait for one to close." };
+        return {
+          success: false,
+          error:
+            "Maximum simultaneous private VCs reached. Wait for one to close.",
+        };
       }
 
       // Resolve additional member names → GuildMember objects
@@ -460,10 +477,15 @@ export const createPrivateVCTool = tool({
       const members = [...memberMap.values()];
       const channel = await createPrivateVC(guild, members);
       if (!channel) {
-        return { success: false, error: "Failed to create private VC — please try again." };
+        return {
+          success: false,
+          error: "Failed to create private VC — please try again.",
+        };
       }
 
-      const invited = members.filter((m) => m.id !== invokerUserId).map((m) => m.displayName);
+      const invited = members
+        .filter((m) => m.id !== invokerUserId)
+        .map((m) => m.displayName);
       return {
         success: true,
         channelId: channel.id,
@@ -479,6 +501,137 @@ export const createPrivateVCTool = tool({
   },
 });
 
+/**
+ * Discord Action Tool — real Discord API moderation/admin actions
+ * Handles: voice-mute, voice-unmute, timeout, remove-timeout, change-bot-nickname
+ */
+export const discordActionTool = tool({
+  description: `Perform a real Discord moderation or administration action directly via the Discord API.
+Use for: voice-muting/unmuting a member in a voice channel, timing out (temporarily restricting) a member,
+removing a timeout, or changing the bot's own server nickname.
+Do NOT use for kick or ban — those are disabled.`,
+  parameters: z.object({
+    action: z
+      .enum([
+        "voice-mute",
+        "voice-unmute",
+        "timeout",
+        "remove-timeout",
+        "change-bot-nickname",
+      ])
+      .describe("The Discord action to perform"),
+    guildId: z.string().describe("The Discord guild/server ID"),
+    targetName: z
+      .string()
+      .optional()
+      .describe(
+        "Display name, nickname, or username of the target member (fuzzy match). Not needed for change-bot-nickname.",
+      ),
+    durationMinutes: z
+      .number()
+      .optional()
+      .describe("Timeout duration in minutes (1–40320). Defaults to 5."),
+    reason: z.string().optional().describe("Reason for the action"),
+    nickname: z
+      .string()
+      .optional()
+      .describe(
+        "New nickname for the bot (change-bot-nickname only). Omit to reset.",
+      ),
+  }),
+  execute: async ({
+    action,
+    guildId,
+    targetName,
+    durationMinutes = 5,
+    reason = "Requested via Shantha",
+    nickname,
+  }) => {
+    if (!client) return { success: false, error: "Client not initialized" };
+
+    try {
+      const guild = await client.guilds.fetch({ guild: guildId, force: true });
+
+      if (action === "change-bot-nickname") {
+        const me = await guild.members.fetchMe();
+        await me.setNickname(nickname ?? null, reason);
+        return {
+          success: true,
+          message: nickname
+            ? `My nickname has been changed to "${nickname}".`
+            : "My nickname has been reset.",
+        };
+      }
+
+      // Resolve target member by fuzzy name match
+      await guild.members.fetch({ force: true });
+      const q = (targetName || "").toLowerCase();
+      const member = q
+        ? guild.members.cache.find(
+            (m) =>
+              !m.user.bot &&
+              (m.displayName.toLowerCase().includes(q) ||
+                m.user.username.toLowerCase().includes(q) ||
+                (m.nickname && m.nickname.toLowerCase().includes(q))),
+          )
+        : null;
+
+      if (!member)
+        return {
+          success: false,
+          error: `Member "${targetName}" not found in this server.`,
+        };
+
+      switch (action) {
+        case "voice-mute":
+          if (!member.voice?.channel)
+            return {
+              success: false,
+              error: `${member.displayName} is not in a voice channel.`,
+            };
+          await member.voice.setMute(true, reason);
+          return {
+            success: true,
+            message: `${member.displayName} has been server-muted in voice.`,
+          };
+
+        case "voice-unmute":
+          if (!member.voice?.channel)
+            return {
+              success: false,
+              error: `${member.displayName} is not in a voice channel.`,
+            };
+          await member.voice.setMute(false, reason);
+          return {
+            success: true,
+            message: `${member.displayName} has been unmuted in voice.`,
+          };
+
+        case "timeout": {
+          const ms = Math.min(durationMinutes, 40320) * 60 * 1000;
+          await member.timeout(ms, reason);
+          return {
+            success: true,
+            message: `${member.displayName} has been timed out for ${durationMinutes} minute(s).`,
+          };
+        }
+
+        case "remove-timeout":
+          await member.timeout(null, reason);
+          return {
+            success: true,
+            message: `${member.displayName}'s timeout has been removed.`,
+          };
+
+        default:
+          return { success: false, error: `Unknown action: ${action}` };
+      }
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+});
+
 export default {
   ragTool,
   commandExecutorTool,
@@ -486,4 +639,5 @@ export default {
   musicControlTool,
   embedGeneratorTool,
   createPrivateVCTool,
+  discordActionTool,
 };
