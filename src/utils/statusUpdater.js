@@ -43,7 +43,7 @@ export async function createStatusEmbed(guild, client) {
     .setColor("#00FFFF")
     .setTitle("sᴇʀᴠᴇʀ sᴛᴀᴛs")
     .setDescription(
-      ` • **${humanCount}** ᴍᴇᴍʙᴇʀs • **${botCount}** ʙᴏᴛs • **${guild.roles.cache.size}** ʀᴏʟᴇs\n • **${guild.channels.cache.size}** ᴄʜᴀɴɴᴇʟs\n\n` +
+      ` • **${humanCount}** ᴍᴇᴍʙᴇʀs • **${botCount}** ʙᴏᴛs • **${guild.roles.cache.size}** ʀᴏʟᴇs\n • **${guild.channels.cache.size}** ᴄʜᴀɴɴᴇʟs\n\n` +
         `\`\`\`ansi\n\u001b[1;32m ${onlineMembers} ᴏɴʟɪɴᴇ \u001b[0m\`\`\` \`\`\`ansi\n\u001b[1;31m ${totalMembers - onlineMembers} ᴏғғʟɪɴᴇ \u001b[0m\`\`\`\u200b`,
     )
     .setThumbnail(guild.iconURL({ dynamic: true, size: 256 }))
@@ -136,7 +136,7 @@ export async function updateStatusMessage(client) {
 }
 
 /**
- * Starts Shantha's server monitoring
+ * Starts server monitoring
  */
 export function startStatusUpdater(client) {
   console.log(
