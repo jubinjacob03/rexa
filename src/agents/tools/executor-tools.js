@@ -375,46 +375,49 @@ export async function fetchWebPage(url) {
  */
 export async function webSearch(query, options = {}) {
   const { maxResults = 5 } = options;
-  const braveKey = process.env.BRAVE_API_KEY;
+  const tavilyKey = process.env.TAVILY_API_KEY;
 
-  // --- Brave Search (preferred) ---
-  if (braveKey) {
+  // --- Tavily Search (preferred — real web results, free 1k/month) ---
+  if (tavilyKey) {
     try {
-      const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=${maxResults}&search_lang=en`;
       const result = await executeHttpRequest({
-        url,
-        method: "GET",
+        url: "https://api.tavily.com/search",
+        method: "POST",
         headers: {
-          Accept: "application/json",
-          "Accept-Encoding": "gzip",
-          "X-Subscription-Token": braveKey,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${tavilyKey}`,
         },
+        body: JSON.stringify({
+          query,
+          max_results: maxResults,
+          search_depth: "basic",
+          include_answer: true,
+        }),
         parseAs: "json",
         timeout: 15000,
         maxRetries: 0,
       });
 
-      if (result.success && result.data?.web?.results?.length) {
-        const results = result.data.web.results.slice(0, maxResults);
+      if (result.success && result.data?.results?.length) {
+        const results = result.data.results.slice(0, maxResults);
         return {
           success: true,
           query,
-          answer: results[0]?.description || null,
-          source:
-            results[0]?.profile?.name || results[0]?.meta_url?.hostname || null,
+          answer: result.data.answer || results[0]?.content || null,
+          source: results[0]?.title || null,
           url: results[0]?.url || null,
           relatedTopics: results.map((r) => ({
-            text: r.title + (r.description ? ` — ${r.description}` : ""),
+            text: r.title + (r.content ? ` — ${r.content.slice(0, 120)}` : ""),
             url: r.url,
           })),
         };
       }
       console.log(
-        "[EXECUTOR] Brave Search returned no results, falling back to DuckDuckGo",
+        "[EXECUTOR] Tavily Search returned no results, falling back to DuckDuckGo",
       );
     } catch (error) {
       console.error(
-        `[EXECUTOR] Brave Search error: ${error.message}, falling back to DuckDuckGo`,
+        `[EXECUTOR] Tavily Search error: ${error.message}, falling back to DuckDuckGo`,
       );
     }
   }
