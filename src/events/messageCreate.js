@@ -177,21 +177,20 @@ export default {
           };
 
           if (result.success) {
-            if (!result.response || result.response.trim() === "") {
+            const response = result.response || "";
+            const hasEmbeds = result.embeds?.length > 0;
+
+            if (hasEmbeds) {
+              await safeReply({
+                content: response || undefined,
+                embeds: result.embeds,
+              });
+            } else if (!response || response.trim() === "") {
               console.warn(`[AI] Empty response for question: "${question}"`);
               await safeReply(
                 "Sorry, I understood your question but couldn't generate a proper response. Can you try asking in a different way?",
               );
               return;
-            }
-
-            const response = result.response;
-
-            if (result.embeds?.length > 0) {
-              await safeReply({
-                content: response || undefined,
-                embeds: result.embeds,
-              });
             } else if (response.length <= 2000) {
               await safeReply(response);
             } else {
