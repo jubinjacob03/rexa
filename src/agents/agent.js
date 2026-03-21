@@ -18,6 +18,8 @@ const promptCache = new Map();
 // Assembled prompt caches — avoids re-concatenating 6+ strings on every message
 let _cachedBasePrompt = null;
 let _cachedFullPrompt = null;
+let _cachedPass1Base = null;
+let _cachedPass2Base = null;
 let _model = null;
 
 async function loadPrompt(promptName, useCache = true) {
