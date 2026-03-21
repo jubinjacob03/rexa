@@ -3,7 +3,10 @@ import config from "../../config.js";
 
 const WAR_RESULTS_CHANNEL = "1473075469028167814";
 const ANNOUNCEMENTS_CHANNEL = "1473075468805738540";
-const NO_MENTION_CHANNEL = "1482781492106236036";
+const NO_MENTION_CHANNELS = new Set([
+  "1482781492106236036",
+  "1485024851109613758",
+]);
 
 const processedMessages = new Set();
 
@@ -116,7 +119,7 @@ export default {
     const isMentioned = message.mentions.has(message.client.user.id, {
       ignoreEveryone: true,
     });
-    const isNoMentionChannel = message.channel.id === NO_MENTION_CHANNEL;
+    const isNoMentionChannel = NO_MENTION_CHANNELS.has(message.channel.id);
     const isBroadcastMention = message.mentions.everyone; // true for both @everyone and @here
 
     // Ignore @everyone / @here pings unless the bot is explicitly mentioned by ID
