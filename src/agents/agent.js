@@ -96,7 +96,7 @@ async function getPass1BasePrompt() {
 async function getPass2BasePrompt() {
   if (_cachedPass2Base) return _cachedPass2Base;
   const master = await loadPrompt("master-agent");
-  _cachedPass2Base = `${master}\n\nKeep your response short (1–3 sentences), casual, and conversational. Do NOT output raw JSON, IDs, or object dumps. Do NOT call any tools.`;
+  _cachedPass2Base = `${master}\n\nKeep your response short (1–3 sentences), casual, and conversational. Do NOT output raw JSON, IDs, or object dumps. CRITICAL: You are in synthesis mode — you MUST NOT emit any tool calls, function calls, XML tags like <tool_call> or <tool_calls_section_begin>, or JSON tool-call objects. Only write a plain conversational reply.`;
   return _cachedPass2Base;
 }
 
@@ -390,7 +390,7 @@ export async function processMessage(userId, guildId, message) {
 
     let finalResponse = (pass2.text || "").trim();
     // Strip any tool_call (XML or JSON) that the model may have emitted in Pass 2
-    const xmlIdx = finalResponse.indexOf("<tool_call>");
+    const xmlIdx = finalResponse.search(/<tool_call(?:s_section)?[_\s>]/i);
     const funcIdx = finalResponse.indexOf("<function=");
     const jsonIdx = finalResponse.search(/\{\s*"(?:tool_call|tool|name)"\s*:/);
     const allCuts = [xmlIdx, funcIdx, jsonIdx].filter((i) => i !== -1);
