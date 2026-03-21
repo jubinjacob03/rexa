@@ -15,6 +15,11 @@ const __dirname = path.dirname(__filename);
 
 const promptCache = new Map();
 
+// Assembled prompt caches — avoids re-concatenating 6+ strings on every message
+let _cachedBasePrompt = null;
+let _cachedFullPrompt = null;
+let _model = null;
+
 async function loadPrompt(promptName, useCache = true) {
   if (useCache && promptCache.has(promptName)) {
     return promptCache.get(promptName);
@@ -27,6 +32,7 @@ async function loadPrompt(promptName, useCache = true) {
 }
 
 async function getSystemPromptWithoutTools() {
+  if (_cachedBasePrompt) return _cachedBasePrompt;
   const [master, music, creative, moderation, welcome, info] =
     await Promise.all([
       loadPrompt("master-agent"),
@@ -37,7 +43,7 @@ async function getSystemPromptWithoutTools() {
       loadPrompt("info-context"),
     ]);
 
-  return `${master}
+  _cachedBasePrompt = `${master}
 
 ---
 
@@ -63,14 +69,17 @@ ${welcome}
 
 ## 📚 Information & Help
 ${info}`;
+  return _cachedBasePrompt;
 }
 
 async function getSystemPrompt() {
+  if (_cachedFullPrompt) return _cachedFullPrompt;
   const [base, toolsCtx] = await Promise.all([
     getSystemPromptWithoutTools(),
     loadPrompt("tools-context"),
   ]);
-  return `${base}\n\n---\n\n${toolsCtx}`;
+  _cachedFullPrompt = `${base}\n\n---\n\n${toolsCtx}`;
+  return _cachedFullPrompt;
 }
 
 let agentInitialized = false;
@@ -83,15 +92,9 @@ export async function initializeAgent(client) {
 
   await initializeTools(client);
 
-  await Promise.all([
-    loadPrompt("master-agent"),
-    loadPrompt("music-context"),
-    loadPrompt("moderation-context"),
-    loadPrompt("welcome-context"),
-    loadPrompt("creative-context"),
-    loadPrompt("info-context"),
-    loadPrompt("tools-context"),
-  ]);
+  // Build assembled prompts once — warms all file caches + assembled string caches + model
+  await getSystemPrompt();
+  _model = getLanguageModel();
 
   agentInitialized = true;
   console.log("[AGENT] Initialized successfully");
@@ -181,13 +184,11 @@ export async function processMessage(userId, guildId, message) {
   console.log(`[AGENT] Processing message from user ${userId}`);
 
   try {
-    const history = contextManager.getFormattedHistory(userId, guildId, 3);
+    const history = contextManager.getFormattedHistory(userId, guildId, 6);
     const pass1History = history.filter((m) => m.role === "user");
-    const [systemPrompt, systemPromptNoTools] = await Promise.all([
-      getSystemPrompt(),
-      getSystemPromptWithoutTools(),
-    ]);
-    const model = getLanguageModel();
+    const systemPrompt = await getSystemPrompt();
+    const systemPromptNoTools = await getSystemPromptWithoutTools();
+    const model = _model;
 
     const currentContext = `\n\n## Current Context\n\n- **User ID**: \`${userId}\`\n- **Guild ID**: \`${guildId}\`\n- **Note**: When calling musicControl or any tool that requires userId/guildId, use the values above.\n- **CRITICAL**: Conversation history may contain old/stale responses. For ANY question about server members, roles, or live server data — you MUST call the appropriate tool right now to get fresh data. Never rely on previous responses in the conversation history for this.`;
     const contextualPrompt = `${systemPrompt}${currentContext}`;
@@ -333,7 +334,12 @@ export async function processMessage(userId, guildId, message) {
     }
 
     // Pass 2: feed tool result back for natural language synthesis
-    const toolContext = `[${finalToolName} result]:\n${JSON.stringify(finalToolResult, null, 2)}`;
+    const toolResultStr = JSON.stringify(finalToolResult, null, 2);
+    const toolContext = `[${finalToolName} result]:\n${
+      toolResultStr.length > 3000
+        ? toolResultStr.slice(0, 3000) + "\n...(truncated)"
+        : toolResultStr
+    }`;
 
     const pass2 = await generateText({
       model,
