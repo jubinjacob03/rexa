@@ -539,7 +539,7 @@ export const discordActionTool = tool({
   description: `Perform a real Discord moderation or administration action directly via the Discord API.
 Available actions:
   Mod-level: voice-mute, voice-unmute, voice-deafen, voice-undeafen, timeout, remove-timeout, change-nickname, change-bot-nickname
-  Owner-level: kick, ban
+  Owner-level: kick, ban, add-role, remove-role
 The tool enforces role-based permissions internally. Always pass userId (invoker) so permissions can be verified.`,
   parameters: z.object({
     action: z
@@ -554,6 +554,8 @@ The tool enforces role-based permissions internally. Always pass userId (invoker
         "ban",
         "change-nickname",
         "change-bot-nickname",
+        "add-role",
+        "remove-role",
       ])
       .describe("The Discord action to perform"),
     guildId: z.string().describe("The Discord guild/server ID"),
@@ -588,6 +590,12 @@ The tool enforces role-based permissions internally. Always pass userId (invoker
       .describe(
         "New nickname. For change-nickname: the target user's new nickname (omit to reset). For change-bot-nickname: the bot's new nickname.",
       ),
+    roleName: z
+      .string()
+      .optional()
+      .describe(
+        "For add-role / remove-role: the name of the role to add or remove from the target member (fuzzy match against role names).",
+      ),
   }),
   execute: async ({
     action,
@@ -598,6 +606,7 @@ The tool enforces role-based permissions internally. Always pass userId (invoker
     deleteDays = 0,
     reason = "Requested via Shantha",
     nickname,
+    roleName,
   }) => {
     if (!client) return { success: false, error: "Client not initialized" };
 
@@ -606,7 +615,7 @@ The tool enforces role-based permissions internally. Always pass userId (invoker
       await guild.members.fetch({ force: true });
 
       // ── Permission level required per action ─────────────────────────────
-      const ownerActions = new Set(["kick", "ban"]);
+      const ownerActions = new Set(["kick", "ban", "add-role", "remove-role"]);
       const modActions = new Set([
         "voice-mute",
         "voice-unmute",
@@ -760,6 +769,54 @@ The tool enforces role-based permissions internally. Always pass userId (invoker
               ? `${member.displayName}'s nickname has been changed to "${nickname}".`
               : `${member.displayName}'s nickname has been reset.`,
           };
+
+        case "add-role": {
+          if (!roleName)
+            return { success: false, error: "roleName is required for add-role." };
+          const rq = roleName.toLowerCase();
+          const role = guild.roles.cache.find((r) =>
+            r.name.toLowerCase().includes(rq),
+          );
+          if (!role)
+            return {
+              success: false,
+              error: `Role "${roleName}" not found in this server.`,
+            };
+          if (member.roles.cache.has(role.id))
+            return {
+              success: false,
+              error: `${member.displayName} already has the "${role.name}" role.`,
+            };
+          await member.roles.add(role, reason);
+          return {
+            success: true,
+            message: `The "${role.name}" role has been added to ${member.displayName}.`,
+          };
+        }
+
+        case "remove-role": {
+          if (!roleName)
+            return { success: false, error: "roleName is required for remove-role." };
+          const rq = roleName.toLowerCase();
+          const role = guild.roles.cache.find((r) =>
+            r.name.toLowerCase().includes(rq),
+          );
+          if (!role)
+            return {
+              success: false,
+              error: `Role "${roleName}" not found in this server.`,
+            };
+          if (!member.roles.cache.has(role.id))
+            return {
+              success: false,
+              error: `${member.displayName} doesn't have the "${role.name}" role.`,
+            };
+          await member.roles.remove(role, reason);
+          return {
+            success: true,
+            message: `The "${role.name}" role has been removed from ${member.displayName}.`,
+          };
+        }
 
         default:
           return { success: false, error: `Unknown action: ${action}` };

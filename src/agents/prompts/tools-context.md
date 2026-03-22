@@ -67,6 +67,8 @@ params: { "action": (required, see below), "guildId": "server ID", "targetName":
 
 - `kick` → kicks a member from the server
 - `ban` → permanently bans a member (optional deleteDays 0-7 for message purge)
+- `add-role` → adds an existing role to a member; pass `roleName` (fuzzy match against role names)
+- `remove-role` → removes an existing role from a member; pass `roleName` (fuzzy match against role names)
 
 **🚨 CRITICAL: Call `discordAction` immediately for ANY moderation request. Do NOT pre-check permissions with serverInfo — the tool handles that internally. Do NOT refuse saying you lack ability. Do NOT say moderation requires special permissions — just call the tool and let it decide.**
 
