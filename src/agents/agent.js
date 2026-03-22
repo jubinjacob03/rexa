@@ -265,11 +265,49 @@ export async function processMessage(userId, guildId, message) {
     });
     const pass1System = `${pass1Base}\n\n- userId: \`${userId}\`\n- guildId: \`${guildId}\`\n- Use these exact IDs when a tool requires them.\n- Current date/time: ${nowUtc} UTC (use this year for any search queries, not your training cutoff year).`;
     const pass2Base = await getPass2BasePrompt();
-    const historyMessages = contextManager.getFormattedHistory(
+
+    // Smart context retrieval from Supabase-backed conversation history
+    const recentMessages = contextManager.getFormattedHistory(
       userId,
       guildId,
-      10,
+      2,
     );
+    const isFollowUp =
+      message.length < 60 ||
+      /\b(he|she|they|him|her|them|that|this|it|those|these|who|same|their|his|her|my|your|our|we|i)\b/i.test(
+        message,
+      ) ||
+      /\b(now|again|still|so|also|too|else|another|more|why|how|what about|and|but)\b/i.test(
+        message,
+      );
+
+    let historyMessages = recentMessages;
+    if (isFollowUp && contextManager.getHistory(userId, guildId).length > 10) {
+      try {
+        const searchResult = await contextManager.searchHistory(
+          userId,
+          guildId,
+          message,
+          10,
+        );
+        if (searchResult?.success && searchResult.results?.length > 0) {
+          const recentContents = new Set(recentMessages.map((m) => m.content));
+          const semanticMessages = searchResult.results
+            .map((r) => ({ role: r.message.role, content: r.message.content }))
+            .filter((m) => !recentContents.has(m.content));
+          historyMessages = [...semanticMessages, ...recentMessages];
+          console.log(
+            `[AGENT] Smart context: ${semanticMessages.length} semantic + ${recentMessages.length} recent messages`,
+          );
+        }
+      } catch (ctxErr) {
+        console.warn(
+          "[AGENT] Smart context retrieval failed, using recent only:",
+          ctxErr.message,
+        );
+      }
+    }
+
     const pass1Messages = [
       ...historyMessages,
       { role: "user", content: message },
