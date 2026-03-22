@@ -167,14 +167,17 @@ export const serverInfoTool = tool({
       const guild = await client.guilds.fetch({ guild: guildId, force: true });
 
       if (infoType === "stats") {
-        const fetched = await fetchMembersFresh(guild);
+        await fetchMembersFresh(guild);
+        const onlineCount = guild.presences.cache.filter((p) => {
+          if (p.status === "offline") return false;
+          const member = guild.members.cache.get(p.userId);
+          return member && !member.user.bot;
+        }).size;
         return {
           success: true,
           serverName: guild.name,
           memberCount: guild.memberCount,
-          onlineCount: fetched.filter(
-            (m) => !m.user.bot && m.presence?.status !== "offline",
-          ).size,
+          onlineCount,
           channelCount: guild.channels.cache.size,
           roleCount: guild.roles.cache.size,
         };
@@ -772,7 +775,10 @@ The tool enforces role-based permissions internally. Always pass userId (invoker
 
         case "add-role": {
           if (!roleName)
-            return { success: false, error: "roleName is required for add-role." };
+            return {
+              success: false,
+              error: "roleName is required for add-role.",
+            };
           const rq = roleName.toLowerCase();
           const role = guild.roles.cache.find((r) =>
             r.name.toLowerCase().includes(rq),
@@ -796,7 +802,10 @@ The tool enforces role-based permissions internally. Always pass userId (invoker
 
         case "remove-role": {
           if (!roleName)
-            return { success: false, error: "roleName is required for remove-role." };
+            return {
+              success: false,
+              error: "roleName is required for remove-role.",
+            };
           const rq = roleName.toLowerCase();
           const role = guild.roles.cache.find((r) =>
             r.name.toLowerCase().includes(rq),

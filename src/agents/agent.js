@@ -96,7 +96,7 @@ async function getPass1BasePrompt() {
 async function getPass2BasePrompt() {
   if (_cachedPass2Base) return _cachedPass2Base;
   const master = await loadPrompt("master-agent");
-  _cachedPass2Base = `${master}\n\nKeep your response short (1–3 sentences), casual, and conversational. Do NOT output raw JSON, IDs, or object dumps. CRITICAL: You are in synthesis mode — you MUST NOT emit any tool calls, function calls, XML tags like <tool_call> or <tool_calls_section_begin>, or JSON tool-call objects. Only write a plain conversational reply.`;
+  _cachedPass2Base = `${master}\n\nKeep your response short (1–3 sentences), casual, and conversational. Do NOT output raw JSON, IDs, or object dumps. CRITICAL: You are in synthesis mode — you MUST NOT emit any tool calls, function calls, XML tags like <tool_call> or <tool_calls_section_begin>, or JSON tool-call objects. Only write a plain conversational reply. IMPORTANT: If the tool result contains "success": false or an "error" field, the action FAILED — tell the user you couldn't get that information or the action didn't work. Do NOT say you'll check or that you'll look it up — just report the failure naturally.`;
   return _cachedPass2Base;
 }
 
@@ -351,6 +351,29 @@ export async function processMessage(userId, guildId, message) {
 
     let finalToolName = toolName;
     let finalToolResult = toolResult;
+
+    // If fetchWebPage failed, fall back to webSearch automatically
+    if (toolName === "fetchWebPage" && toolResult?.success === false) {
+      const urlParam = toolParams.url || "";
+      const wttrMatch = urlParam.match(/wttr\.in\/([^?]+)/i);
+      const fallbackQuery = wttrMatch
+        ? `${decodeURIComponent(wttrMatch[1])} weather`
+        : message;
+      console.log(
+        `[AGENT] fetchWebPage failed — falling back to webSearch: "${fallbackQuery}"`,
+      );
+      const wsResult = await executeToolByName("webSearch", {
+        query: fallbackQuery,
+        userId,
+        guildId,
+      });
+      if (wsResult?.success) {
+        finalToolName = "webSearch";
+        finalToolResult = wsResult;
+        console.log("[AGENT] fetchWebPage→webSearch fallback succeeded");
+      }
+    }
+
     if (
       toolName === "serverInfo" &&
       enrichedParams.infoType === "search" &&
