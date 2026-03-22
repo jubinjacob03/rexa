@@ -197,19 +197,18 @@ function extractToolCall(text) {
     }
   }
 
-  // Try <tool_calls> plural wrapper (OpenRouter/OpenAI JSON-array format or nested singular)
   const toolCallsStart = text.indexOf("<tool_calls>");
   if (toolCallsStart !== -1) {
     const inner = text.slice(toolCallsStart + "<tool_calls>".length);
-    // Nested singular <tool_call> or <function= inside the wrapper
     if (inner.includes("<tool_call>") || inner.includes("<function=")) {
       const nested = extractToolCall(inner);
       if (nested) return nested;
     }
-    // JSON array: [{"type":"function","function":{"name":"...","arguments":"..."}}]
     try {
       const closingIdx = inner.indexOf("</tool_calls>");
-      const jsonStr = (closingIdx !== -1 ? inner.slice(0, closingIdx) : inner).trim();
+      const jsonStr = (
+        closingIdx !== -1 ? inner.slice(0, closingIdx) : inner
+      ).trim();
       const parsed = JSON.parse(jsonStr);
       const entry = Array.isArray(parsed) ? parsed[0] : parsed;
       if (entry?.function?.name) {
@@ -220,7 +219,10 @@ function extractToolCall(text) {
             : (fn.arguments ?? {});
         return { name: fn.name, params };
       }
-      if (entry?.name && (entry.parameters ?? entry.params ?? entry.arguments)) {
+      if (
+        entry?.name &&
+        (entry.parameters ?? entry.params ?? entry.arguments)
+      ) {
         const p =
           entry.parameters ??
           entry.params ??
@@ -288,7 +290,6 @@ export async function processMessage(userId, guildId, message) {
           "I'm not sure how to help with that right now. Could you rephrase?";
         console.log("[AGENT] Suppressed raw JSON tool-call from Pass 1 output");
       } else {
-        // Strip <tool_calls> / <tool_call> XML that leaked into the output text
         const xmlCutIdx = rawOutput.search(/<\|?tool_calls?/i);
         if (xmlCutIdx !== -1) {
           safeResponse = rawOutput.substring(0, xmlCutIdx).trim();
