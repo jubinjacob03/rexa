@@ -471,15 +471,63 @@ export async function processMessage(userId, guildId, message) {
         : toolResultStr
     }`;
 
-    const pass2 = await generateText({
-      model,
-      system: `${pass2Base}\n\n${toolContext}`,
-      messages: [{ role: "user", content: message }],
-      maxTokens: 400,
-      maxSteps: 1,
-    });
+    const runPass2 = async (ctx) => {
+      try {
+        return await generateText({
+          model,
+          system: `${pass2Base}\n\n${ctx}`,
+          messages: [{ role: "user", content: message }],
+          maxTokens: 400,
+          maxSteps: 1,
+        });
+      } catch (err) {
+        const failedGen = err?.data?.error?.failed_generation;
+        if (!failedGen) throw err;
+        try {
+          const toolAttempt =
+            typeof failedGen === "string" ? JSON.parse(failedGen) : failedGen;
+          const extraToolName = toolAttempt?.name;
+          const rawArgs = toolAttempt?.arguments;
+          const extraParams =
+            typeof rawArgs === "string" ? JSON.parse(rawArgs) : (rawArgs ?? {});
+          if (extraToolName) {
+            console.log(
+              `[AGENT] Pass 2 tool attempt (${extraToolName}) intercepted — executing and retrying`,
+            );
+            const extraResult = await executeToolByName(extraToolName, {
+              ...extraParams,
+              userId,
+              guildId,
+            }).catch(() => null);
+            if (extraResult) {
+              const extraCtx = `${ctx}\n\n[${extraToolName} additional result]:\n${JSON.stringify(extraResult, null, 2).slice(0, 1500)}`;
+              return await generateText({
+                model,
+                system: `${pass2Base}\n\n${extraCtx}`,
+                messages: [{ role: "user", content: message }],
+                maxTokens: 400,
+                maxSteps: 1,
+              });
+            }
+          }
+        } catch (retryErr) {
+          console.error(
+            "[AGENT] Pass 2 retry after tool intercept failed:",
+            retryErr.message,
+          );
+        }
+        throw err;
+      }
+    };
 
-    let finalResponse = (pass2.text || "").trim();
+    let pass2;
+    try {
+      pass2 = await runPass2(toolContext);
+    } catch (pass2Err) {
+      console.error("[AGENT] Pass 2 failed:", pass2Err.message);
+    }
+
+    let finalResponse = (pass2?.text || "").trim();
     // Strip any tool_call (XML or JSON) that the model may have emitted in Pass 2
     const xmlIdx = finalResponse.search(/<\|?tool_calls?/i);
     const funcIdx = finalResponse.indexOf("<function=");
