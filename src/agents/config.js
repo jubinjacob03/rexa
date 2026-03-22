@@ -128,7 +128,7 @@ export function getLanguageModel(
 }
 
 export function getEmbeddingModel() {
-  return google.textEmbeddingModel("text-embedding-004", {
+  return google.textEmbeddingModel("gemini-embedding-001", {
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
   });
 }
