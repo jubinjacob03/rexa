@@ -45,7 +45,8 @@ const config = {
   commandExecution: {
     enabled: process.env.COMMAND_EXECUTION_ENABLED !== "false",
     blockedCommands: (
-      process.env.BLOCKED_COMMANDS || "ban,kick,delete-channel,setup-verification"
+      process.env.BLOCKED_COMMANDS ||
+      "ban,kick,delete-channel,setup-verification"
     ).split(","),
     maxStepsPerMinute: parseInt(process.env.COMMAND_MAX_STEPS) || 10,
   },
@@ -100,7 +101,7 @@ export function getLanguageModel(
     const groqModels = {
       fast: "moonshotai/kimi-k2-instruct-0905",
       balanced: "moonshotai/kimi-k2-instruct-0905",
-      powerful: "openai/gpt-oss-120b",
+      powerful: "moonshotai/kimi-k2-instruct-0905",
       creative: "moonshotai/kimi-k2-instruct-0905",
     };
 
