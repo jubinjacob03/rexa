@@ -95,7 +95,7 @@ export const commandExecutorTool = tool({
       return { success: false, error: "Command execution disabled" };
     }
     if (config.commandExecution.blockedCommands.includes(command)) {
-      return { success: false, error: `Command blocked: ${command}` };
+      return { success: false, error: `The /${command} command can only be used as a Discord slash command, not via chat.` };
     }
 
     try {

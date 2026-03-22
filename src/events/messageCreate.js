@@ -159,6 +159,7 @@ export default {
         try {
           const question = message.content
             .replace(new RegExp(`<@!?${message.client.user.id}>`, "g"), "")
+            .replace(/<@&\d+>/g, "")
             .trim();
 
           if (!question) {

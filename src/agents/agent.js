@@ -354,14 +354,29 @@ export async function processMessage(userId, guildId, message) {
 
     // If fetchWebPage failed, fall back to webSearch automatically
     if (toolName === "fetchWebPage" && toolResult?.success === false) {
-      const urlParam = toolParams.url || "";
+      const urlParam = toolParams?.url || "";
       const wttrMatch = urlParam.match(/wttr\.in\/([^?]+)/i);
-      const fallbackQuery = wttrMatch
-        ? `${decodeURIComponent(wttrMatch[1])} weather`
-        : message;
-      console.log(
-        `[AGENT] fetchWebPage failed — falling back to webSearch: "${fallbackQuery}"`,
+      const isTimeQuery = /\b(time|what time|current time|clock)\b/i.test(
+        message,
       );
+      let fallbackQuery;
+      if (wttrMatch && isTimeQuery) {
+        const location = decodeURIComponent(wttrMatch[1].replace(/,/g, " "));
+        fallbackQuery = `current time in ${location}`;
+        console.log(
+          `[AGENT] fetchWebPage wttr.in time-query — searching for time: "${fallbackQuery}"`,
+        );
+      } else if (wttrMatch) {
+        fallbackQuery = `${decodeURIComponent(wttrMatch[1].replace(/,/g, " "))} weather`;
+        console.log(
+          `[AGENT] fetchWebPage failed — falling back to webSearch: "${fallbackQuery}"`,
+        );
+      } else {
+        fallbackQuery = message;
+        console.log(
+          `[AGENT] fetchWebPage failed — falling back to webSearch with original message`,
+        );
+      }
       const wsResult = await executeToolByName("webSearch", {
         query: fallbackQuery,
         userId,
@@ -397,17 +412,9 @@ export async function processMessage(userId, guildId, message) {
         finalToolResult = ragResult;
         console.log("[AGENT] Identity fallback: using ragQuery result");
       } else {
-        console.log("[AGENT] ragQuery empty — trying webSearch");
-        const webResult = await executeToolByName("webSearch", {
-          query: `${enrichedParams.searchQuery} site:discord.com OR gamer OR streamer`,
-          userId,
-          guildId,
-        });
-        if (webResult?.success) {
-          finalToolName = "webSearch";
-          finalToolResult = webResult;
-          console.log("[AGENT] Identity fallback: using webSearch result");
-        }
+        console.log(
+          "[AGENT] ragQuery empty — no further fallback (pass to Pass 2 as unknown member)",
+        );
       }
     }
 
@@ -476,14 +483,41 @@ export async function processMessage(userId, guildId, message) {
     // Strip any tool_call (XML or JSON) that the model may have emitted in Pass 2
     const xmlIdx = finalResponse.search(/<\|?tool_calls?/i);
     const funcIdx = finalResponse.indexOf("<function=");
-    const jsonIdx = finalResponse.search(/\{\s*"(?:tool_call|tool|name)"\s*:/);
-    const allCuts = [xmlIdx, funcIdx, jsonIdx].filter((i) => i !== -1);
+    const jsonIdx = finalResponse.search(
+      /^\s*\{\s*"(?:tool_call|tool_calls)"\s*:/m,
+    );
+    const pyFuncIdx = finalResponse.search(
+      /^\s*(?:createEmbed|executeCommand|discordAction|serverInfo|fetchWebPage|webSearch)\s*\(/m,
+    );
+    const allCuts = [xmlIdx, funcIdx, jsonIdx, pyFuncIdx].filter(
+      (i) => i !== -1,
+    );
     const cutIdx = allCuts.length > 0 ? Math.min(...allCuts) : -1;
     if (cutIdx !== -1) {
       finalResponse = finalResponse.substring(0, cutIdx).trim();
-      if (!finalResponse)
-        finalResponse =
-          "I looked into it but couldn't get the information right now. Please try again!";
+      if (!finalResponse) {
+        if (finalToolResult?.success !== false) {
+          const results = finalToolResult?.results;
+          if (
+            finalToolName === "serverInfo" &&
+            Array.isArray(results) &&
+            results.length > 0
+          ) {
+            const user = results[0];
+            if (/mention/i.test(message) && user.id) {
+              finalResponse = `<@${user.id}>`;
+            } else {
+              finalResponse = `Here's what I found: **${user.displayName || user.username}** (${user.status || "unknown"})`;
+            }
+          } else {
+            finalResponse =
+              "I looked into it but couldn't get the information right now. Please try again!";
+          }
+        } else {
+          finalResponse =
+            "I looked into it but couldn't get the information right now. Please try again!";
+        }
+      }
     }
     console.log(
       `[AGENT] Pass 2 synthesized: ${finalResponse.substring(0, 120)}`,
