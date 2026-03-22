@@ -265,10 +265,20 @@ export async function processMessage(userId, guildId, message) {
     });
     const pass1System = `${pass1Base}\n\n- userId: \`${userId}\`\n- guildId: \`${guildId}\`\n- Use these exact IDs when a tool requires them.\n- Current date/time: ${nowUtc} UTC (use this year for any search queries, not your training cutoff year).`;
     const pass2Base = await getPass2BasePrompt();
+    const historyMessages = contextManager.getFormattedHistory(
+      userId,
+      guildId,
+      10,
+    );
+    const pass1Messages = [
+      ...historyMessages,
+      { role: "user", content: message },
+    ];
+
     const pass1 = await generateText({
       model,
       system: pass1System,
-      messages: [{ role: "user", content: message }],
+      messages: pass1Messages,
       maxTokens: 300,
       maxSteps: 1,
     });
@@ -476,7 +486,7 @@ export async function processMessage(userId, guildId, message) {
         return await generateText({
           model,
           system: `${pass2Base}\n\n${ctx}`,
-          messages: [{ role: "user", content: message }],
+          messages: [...historyMessages, { role: "user", content: message }],
           maxTokens: 400,
           maxSteps: 1,
         });
@@ -504,7 +514,10 @@ export async function processMessage(userId, guildId, message) {
               return await generateText({
                 model,
                 system: `${pass2Base}\n\n${extraCtx}`,
-                messages: [{ role: "user", content: message }],
+                messages: [
+                  ...historyMessages,
+                  { role: "user", content: message },
+                ],
                 maxTokens: 400,
                 maxSteps: 1,
               });
