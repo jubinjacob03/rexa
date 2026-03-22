@@ -197,6 +197,42 @@ function extractToolCall(text) {
     }
   }
 
+  // Try <tool_calls> plural wrapper (OpenRouter/OpenAI JSON-array format or nested singular)
+  const toolCallsStart = text.indexOf("<tool_calls>");
+  if (toolCallsStart !== -1) {
+    const inner = text.slice(toolCallsStart + "<tool_calls>".length);
+    // Nested singular <tool_call> or <function= inside the wrapper
+    if (inner.includes("<tool_call>") || inner.includes("<function=")) {
+      const nested = extractToolCall(inner);
+      if (nested) return nested;
+    }
+    // JSON array: [{"type":"function","function":{"name":"...","arguments":"..."}}]
+    try {
+      const closingIdx = inner.indexOf("</tool_calls>");
+      const jsonStr = (closingIdx !== -1 ? inner.slice(0, closingIdx) : inner).trim();
+      const parsed = JSON.parse(jsonStr);
+      const entry = Array.isArray(parsed) ? parsed[0] : parsed;
+      if (entry?.function?.name) {
+        const fn = entry.function;
+        const params =
+          typeof fn.arguments === "string"
+            ? JSON.parse(fn.arguments)
+            : (fn.arguments ?? {});
+        return { name: fn.name, params };
+      }
+      if (entry?.name && (entry.parameters ?? entry.params ?? entry.arguments)) {
+        const p =
+          entry.parameters ??
+          entry.params ??
+          (typeof entry.arguments === "string"
+            ? JSON.parse(entry.arguments)
+            : entry.arguments) ??
+          {};
+        return { name: entry.name, params: p };
+      }
+    } catch {}
+  }
+
   return null;
 }
 
@@ -246,11 +282,26 @@ export async function processMessage(userId, guildId, message) {
       console.log("[AGENT] No tool call — using direct response");
       const looksLikeToolCall =
         /^\s*\{[\s\S]*"(?:tool_call|tool|name)"\s*:/.test(rawOutput);
-      const safeResponse = looksLikeToolCall
-        ? "I'm not sure how to help with that right now. Could you rephrase?"
-        : rawOutput;
-      if (looksLikeToolCall)
+      let safeResponse;
+      if (looksLikeToolCall) {
+        safeResponse =
+          "I'm not sure how to help with that right now. Could you rephrase?";
         console.log("[AGENT] Suppressed raw JSON tool-call from Pass 1 output");
+      } else {
+        // Strip <tool_calls> / <tool_call> XML that leaked into the output text
+        const xmlCutIdx = rawOutput.search(/<\|?tool_calls?/i);
+        if (xmlCutIdx !== -1) {
+          safeResponse = rawOutput.substring(0, xmlCutIdx).trim();
+          console.log(
+            "[AGENT] Stripped XML tool-call bleed from Pass 1 direct response",
+          );
+          if (!safeResponse)
+            safeResponse =
+              "I looked into it but couldn't get the information right now. Please try again!";
+        } else {
+          safeResponse = rawOutput;
+        }
+      }
       await Promise.all([
         contextManager.addMessage(userId, guildId, "user", message),
         contextManager.addMessage(userId, guildId, "assistant", safeResponse),
@@ -399,7 +450,7 @@ export async function processMessage(userId, guildId, message) {
 
     let finalResponse = (pass2.text || "").trim();
     // Strip any tool_call (XML or JSON) that the model may have emitted in Pass 2
-    const xmlIdx = finalResponse.search(/<\|?tool_call(?:s_section)?[_|\s>]/i);
+    const xmlIdx = finalResponse.search(/<\|?tool_calls?/i);
     const funcIdx = finalResponse.indexOf("<function=");
     const jsonIdx = finalResponse.search(/\{\s*"(?:tool_call|tool|name)"\s*:/);
     const allCuts = [xmlIdx, funcIdx, jsonIdx].filter((i) => i !== -1);
