@@ -9,6 +9,23 @@ import {
   knowledgeBase,
   contextManager,
 } from "./tools/index.js";
+import {
+  extractToolCall,
+  RE_FOLLOW_UP_PRONOUNS,
+  RE_FOLLOW_UP_WORDS,
+  RE_LOOKS_LIKE_TOOL,
+  RE_XML_TOOL_BLEED,
+  RE_XML_CUT,
+  RE_JSON_CUT,
+  RE_PY_FUNC_CUT,
+  RE_PERSON_MATCH,
+  RE_WTTR_MATCH,
+  RE_TIME_QUERY,
+  ACTION_ONLY_TOOLS,
+  MUSIC_INFO_ACTIONS,
+  getMusicConfirmation,
+  initEmojis,
+} from "./utils/index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -109,6 +126,7 @@ export async function initializeAgent(client) {
   }
 
   await initializeTools(client);
+  initEmojis(client);
 
   // Warm all prompt caches concurrently at startup
   await Promise.all([
@@ -121,121 +139,6 @@ export async function initializeAgent(client) {
   agentInitialized = true;
   console.log("[AGENT] Initialized successfully");
   return { processMessage, executeCommand, getStats };
-}
-
-const MUSIC_INFO_ACTIONS = new Set(["nowplaying", "queue"]);
-
-const ACTION_ONLY_TOOLS = new Set([
-  "executeCommand",
-  "executeWorkflow",
-  "createPrivateVC",
-  "discordAction",
-]);
-
-const MUSIC_CONFIRMATIONS = {
-  play: "▶️ On it!",
-  pause: "⏸️ Paused.",
-  resume: "▶️ Resumed.",
-  skip: "⏭️ Skipped.",
-  stop: "⏹️ Stopped.",
-  volume: "🔊 Volume updated.",
-};
-
-function extractToolCall(text) {
-  const stripped = text.replace(/```(?:json)?\s*\n?/gi, "").trim();
-  try {
-    const parsed = JSON.parse(stripped);
-    if (parsed.tool_call?.name) return parsed.tool_call;
-  } catch {}
-  const idx = stripped.search(/\{\s*"tool_call"/);
-  if (idx !== -1) {
-    let depth = 0;
-    let end = -1;
-    for (let i = idx; i < stripped.length; i++) {
-      if (stripped[i] === "{") depth++;
-      else if (stripped[i] === "}") {
-        depth--;
-        if (depth === 0) {
-          end = i;
-          break;
-        }
-      }
-    }
-    if (end !== -1) {
-      try {
-        const parsed = JSON.parse(stripped.slice(idx, end + 1));
-        if (parsed.tool_call?.name) return parsed.tool_call;
-      } catch {}
-    } else {
-      for (let extra = 1; extra <= 3; extra++) {
-        try {
-          const parsed = JSON.parse(stripped.slice(idx) + "}".repeat(extra));
-          if (parsed.tool_call?.name) return parsed.tool_call;
-        } catch {}
-      }
-    }
-  }
-
-  // Try XML format emitted by stepfun: <tool_call><function=NAME><parameter=KEY>VAL</parameter></function></tool_call>
-  if (text.includes("<tool_call>") || text.includes("<function=")) {
-    const funcMatch = text.match(/<function=(\w+)>/);
-    if (funcMatch) {
-      const toolName = funcMatch[1];
-      const params = {};
-      const paramRegex = /<parameter=(\w+)>\s*([\s\S]*?)\s*<\/parameter>/g;
-      let m;
-      while ((m = paramRegex.exec(text)) !== null) {
-        const key = m[1];
-        const val = m[2].trim();
-        const numVal = Number(val);
-        params[key] =
-          val !== "" && /^\d+$/.test(val) && Number.isSafeInteger(numVal)
-            ? numVal
-            : val;
-      }
-      return { name: toolName, params };
-    }
-  }
-
-  const toolCallsStart = text.indexOf("<tool_calls>");
-  if (toolCallsStart !== -1) {
-    const inner = text.slice(toolCallsStart + "<tool_calls>".length);
-    if (inner.includes("<tool_call>") || inner.includes("<function=")) {
-      const nested = extractToolCall(inner);
-      if (nested) return nested;
-    }
-    try {
-      const closingIdx = inner.indexOf("</tool_calls>");
-      const jsonStr = (
-        closingIdx !== -1 ? inner.slice(0, closingIdx) : inner
-      ).trim();
-      const parsed = JSON.parse(jsonStr);
-      const entry = Array.isArray(parsed) ? parsed[0] : parsed;
-      if (entry?.function?.name) {
-        const fn = entry.function;
-        const params =
-          typeof fn.arguments === "string"
-            ? JSON.parse(fn.arguments)
-            : (fn.arguments ?? {});
-        return { name: fn.name, params };
-      }
-      if (
-        entry?.name &&
-        (entry.parameters ?? entry.params ?? entry.arguments)
-      ) {
-        const p =
-          entry.parameters ??
-          entry.params ??
-          (typeof entry.arguments === "string"
-            ? JSON.parse(entry.arguments)
-            : entry.arguments) ??
-          {};
-        return { name: entry.name, params: p };
-      }
-    } catch {}
-  }
-
-  return null;
 }
 
 async function executeToolByName(toolName, params) {
@@ -274,12 +177,8 @@ export async function processMessage(userId, guildId, message) {
     );
     const isFollowUp =
       message.length < 60 ||
-      /\b(he|she|they|him|her|them|that|this|it|those|these|who|same|their|his|her|my|your|our|we|i)\b/i.test(
-        message,
-      ) ||
-      /\b(now|again|still|so|also|too|else|another|more|why|how|what about|and|but)\b/i.test(
-        message,
-      );
+      RE_FOLLOW_UP_PRONOUNS.test(message) ||
+      RE_FOLLOW_UP_WORDS.test(message);
 
     let historyMessages = recentMessages;
     if (isFollowUp && contextManager.getHistory(userId, guildId).length > 10) {
@@ -330,15 +229,14 @@ export async function processMessage(userId, guildId, message) {
 
     if (!toolCall) {
       console.log("[AGENT] No tool call — using direct response");
-      const looksLikeToolCall =
-        /^\s*\{[\s\S]*"(?:tool_call|tool|name)"\s*:/.test(rawOutput);
+      const looksLikeToolCall = RE_LOOKS_LIKE_TOOL.test(rawOutput);
       let safeResponse;
       if (looksLikeToolCall) {
         safeResponse =
           "I'm not sure how to help with that right now. Could you rephrase?";
         console.log("[AGENT] Suppressed raw JSON tool-call from Pass 1 output");
       } else {
-        const xmlCutIdx = rawOutput.search(/<\|?tool_calls?/i);
+        const xmlCutIdx = rawOutput.search(RE_XML_TOOL_BLEED);
         if (xmlCutIdx !== -1) {
           safeResponse = rawOutput.substring(0, xmlCutIdx).trim();
           console.log(
@@ -368,9 +266,7 @@ export async function processMessage(userId, guildId, message) {
 
     let toolResult = await executeToolByName(toolName, enrichedParams);
     if (toolName === "serverInfo" && toolParams.infoType === "members") {
-      const personMatch = message.match(
-        /(?:who\s+is|do\s+you\s+know|find|tell\s+me\s+about|what(?:'s|\s+is)(?:\s+up\s+with)?)\s+([\w.\-]+)/i,
-      );
+      const personMatch = message.match(RE_PERSON_MATCH);
       if (personMatch) {
         const searchTerm = personMatch[1].trim();
         console.log(
@@ -403,10 +299,8 @@ export async function processMessage(userId, guildId, message) {
     // If fetchWebPage failed, fall back to webSearch automatically
     if (toolName === "fetchWebPage" && toolResult?.success === false) {
       const urlParam = toolParams?.url || "";
-      const wttrMatch = urlParam.match(/wttr\.in\/([^?]+)/i);
-      const isTimeQuery = /\b(time|what time|current time|clock)\b/i.test(
-        message,
-      );
+      const wttrMatch = urlParam.match(RE_WTTR_MATCH);
+      const isTimeQuery = RE_TIME_QUERY.test(message);
       let fallbackQuery;
       if (wttrMatch && isTimeQuery) {
         const location = decodeURIComponent(wttrMatch[1].replace(/,/g, " "));
@@ -503,7 +397,7 @@ export async function processMessage(userId, guildId, message) {
       const finalResp =
         finalToolResult?.success === false
           ? finalToolResult.error || "Sorry, that didn't work."
-          : MUSIC_CONFIRMATIONS[toolParams.action] || "✅ Done!";
+          : getMusicConfirmation(toolParams.action) || "✅ Done!";
       await Promise.all([
         contextManager.addMessage(userId, guildId, "user", message),
         contextManager.addMessage(userId, guildId, "assistant", finalResp),
@@ -580,14 +474,10 @@ export async function processMessage(userId, guildId, message) {
 
     let finalResponse = (pass2?.text || "").trim();
     // Strip any tool_call (XML or JSON) that the model may have emitted in Pass 2
-    const xmlIdx = finalResponse.search(/<\|?tool_calls?/i);
+    const xmlIdx = finalResponse.search(RE_XML_CUT);
     const funcIdx = finalResponse.indexOf("<function=");
-    const jsonIdx = finalResponse.search(
-      /^\s*\{\s*"(?:tool_call|tool_calls)"\s*:/m,
-    );
-    const pyFuncIdx = finalResponse.search(
-      /^\s*(?:createEmbed|executeCommand|discordAction|serverInfo|fetchWebPage|webSearch)\s*\(/m,
-    );
+    const jsonIdx = finalResponse.search(RE_JSON_CUT);
+    const pyFuncIdx = finalResponse.search(RE_PY_FUNC_CUT);
     const allCuts = [xmlIdx, funcIdx, jsonIdx, pyFuncIdx].filter(
       (i) => i !== -1,
     );
