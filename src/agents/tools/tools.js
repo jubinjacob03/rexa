@@ -14,7 +14,6 @@ import {
   getVCByMember,
 } from "../../utils/privateVCManager.js";
 
-// Discord client reference
 let client = null;
 
 export function initializeTools(discordClient) {
@@ -95,7 +94,10 @@ export const commandExecutorTool = tool({
       return { success: false, error: "Command execution disabled" };
     }
     if (config.commandExecution.blockedCommands.includes(command)) {
-      return { success: false, error: `The /${command} command can only be used as a Discord slash command, not via chat.` };
+      return {
+        success: false,
+        error: `The /${command} command can only be used as a Discord slash command, not via chat.`,
+      };
     }
 
     try {
@@ -297,7 +299,6 @@ export const musicControlTool = tool({
         : {}),
     };
 
-    // Resolve the user's current voice channel for the play action
     let voiceChannelId = null;
     if (action === "play") {
       const guild = client?.guilds.cache.get(guildId);
@@ -421,7 +422,6 @@ export const embedGeneratorTool = tool({
   },
 });
 
-// Export all tools as object
 export const createPrivateVCTool = tool({
   description: `Create a real private voice channel for specified members. Resolves member names to Discord members and calls the actual private VC system. Use this whenever a user asks to create a private VC for themselves and/or others.`,
   parameters: z.object({
@@ -463,7 +463,6 @@ export const createPrivateVCTool = tool({
         };
       }
 
-      // Resolve additional member names → GuildMember objects
       const memberMap = new Map([[invokerUserId, invoker]]);
       for (const name of memberNames) {
         const q = name.toLowerCase();

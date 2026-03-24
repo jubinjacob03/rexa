@@ -8,7 +8,6 @@ import { embed, cosineSimilarity } from "ai";
 import config, { getEmbeddingModel } from "../config.js";
 import { createClient } from "@supabase/supabase-js";
 
-// Supabase client for conversation persistence
 const supabase = createClient(config.supabase.url, config.supabase.serviceKey, {
   auth: {
     autoRefreshToken: false,
@@ -37,11 +36,7 @@ class ContextManager {
     if (this.initialized) return;
 
     this.embeddingModel = getEmbeddingModel();
-
-    // Load existing conversations from Supabase
     await this.loadFromSupabase();
-
-    // Start auto-save interval
     this.startAutoSave();
 
     this.initialized = true;
@@ -118,8 +113,6 @@ class ContextManager {
       );
 
       if (error) throw error;
-
-      // console.log(`[CONTEXT MANAGER] Saved conversation ${contextId} to Supabase`);
     } catch (error) {
       console.error(
         `[CONTEXT MANAGER] Failed to save ${contextId}:`,
@@ -266,7 +259,6 @@ class ContextManager {
       context.messages = [...systemMessages, ...recentMessages];
     }
 
-    // Queue for auto-save to Supabase
     this.queueSave(contextId);
 
     return message;
@@ -372,7 +364,6 @@ class ContextManager {
     const contextId = `${guildId}-${userId}`;
     this.conversations.delete(contextId);
 
-    // Delete from Supabase
     try {
       const { error } = await supabase
         .from("conversation_history")
@@ -437,7 +428,6 @@ class ContextManager {
       }
     }
 
-    // Delete from Supabase as well
     if (toDelete.length > 0) {
       try {
         const { error } = await supabase

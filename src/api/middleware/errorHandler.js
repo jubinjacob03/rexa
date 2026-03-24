@@ -4,7 +4,6 @@
 export function errorHandler(err, req, res, next) {
   console.error("[API ERROR]", err);
 
-  // Handle specific error types
   if (err.name === "ValidationError") {
     return res.status(400).json({
       success: false,
@@ -27,7 +26,6 @@ export function errorHandler(err, req, res, next) {
     });
   }
 
-  // Default 500 error
   res.status(500).json({
     success: false,
     error: {

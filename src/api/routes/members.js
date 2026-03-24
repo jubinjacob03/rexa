@@ -9,13 +9,17 @@ router.get("/", async (req, res) => {
   try {
     const client = req.app.get("discordClient");
     const guild = client.guilds.cache.get(config.guildId);
-    if (!guild) return res.status(503).json({ success: false, error: "Guild not found" });
+    if (!guild)
+      return res.status(503).json({ success: false, error: "Guild not found" });
 
     const { userId } = req.query;
 
     if (userId) {
       const member = await guild.members.fetch(userId).catch(() => null);
-      if (!member) return res.status(404).json({ success: false, error: "Member not found." });
+      if (!member)
+        return res
+          .status(404)
+          .json({ success: false, error: "Member not found." });
 
       return res.json({
         success: true,
@@ -29,7 +33,6 @@ router.get("/", async (req, res) => {
       });
     }
 
-    // Full list — fetch first 200 members
     await guild.members.fetch({ limit: 200 });
     const members = guild.members.cache
       .filter((m) => !m.user.bot)

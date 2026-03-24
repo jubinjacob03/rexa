@@ -6,7 +6,6 @@ let _statusDebounceTimer = null;
 export default {
   name: Events.GuildMemberUpdate,
   async execute(oldMember, newMember) {
-    // Check if roles changed
     if (oldMember.roles.cache.size !== newMember.roles.cache.size) {
       console.log(`[INFO] Member roles updated: ${newMember.user.tag}`);
       clearTimeout(_statusDebounceTimer);

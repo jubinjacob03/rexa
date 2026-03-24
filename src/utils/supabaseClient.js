@@ -1,7 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import config from "../../config.js";
 
-// Create Supabase client with service role key for bot operations
 const supabase = createClient(config.supabase.url, config.supabase.serviceKey, {
   auth: {
     autoRefreshToken: false,
@@ -50,8 +49,6 @@ export async function logPlayback(
     });
 
     if (error) throw error;
-
-    // Increment play count
     await supabase.rpc("increment_play_count", { sound_uuid: soundId });
 
     console.log(`[INFO] Logged playback for sound ${soundId}`);

@@ -19,9 +19,13 @@ router.get("/", async (req, res) => {
   try {
     const client = req.app.get("discordClient");
     const guild = client.guilds.cache.get(config.guildId);
-    if (!guild) return res.status(503).json({ success: false, error: "Guild not found" });
+    if (!guild)
+      return res.status(503).json({ success: false, error: "Guild not found" });
 
-    res.json({ success: true, data: { count: activeCount(), vcs: listAllVCs(guild) } });
+    res.json({
+      success: true,
+      data: { count: activeCount(), vcs: listAllVCs(guild) },
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -32,28 +36,47 @@ router.post("/create", async (req, res) => {
   try {
     const client = req.app.get("discordClient");
     const guild = client.guilds.cache.get(config.guildId);
-    if (!guild) return res.status(503).json({ success: false, error: "Guild not found" });
+    if (!guild)
+      return res.status(503).json({ success: false, error: "Guild not found" });
 
     const { userId, memberIds = [] } = req.body;
-    if (!userId) return res.status(400).json({ success: false, error: "userId required" });
+    if (!userId)
+      return res.status(400).json({ success: false, error: "userId required" });
 
     if (!canCreate()) {
-      return res.status(409).json({ success: false, error: `Maximum of ${config.privateVC.maxSimultaneous} private VCs already active.` });
+      return res
+        .status(409)
+        .json({
+          success: false,
+          error: `Maximum of ${config.privateVC.maxSimultaneous} private VCs already active.`,
+        });
     }
 
     if (getVCByMember(userId)) {
-      return res.status(409).json({ success: false, error: "User is already in a private VC." });
+      return res
+        .status(409)
+        .json({ success: false, error: "User is already in a private VC." });
     }
 
     const allIds = [...new Set([userId, ...memberIds])];
     const members = (
-      await Promise.all(allIds.map((id) => guild.members.fetch(id).catch(() => null)))
-    ).filter(Boolean).filter((m) => !m.user.bot);
+      await Promise.all(
+        allIds.map((id) => guild.members.fetch(id).catch(() => null)),
+      )
+    )
+      .filter(Boolean)
+      .filter((m) => !m.user.bot);
 
     const channel = await createPrivateVC(guild, members);
-    if (!channel) return res.status(500).json({ success: false, error: "Failed to create VC." });
+    if (!channel)
+      return res
+        .status(500)
+        .json({ success: false, error: "Failed to create VC." });
 
-    res.json({ success: true, data: { channelId: channel.id, name: channel.name } });
+    res.json({
+      success: true,
+      data: { channelId: channel.id, name: channel.name },
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -64,20 +87,42 @@ router.post("/add", async (req, res) => {
   try {
     const client = req.app.get("discordClient");
     const guild = client.guilds.cache.get(config.guildId);
-    if (!guild) return res.status(503).json({ success: false, error: "Guild not found" });
+    if (!guild)
+      return res.status(503).json({ success: false, error: "Guild not found" });
 
     const { requesterId, targetUserId } = req.body;
-    if (!requesterId || !targetUserId) return res.status(400).json({ success: false, error: "requesterId and targetUserId required" });
+    if (!requesterId || !targetUserId)
+      return res
+        .status(400)
+        .json({
+          success: false,
+          error: "requesterId and targetUserId required",
+        });
 
     const channelId = getVCByMember(requesterId);
-    if (!channelId) return res.status(404).json({ success: false, error: "Requester is not in a private VC." });
+    if (!channelId)
+      return res
+        .status(404)
+        .json({ success: false, error: "Requester is not in a private VC." });
 
     const data = getVCData(channelId);
-    if (data?.members.has(targetUserId)) return res.status(409).json({ success: false, error: "User is already in this VC." });
-    if (getVCByMember(targetUserId)) return res.status(409).json({ success: false, error: "User is already in another private VC." });
+    if (data?.members.has(targetUserId))
+      return res
+        .status(409)
+        .json({ success: false, error: "User is already in this VC." });
+    if (getVCByMember(targetUserId))
+      return res
+        .status(409)
+        .json({
+          success: false,
+          error: "User is already in another private VC.",
+        });
 
     const member = await guild.members.fetch(targetUserId).catch(() => null);
-    if (!member) return res.status(404).json({ success: false, error: "Member not found." });
+    if (!member)
+      return res
+        .status(404)
+        .json({ success: false, error: "Member not found." });
 
     await addMember(channelId, member, guild);
     res.json({ success: true, data: { channelId } });
@@ -91,20 +136,39 @@ router.post("/remove", async (req, res) => {
   try {
     const client = req.app.get("discordClient");
     const guild = client.guilds.cache.get(config.guildId);
-    if (!guild) return res.status(503).json({ success: false, error: "Guild not found" });
+    if (!guild)
+      return res.status(503).json({ success: false, error: "Guild not found" });
 
     const { requesterId, targetUserId } = req.body;
-    if (!requesterId || !targetUserId) return res.status(400).json({ success: false, error: "requesterId and targetUserId required" });
+    if (!requesterId || !targetUserId)
+      return res
+        .status(400)
+        .json({
+          success: false,
+          error: "requesterId and targetUserId required",
+        });
 
     const channelId = getVCByMember(requesterId);
-    if (!channelId) return res.status(404).json({ success: false, error: "Requester is not in a private VC." });
+    if (!channelId)
+      return res
+        .status(404)
+        .json({ success: false, error: "Requester is not in a private VC." });
 
     const data = getVCData(channelId);
-    if (!data?.members.has(targetUserId)) return res.status(404).json({ success: false, error: "User is not in this VC." });
-    if (requesterId === targetUserId) return res.status(400).json({ success: false, error: "Cannot remove yourself." });
+    if (!data?.members.has(targetUserId))
+      return res
+        .status(404)
+        .json({ success: false, error: "User is not in this VC." });
+    if (requesterId === targetUserId)
+      return res
+        .status(400)
+        .json({ success: false, error: "Cannot remove yourself." });
 
     const member = await guild.members.fetch(targetUserId).catch(() => null);
-    if (!member) return res.status(404).json({ success: false, error: "Member not found." });
+    if (!member)
+      return res
+        .status(404)
+        .json({ success: false, error: "Member not found." });
 
     await removeMember(channelId, member, guild);
     res.json({ success: true, data: { channelId } });
@@ -118,21 +182,34 @@ router.delete("/:channelId", async (req, res) => {
   try {
     const client = req.app.get("discordClient");
     const guild = client.guilds.cache.get(config.guildId);
-    if (!guild) return res.status(503).json({ success: false, error: "Guild not found" });
+    if (!guild)
+      return res.status(503).json({ success: false, error: "Guild not found" });
 
     const { channelId } = req.params;
     const { requesterId } = req.body;
-    if (!requesterId) return res.status(400).json({ success: false, error: "requesterId required" });
+    if (!requesterId)
+      return res
+        .status(400)
+        .json({ success: false, error: "requesterId required" });
 
-    // Verify requester has owner role
     const requester = await guild.members.fetch(requesterId).catch(() => null);
-    if (!requester) return res.status(404).json({ success: false, error: "Requester not found." });
+    if (!requester)
+      return res
+        .status(404)
+        .json({ success: false, error: "Requester not found." });
     if (!requester.roles.cache.has(config.ownerRoleId)) {
-      return res.status(403).json({ success: false, error: "Only owners can force-delete private VCs." });
+      return res
+        .status(403)
+        .json({
+          success: false,
+          error: "Only owners can force-delete private VCs.",
+        });
     }
 
     if (!getVCData(channelId)) {
-      return res.status(404).json({ success: false, error: "Private VC not found." });
+      return res
+        .status(404)
+        .json({ success: false, error: "Private VC not found." });
     }
 
     await forceDeleteVC(channelId, guild);

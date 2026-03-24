@@ -314,7 +314,6 @@ export async function fetchWebPage(url) {
     let content = result.data;
     let title = "Untitled";
 
-    // Handle JSON responses
     if (typeof content === "object") {
       content = JSON.stringify(content, null, 2);
       title = "JSON Response";
@@ -322,7 +321,6 @@ export async function fetchWebPage(url) {
       content = String(content);
     }
 
-    // If it looks like HTML, parse it
     if (content.includes("<html") || content.includes("</html>")) {
       let text = content.replace(
         /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
@@ -369,10 +367,6 @@ export async function fetchWebPage(url) {
     };
   }
 }
-
-/**
- * Web search using DuckDuckGo
- */
 export async function webSearch(query, options = {}) {
   const { maxResults = 5 } = options;
   const tavilyKey = process.env.TAVILY_API_KEY;

@@ -128,7 +128,13 @@ export async function initializeAgent(client) {
   await initializeTools(client);
   initEmojis(client);
 
-  // Warm all prompt caches concurrently at startup
+  await Promise.all([
+    getSystemPrompt(),
+    getPass1BasePrompt(),
+    getPass2BasePrompt(),
+  ]);
+  _model = getLanguageModel();
+
   await Promise.all([
     getSystemPrompt(),
     getPass1BasePrompt(),
@@ -169,7 +175,6 @@ export async function processMessage(userId, guildId, message) {
     const pass1System = `${pass1Base}\n\n- userId: \`${userId}\`\n- guildId: \`${guildId}\`\n- Use these exact IDs when a tool requires them.\n- Current date/time: ${nowUtc} UTC (use this year for any search queries, not your training cutoff year).`;
     const pass2Base = await getPass2BasePrompt();
 
-    // Smart context retrieval from Supabase-backed conversation history
     const recentMessages = contextManager.getFormattedHistory(
       userId,
       guildId,

@@ -254,9 +254,9 @@ export default {
 
       if (message.channel.id === "1473075469028167811") {
         const cleanContent = message.content
-          .replace(/<@!?\d+>/g, "") // Remove user mentions
-          .replace(/@everyone/g, "") // Remove @everyone
-          .replace(/@here/g, "") // Remove @here
+          .replace(/<@!?\d+>/g, "")
+          .replace(/@everyone/g, "")
+          .replace(/@here/g, "")
           .trim();
 
         const hasRoleMentions = /<@&\d+>/g.test(message.content);

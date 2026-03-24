@@ -50,7 +50,6 @@ for (const file of commandFiles) {
   }
 }
 
-// Load events
 const eventsPath = join(__dirname, "events");
 const eventFiles = readdirSync(eventsPath).filter((file) =>
   file.endsWith(".js"),
@@ -151,8 +150,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
   }
 });
-
-// Ready event handled by src/events/ready.js
 
 // Graceful shutdown handlers for conversation persistence
 import contextManager from "./agents/tools/context-manager.js";

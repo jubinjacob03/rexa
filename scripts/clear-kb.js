@@ -46,7 +46,6 @@ async function clearKnowledgeBase() {
     );
     console.log();
 
-    // Get current document count
     const { data: docs, error: countError } = await supabase
       .from("knowledge_embeddings")
       .select("id, category");
@@ -63,7 +62,6 @@ async function clearKnowledgeBase() {
 
     console.log(`📦 Current documents: ${docs.length}`);
 
-    // Group by category
     const byCategory = {};
     docs.forEach((doc) => {
       const cat = doc.category || "uncategorized";
@@ -80,7 +78,6 @@ async function clearKnowledgeBase() {
 
     console.log();
 
-    // Confirm deletion
     const answer = await question(
       'Type "DELETE" to confirm (or anything else to cancel): ',
     );
@@ -94,7 +91,6 @@ async function clearKnowledgeBase() {
     console.log();
     console.log("Deleting documents...");
 
-    // Delete all documents
     const { error: deleteError } = await supabase
       .from("knowledge_embeddings")
       .delete()

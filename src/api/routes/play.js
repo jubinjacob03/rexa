@@ -20,7 +20,6 @@ router.post("/", async (req, res) => {
       soundName,
     } = req.body;
 
-    // Validate required fields
     if (!soundId || !guildId || !channelId || !userId) {
       return res.status(400).json({
         success: false,
@@ -32,10 +31,8 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // Get bot client from app context
     const client = req.app.get("discordClient");
 
-    // Get guild
     const guild = client.guilds.cache.get(guildId);
     if (!guild) {
       return res.status(404).json({
@@ -48,10 +45,8 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // Get channel
     const channel = guild.channels.cache.get(channelId);
     if (!channel || channel.type !== 2) {
-      // 2 = Voice Channel
       return res.status(400).json({
         success: false,
         error: {
@@ -96,7 +91,6 @@ router.post("/", async (req, res) => {
 
     const result = await voiceManager.playSound(guildId, soundData);
 
-    // Get current status
     const status = voiceManager.getStatus(guildId);
 
     res.json({

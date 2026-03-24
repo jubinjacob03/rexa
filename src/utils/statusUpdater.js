@@ -13,7 +13,6 @@ let updateInterval = null;
  * Creates the server information embed
  */
 export async function createStatusEmbed(guild, client) {
-  // Fetch all members to get accurate counts
   try {
     await guild.members.fetch();
   } catch (error) {

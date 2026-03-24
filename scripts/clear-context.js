@@ -48,7 +48,6 @@ async function clearContext() {
     console.log("=".repeat(70));
     console.log();
 
-    // Build query to fetch what will be deleted
     let query = supabase
       .from("conversation_history")
       .select("context_id, user_id, guild_id, last_activity, messages");
@@ -92,7 +91,6 @@ async function clearContext() {
     console.log(`   Total messages: ${totalMessages}`);
     console.log();
 
-    // Show per-user breakdown (up to 10)
     const byUser = {};
     rows.forEach((r) => {
       const key = r.user_id || "unknown";
