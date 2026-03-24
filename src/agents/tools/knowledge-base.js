@@ -6,7 +6,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
-import config, { getLanguageModel, getEmbeddingModel } from "../config.js";
+import config from "../config.js";
 
 /**
  * Supabase client for vector storage
@@ -28,6 +28,40 @@ let initializationPromise = null;
  * Document metadata store (cached in memory, synced with Supabase)
  */
 const documentMetadata = new Map();
+
+/**
+ * Embedding cache - LRU with TTL to avoid repeated API calls
+ * Key: text hash, Value: { embedding, timestamp }
+ */
+const embeddingCache = new Map();
+const EMBEDDING_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+const EMBEDDING_CACHE_MAX = 500;
+
+function hashText(text) {
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) {
+    hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
+  }
+  return hash.toString(36);
+}
+
+function getCachedEmbedding(text) {
+  const key = hashText(text);
+  const cached = embeddingCache.get(key);
+  if (cached && Date.now() - cached.timestamp < EMBEDDING_CACHE_TTL) {
+    return cached.embedding;
+  }
+  embeddingCache.delete(key);
+  return null;
+}
+
+function setCachedEmbedding(text, embedding) {
+  if (embeddingCache.size >= EMBEDDING_CACHE_MAX) {
+    const oldest = embeddingCache.keys().next().value;
+    embeddingCache.delete(oldest);
+  }
+  embeddingCache.set(hashText(text), { embedding, timestamp: Date.now() });
+}
 
 /**
  * Initialize the knowledge base with Supabase pgvector
@@ -307,10 +341,10 @@ Server Info:
   );
 }
 
-/**
- * Generate embedding for text using FREE Gemini embeddings
- */
 async function generateEmbedding(text) {
+  const cached = getCachedEmbedding(text);
+  if (cached) return cached;
+
   try {
     const { embedMany } = await import("ai");
     const { createGoogleGenerativeAI } = await import("@ai-sdk/google");
@@ -324,6 +358,7 @@ async function generateEmbedding(text) {
       values: [text],
     });
 
+    setCachedEmbedding(text, embeddings[0]);
     return embeddings[0];
   } catch (error) {
     console.error("[KNOWLEDGE BASE] Embedding generation error:", error);
@@ -444,26 +479,13 @@ export async function query(question, options = {}) {
       };
     }
 
-    const context = data.map((doc) => doc.content).join("\n\n---\n\n");
-    const model = getLanguageModel();
-
-    const { generateText } = await import("ai");
-    const result = await generateText({
-      model,
-      prompt: `Based on the following knowledge base context, answer the question concisely and accurately.
-
-Context:
-${context}
-
-Question: ${question}
-
-Answer:`,
-      temperature: 0.1,
-    });
+    const formattedContext = data
+      .map((doc, i) => `[${i + 1}] ${doc.content}`)
+      .join("\n\n");
 
     return {
       success: true,
-      answer: result.text,
+      answer: formattedContext,
       sources: data.map((doc) => ({
         id: doc.id,
         content: doc.content.substring(0, 200),

@@ -4,7 +4,7 @@
  * Enhanced with Supabase persistence for AI memory across restarts
  */
 
-import { embed, cosineSimilarity } from "ai";
+import { embed, embedMany, cosineSimilarity } from "ai";
 import config, { getEmbeddingModel } from "../config.js";
 import { createClient } from "@supabase/supabase-js";
 
@@ -243,7 +243,13 @@ class ContextManager {
       content,
       timestamp: new Date().toISOString(),
       metadata,
+      embedding: null,
     };
+
+    // Pre-compute embedding for substantial messages
+    if (content.length >= 20 && role !== "system") {
+      this._precomputeEmbedding(message).catch(() => {});
+    }
 
     context.messages.push(message);
     context.lastActivity = new Date().toISOString();
@@ -262,6 +268,26 @@ class ContextManager {
     this.queueSave(contextId);
 
     return message;
+  }
+
+  /**
+   * Pre-compute embedding for a message (background task)
+   */
+
+  async _precomputeEmbedding(message) {
+    if (message.embedding) return;
+    try {
+      const { embedding } = await embed({
+        model: this.embeddingModel,
+        value: message.content,
+      });
+      message.embedding = embedding;
+    } catch (e) {
+      console.error(
+        "[CONTEXT MANAGER] Embedding error for message:",
+        e.message,
+      );
+    }
   }
 
   /**
@@ -291,6 +317,7 @@ class ContextManager {
 
   /**
    * Search conversation history using semantic similarity
+   * Uses pre-computed embeddings when available for instant search
    */
   async searchHistory(userId, guildId, query, topK = 3) {
     await this.initialize();
@@ -302,28 +329,37 @@ class ContextManager {
     }
 
     try {
+      // Filter messages worth searching (>10 chars)
+      const validMessages = context.messages.filter(
+        (m) => m.content.length >= 10,
+      );
+
+      if (validMessages.length === 0) {
+        return { success: true, results: [] };
+      }
+
       const { embedding: queryEmbedding } = await embed({
         model: this.embeddingModel,
         value: query,
       });
 
-      const results = [];
+      // Find messages missing embeddings
+      const needsEmbedding = validMessages.filter((m) => !m.embedding);
 
-      for (const message of context.messages) {
-        if (message.content.length < 10) continue;
-
-        const { embedding: msgEmbedding } = await embed({
+      if (needsEmbedding.length > 0) {
+        const { embeddings } = await embedMany({
           model: this.embeddingModel,
-          value: message.content,
+          values: needsEmbedding.map((m) => m.content),
         });
-
-        const similarity = cosineSimilarity(queryEmbedding, msgEmbedding);
-
-        results.push({
-          message,
-          similarity,
+        needsEmbedding.forEach((m, i) => {
+          m.embedding = embeddings[i];
         });
       }
+
+      const results = validMessages.map((message) => ({
+        message,
+        similarity: cosineSimilarity(queryEmbedding, message.embedding),
+      }));
 
       results.sort((a, b) => b.similarity - a.similarity);
       const topResults = results.slice(0, topK);

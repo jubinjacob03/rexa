@@ -173,7 +173,6 @@ export async function processMessage(userId, guildId, message) {
       timeStyle: "short",
     });
     const pass1System = `${pass1Base}\n\n- userId: \`${userId}\`\n- guildId: \`${guildId}\`\n- Use these exact IDs when a tool requires them.\n- Current date/time: ${nowUtc} UTC (use this year for any search queries, not your training cutoff year).`;
-    const pass2Base = await getPass2BasePrompt();
 
     const recentMessages = contextManager.getFormattedHistory(
       userId,
@@ -186,13 +185,13 @@ export async function processMessage(userId, guildId, message) {
       RE_FOLLOW_UP_WORDS.test(message);
 
     let historyMessages = recentMessages;
-    if (isFollowUp && contextManager.getHistory(userId, guildId).length > 10) {
+    if (isFollowUp && contextManager.getHistory(userId, guildId).length > 15) {
       try {
         const searchResult = await contextManager.searchHistory(
           userId,
           guildId,
           message,
-          10,
+          7,
         );
         if (searchResult?.success && searchResult.results?.length > 0) {
           const recentContents = new Set(recentMessages.map((m) => m.content));
@@ -411,6 +410,7 @@ export async function processMessage(userId, guildId, message) {
     }
 
     // Pass 2: feed tool result back for natural language synthesis
+    const pass2Base = await getPass2BasePrompt();
     const toolResultStr = JSON.stringify(finalToolResult, null, 2);
     const toolContext = `[${finalToolName} result]:\n${
       toolResultStr.length > 3000
