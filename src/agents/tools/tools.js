@@ -138,16 +138,19 @@ export const serverInfoTool = tool({
   - Get server stats (infoType="stats")  
   - Get specific member info (infoType="member", targetId=user_id)
   - Get channel info (infoType="channel", targetId=channel_id)
-  - Search members (infoType="search", searchQuery="name_to_search")
-  - List all members with IDs, roles, nicknames, and online status (infoType="members")
+  - Search members by username, nickname, or ID (infoType="search", searchQuery="name_or_id")
+  - List all current members in the server (infoType="presentMembers")
+  - Find people with specific role(s) (infoType="roleMembers", roleName="role_name")
+  - List of people who have been kicked (infoType="kickedMembers")
+  - List of people who have been banned (infoType="bannedMembers")
   
   REQUIRED: Always provide guildId (server ID) and infoType.
-  For member queries, provide targetId with the user's ID.`,
+  For lists with many people, the AI agent will respond natively with an Embed table containing the users.`,
   parameters: z.object({
     infoType: z
-      .enum(["stats", "member", "channel", "search", "members"])
+      .enum(["stats", "member", "channel", "search", "presentMembers", "roleMembers", "kickedMembers", "bannedMembers"])
       .describe(
-        "Type of info: stats (server stats), member (user info), channel (channel info), search (find members), or members (list all members with roles and status)",
+        "Type of info to retrieve from the server. (stats, member, channel, search, presentMembers, roleMembers, kickedMembers, bannedMembers)",
       ),
     guildId: z.string().describe("The Discord server/guild ID"),
     targetId: z
@@ -158,11 +161,15 @@ export const serverInfoTool = tool({
       .string()
       .optional()
       .describe(
-        "Search term for finding members (only with infoType='search')",
+        "Search term for finding members by username, nickname, or ID",
       ),
-    limit: z.number().optional().default(10).describe("Max results for search"),
+    roleName: z
+      .string()
+      .optional()
+      .describe("Name of the role to find members for (only with infoType='roleMembers')"),
+    limit: z.number().optional().default(20).describe("Max results for lists/searches"),
   }),
-  execute: async ({ infoType, guildId, targetId, searchQuery, limit }) => {
+  execute: async ({ infoType, guildId, targetId, searchQuery, roleName, limit }) => {
     if (!client) return { success: false, error: "Client not initialized" };
 
     try {
@@ -216,33 +223,35 @@ export const serverInfoTool = tool({
       if (infoType === "search" && searchQuery) {
         const fetched = await fetchMembersWithCache(guild);
         const q = searchQuery.toLowerCase();
-        const results = [
-          ...fetched
-            .filter(
-              (m) =>
+        
+        let results = [];
+        
+        // Exact ID match
+        const exactMatch = fetched.get(searchQuery);
+        if (exactMatch && !exactMatch.user.bot) {
+            results.push(exactMatch);
+        } else {
+            results = [...fetched.filter(m => 
                 !m.user.bot &&
-                (m.user.username.toLowerCase().includes(q) ||
-                  m.displayName.toLowerCase().includes(q) ||
-                  (m.nickname && m.nickname.toLowerCase().includes(q))),
-            )
-            .values(),
-        ]
-          .sort((a, b) => b.roles.cache.size - a.roles.cache.size)
-          .slice(0, limit || 5)
-          .map((m) => ({
+                (m.user.id === searchQuery ||
+                 m.user.username.toLowerCase().includes(q) ||
+                 m.displayName.toLowerCase().includes(q) ||
+                 (m.nickname && m.nickname.toLowerCase().includes(q)))
+            ).values()];
+        }
+        
+        results = results.slice(0, limit || 20).map((m) => ({
             id: m.id,
             username: m.user.username,
             displayName: m.displayName,
             nickname: m.nickname || null,
             status: m.presence?.status || "offline",
-            roles: m.roles.cache
-              .filter((r) => r.name !== "@everyone")
-              .map((r) => r.name),
-          }));
+            roles: m.roles.cache.filter((r) => r.name !== "@everyone").map((r) => r.name).join(", "),
+        }));
         return { success: true, results, count: results.length };
       }
 
-      if (infoType === "members") {
+      if (infoType === "presentMembers") {
         const fetched = await fetchMembersWithCache(guild);
         const members = [...fetched.filter((m) => !m.user.bot).values()].map(
           (m) => ({
@@ -251,12 +260,51 @@ export const serverInfoTool = tool({
             displayName: m.displayName,
             nickname: m.nickname || null,
             status: m.presence?.status || "offline",
-            roles: m.roles.cache
-              .filter((r) => r.name !== "@everyone")
-              .map((r) => ({ id: r.id, name: r.name })),
           }),
-        );
-        return { success: true, members, count: members.length };
+        ).slice(0, limit || 50);
+        return { success: true, members, count: fetched.filter(m => !m.user.bot).size, returned: members.length };
+      }
+      
+      if (infoType === "roleMembers" && roleName) {
+        const fetched = await fetchMembersWithCache(guild);
+        const q = roleName.toLowerCase();
+        const role = guild.roles.cache.find(r => r.name.toLowerCase().includes(q) || r.id === roleName);
+        
+        if (!role) return { success: false, error: `Role '${roleName}' not found.` };
+        
+        const roleMembers = [...fetched.filter(m => !m.user.bot && m.roles.cache.has(role.id)).values()].map(m => ({
+            id: m.id,
+            username: m.user.username,
+            displayName: m.displayName,
+        })).slice(0, limit || 50);
+        
+        return { success: true, roleName: role.name, roleId: role.id, members: roleMembers, count: role.members.size, returned: roleMembers.length };
+      }
+
+      if (infoType === "bannedMembers") {
+        const bans = await guild.bans.fetch({ limit: limit || 50 });
+        const bannedUsers = bans.map(ban => ({
+            userId: ban.user.id,
+            username: ban.user.username,
+            reason: ban.reason || "No reason provided",
+        }));
+        
+        return { success: true, bannedMembers: bannedUsers, count: bannedUsers.length };
+      }
+      
+      if (infoType === "kickedMembers") {
+        const auditLogs = await guild.fetchAuditLogs({ limit: limit || 50, type: 20 }); // AuditLogEvent.MemberKick = 20
+        const kicks = auditLogs.entries.map(entry => ({
+            action: "Kicked",
+            targetId: entry.target?.id,
+            targetUsername: entry.target?.username || "Unknown",
+            executorId: entry.executor?.id,
+            executorUsername: entry.executor?.username || "Unknown",
+            reason: entry.reason || "No reason provided",
+            createdAt: entry.createdAt,
+        }));
+        
+        return { success: true, kickedMembers: kicks, count: kicks.length };
       }
 
       return {
