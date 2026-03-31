@@ -8,7 +8,7 @@ import {
   createRequest,
   removeRequest,
   logApproval,
-} from "../../utils/verificationManager.js";
+} from "../../utils/verificationHandler.js";
 import { broadcastWs } from "../wsServer.js";
 
 const router = Router();
@@ -141,12 +141,10 @@ router.post("/apply", async (req, res) => {
         .json({ success: false, error: "You already have the Member role." });
     }
     if (!isFriends && !member.roles.cache.has(config.friendsRoleId)) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: "You must have the Friends role before applying for Member.",
-        });
+      return res.status(400).json({
+        success: false,
+        error: "You must have the Friends role before applying for Member.",
+      });
     }
 
     const approvalEmbed = new EmbedBuilder()
@@ -204,12 +202,10 @@ router.post("/approve", async (req, res) => {
 
     const { requesterId, targetUserId, nickname } = req.body;
     if (!requesterId || !targetUserId || !nickname) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: "requesterId, targetUserId, and nickname required",
-        });
+      return res.status(400).json({
+        success: false,
+        error: "requesterId, targetUserId, and nickname required",
+      });
     }
 
     const requester = await guild.members.fetch(requesterId).catch(() => null);
@@ -313,12 +309,10 @@ router.post("/reject", async (req, res) => {
 
     const { requesterId, targetUserId } = req.body;
     if (!requesterId || !targetUserId) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: "requesterId and targetUserId required",
-        });
+      return res.status(400).json({
+        success: false,
+        error: "requesterId and targetUserId required",
+      });
     }
 
     const requester = await guild.members.fetch(requesterId).catch(() => null);
