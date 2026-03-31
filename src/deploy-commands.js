@@ -7,24 +7,13 @@ import config from "../config.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const commands = [];
-const commandsPath = join(__dirname, "commands");
-const commandFiles = readdirSync(commandsPath).filter((file) =>
-  file.endsWith(".js"),
-);
+import { loadCommands } from "./utils/commandLoader.js";
 
-for (const file of commandFiles) {
-  const filePath = join(commandsPath, file);
-  const command = await import(`file://${filePath}`);
-  if ("data" in command.default && "execute" in command.default) {
-    commands.push(command.default.data.toJSON());
-    console.log(`[INFO] Loaded command: ${command.default.data.name}`);
-  } else {
-    console.log(
-      `[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`,
-    );
-  }
-}
+const loadedCommands = await loadCommands();
+const commands = loadedCommands.map(cmd => {
+  console.log(`[INFO] Processed command for deployment: ${cmd.data.name}`);
+  return cmd.data.toJSON();
+});
 
 const rest = new REST().setToken(config.token);
 

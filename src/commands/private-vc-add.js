@@ -7,7 +7,7 @@ import {
 
 export default {
   data: new SlashCommandBuilder()
-    .setName("add")
+    .setName("vc-add")
     .setDescription("Add a member to your current private voice channel.")
     .addUserOption((o) =>
       o.setName("member").setDescription("Member to add").setRequired(true),

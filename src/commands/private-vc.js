@@ -9,7 +9,7 @@ import config from "../../config.js";
 
 export default {
   data: new SlashCommandBuilder()
-    .setName("private")
+    .setName("vc")
     .setDescription("Create a private voice channel for selected members.")
     .addUserOption((o) =>
       o.setName("member1").setDescription("Member to invite").setRequired(true),

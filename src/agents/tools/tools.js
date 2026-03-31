@@ -6,18 +6,19 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { EmbedBuilder } from "discord.js";
-import knowledgeBase from "./knowledge-base.js";
 import config from "../config.js";
 import {
   createPrivateVC,
   canCreate,
   getVCByMember,
 } from "../../utils/privateVCManager.js";
+import * as modTools from "../../utils/moderation.js";
 
 let client = null;
 
 export function initializeTools(discordClient) {
   client = discordClient;
+  modTools.setupModerationTools(discordClient);
   console.log("[TOOLS] Initialized with Discord client");
 }
 
@@ -40,42 +41,6 @@ async function fetchMembersFresh(guild) {
   memberCacheMap.set(guild.id, { members, timestamp: Date.now() });
   return members;
 }
-
-/**
- * RAG Tool - Knowledge base search using AI SDK embeddings
- */
-export const ragTool = tool({
-  description: `Search knowledge base for information about Shantha, Remani, commands, and server features. Use this to get accurate information instead of guessing.`,
-  parameters: z.object({
-    query: z.string().describe("Search query"),
-    category: z
-      .enum([
-        "server",
-        "shantha",
-        "remani",
-        "commands",
-        "music",
-        "verification",
-        "private_vc",
-        "general",
-      ])
-      .optional(),
-    topK: z.number().min(1).max(10).optional().default(5),
-  }),
-  execute: async ({ query, category, topK }) => {
-    const result = await knowledgeBase.search(query, { category, topK });
-    return result.success
-      ? {
-          results: result.results.map((r) => ({
-            text: r.text,
-            relevance: r.similarity,
-            source: r.metadata.category,
-          })),
-          totalMatches: result.totalMatches,
-        }
-      : { error: result.error };
-  },
-});
 
 /**
  * Command Executor - Execute Discord commands
@@ -551,40 +516,7 @@ export const createPrivateVCTool = tool({
   },
 });
 
-// ── Moderation permission role IDs (from moderation-context.md) ──────────────
-const OWNER_ROLE_ID = "1473075468088377352";
-const MOD_ROLE_IDS = new Set([
-  "1473075468088377349",
-  "1473075468088377350",
-  "1473075468088377352",
-]);
-
-/**
- * Check if a guild member (by userId) has the required permission level.
- * level: "owner" | "mod"
- */
-async function checkModPermission(guild, userId, level) {
-  if (!userId) return false;
-  const invoker = await guild.members
-    .fetch({ user: userId, force: false })
-    .catch(() => null);
-  if (!invoker) return false;
-  const roleIds = invoker.roles.cache.map((r) => r.id);
-  if (level === "owner") return roleIds.includes(OWNER_ROLE_ID);
-  if (level === "mod") return roleIds.some((id) => MOD_ROLE_IDS.has(id));
-  return true;
-}
-
-/**
- * Discord Action Tool — real Discord API moderation/admin actions
- *
- * Mod-level (voice-mute/unmute, voice-deafen/undeafen, timeout, remove-timeout,
- *            change-nickname, change-bot-nickname):
- *   Requires one of roles: 1473075468088377349 | 1473075468088377350 | 1473075468088377352
- *
- * Owner-level (kick, ban):
- *   Requires role: 1473075468088377352
- */
+// ── Moderation Tool wrapper over src/utils/moderation.js ──────────────────────
 export const discordActionTool = tool({
   description: `Perform a real Discord moderation or administration action directly via the Discord API.
 Available actions:
@@ -664,7 +596,6 @@ The tool enforces role-based permissions internally. Always pass userId (invoker
       const guild = await client.guilds.fetch({ guild: guildId, force: true });
       await guild.members.fetch({ force: true });
 
-      // ── Permission level required per action ─────────────────────────────
       const ownerActions = new Set(["kick", "ban", "add-role", "remove-role"]);
       const modActions = new Set([
         "voice-mute",
@@ -678,205 +609,37 @@ The tool enforces role-based permissions internally. Always pass userId (invoker
       ]);
 
       if (ownerActions.has(action)) {
-        const allowed = await checkModPermission(guild, userId, "owner");
-        if (!allowed)
-          return {
-            success: false,
-            error:
-              "🔒 Permission denied. Only the server Owner can perform kick/ban actions.",
-          };
+        const allowed = await modTools.checkModerationPermission(guild, userId, "owner");
+        if (!allowed) return { success: false, error: "🔒 Permission denied. Only the server Owner can perform kick/ban actions." };
       } else if (modActions.has(action)) {
-        const allowed = await checkModPermission(guild, userId, "mod");
-        if (!allowed)
-          return {
-            success: false,
-            error:
-              "🔒 Permission denied. You need a Moderator or higher role to perform this action.",
-          };
+        const allowed = await modTools.checkModerationPermission(guild, userId, "mod");
+        if (!allowed) return { success: false, error: "🔒 Permission denied. You need a Moderator or higher role to perform this action." };
       }
 
-      // ── change-bot-nickname (no target member needed) ─────────────────────
       if (action === "change-bot-nickname") {
-        const me = await guild.members.fetchMe();
-        await me.setNickname(nickname ?? null, reason);
-        return {
-          success: true,
-          message: nickname
-            ? `My nickname has been changed to "${nickname}".`
-            : "My nickname has been reset.",
-        };
+        const message = await modTools.changeBotNickname(guild, nickname, reason);
+        return { success: true, message };
       }
 
-      // ── Resolve target member by fuzzy name match ─────────────────────────
-      const q = (targetName || "").toLowerCase();
-      const member = q
-        ? guild.members.cache.find(
-            (m) =>
-              !m.user.bot &&
-              (m.displayName.toLowerCase().includes(q) ||
-                m.user.username.toLowerCase().includes(q) ||
-                (m.nickname && m.nickname.toLowerCase().includes(q))),
-          )
-        : null;
-
-      if (!member)
-        return {
-          success: false,
-          error: `Member "${targetName}" not found in this server.`,
-        };
-
-      // ── Prevent actions on the bot itself ────────────────────────────────
-      if (member.id === client.user.id)
-        return { success: false, error: "I can't moderate myself." };
+      const member = modTools.resolveMemberByName(guild, targetName);
+      let message = "";
 
       switch (action) {
-        case "voice-mute":
-          if (!member.voice?.channel)
-            return {
-              success: false,
-              error: `${member.displayName} is not in a voice channel.`,
-            };
-          await member.voice.setMute(true, reason);
-          return {
-            success: true,
-            message: `${member.displayName} has been server-muted in voice.`,
-          };
-
-        case "voice-unmute":
-          if (!member.voice?.channel)
-            return {
-              success: false,
-              error: `${member.displayName} is not in a voice channel.`,
-            };
-          await member.voice.setMute(false, reason);
-          return {
-            success: true,
-            message: `${member.displayName} has been server-unmuted.`,
-          };
-
-        case "voice-deafen":
-          if (!member.voice?.channel)
-            return {
-              success: false,
-              error: `${member.displayName} is not in a voice channel.`,
-            };
-          await member.voice.setDeaf(true, reason);
-          return {
-            success: true,
-            message: `${member.displayName} has been server-deafened.`,
-          };
-
-        case "voice-undeafen":
-          if (!member.voice?.channel)
-            return {
-              success: false,
-              error: `${member.displayName} is not in a voice channel.`,
-            };
-          await member.voice.setDeaf(false, reason);
-          return {
-            success: true,
-            message: `${member.displayName} has been server-undeafened.`,
-          };
-
-        case "timeout": {
-          const ms = Math.min(durationMinutes, 40320) * 60 * 1000;
-          await member.timeout(ms, reason);
-          return {
-            success: true,
-            message: `${member.displayName} has been timed out for ${durationMinutes} minute(s).`,
-          };
-        }
-
-        case "remove-timeout":
-          await member.timeout(null, reason);
-          return {
-            success: true,
-            message: `${member.displayName}'s timeout has been removed.`,
-          };
-
-        case "kick":
-          await member.kick(reason);
-          return {
-            success: true,
-            message: `${member.displayName} has been kicked from the server.`,
-          };
-
-        case "ban":
-          await member.ban({
-            reason,
-            deleteMessageSeconds: deleteDays * 86400,
-          });
-          return {
-            success: true,
-            message: `${member.displayName} has been banned from the server.`,
-          };
-
-        case "change-nickname":
-          await member.setNickname(nickname ?? null, reason);
-          return {
-            success: true,
-            message: nickname
-              ? `${member.displayName}'s nickname has been changed to "${nickname}".`
-              : `${member.displayName}'s nickname has been reset.`,
-          };
-
-        case "add-role": {
-          if (!roleName)
-            return {
-              success: false,
-              error: "roleName is required for add-role.",
-            };
-          const rq = roleName.toLowerCase();
-          const role = guild.roles.cache.find((r) =>
-            r.name.toLowerCase().includes(rq),
-          );
-          if (!role)
-            return {
-              success: false,
-              error: `Role "${roleName}" not found in this server.`,
-            };
-          if (member.roles.cache.has(role.id))
-            return {
-              success: false,
-              error: `${member.displayName} already has the "${role.name}" role.`,
-            };
-          await member.roles.add(role, reason);
-          return {
-            success: true,
-            message: `The "${role.name}" role has been added to ${member.displayName}.`,
-          };
-        }
-
-        case "remove-role": {
-          if (!roleName)
-            return {
-              success: false,
-              error: "roleName is required for remove-role.",
-            };
-          const rq = roleName.toLowerCase();
-          const role = guild.roles.cache.find((r) =>
-            r.name.toLowerCase().includes(rq),
-          );
-          if (!role)
-            return {
-              success: false,
-              error: `Role "${roleName}" not found in this server.`,
-            };
-          if (!member.roles.cache.has(role.id))
-            return {
-              success: false,
-              error: `${member.displayName} doesn't have the "${role.name}" role.`,
-            };
-          await member.roles.remove(role, reason);
-          return {
-            success: true,
-            message: `The "${role.name}" role has been removed from ${member.displayName}.`,
-          };
-        }
-
-        default:
-          return { success: false, error: `Unknown action: ${action}` };
+        case "voice-mute":      message = await modTools.voiceMute(member, reason); break;
+        case "voice-unmute":    message = await modTools.voiceUnmute(member, reason); break;
+        case "voice-deafen":    message = await modTools.voiceDeafen(member, reason); break;
+        case "voice-undeafen":  message = await modTools.voiceUndeafen(member, reason); break;
+        case "timeout":         message = await modTools.timeout(member, durationMinutes, reason); break;
+        case "remove-timeout":  message = await modTools.removeTimeout(member, reason); break;
+        case "kick":            message = await modTools.kick(member, reason); break;
+        case "ban":             message = await modTools.ban(member, deleteDays, reason); break;
+        case "change-nickname": message = await modTools.changeNickname(member, nickname, reason); break;
+        case "add-role":        message = await modTools.addRole(guild, member, roleName, reason); break;
+        case "remove-role":     message = await modTools.removeRole(guild, member, roleName, reason); break;
+        default: return { success: false, error: `Unknown action: ${action}` };
       }
+
+      return { success: true, message };
     } catch (error) {
       return { success: false, error: error.message };
     }

@@ -84,29 +84,29 @@ async function deleteMessages(channel, messages) {
 
 export default {
   data: new SlashCommandBuilder()
-    .setName("delete")
-    .setDescription("Delete messages in a channel (mod only).")
+    .setName("purge")
+    .setDescription("Purge messages in a channel (mod only).")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addChannelOption((o) =>
       o
         .setName("channel")
-        .setDescription("Channel to delete messages from")
+        .setDescription("Channel to purge messages from")
         .setRequired(true),
     )
     .addStringOption((o) =>
       o
         .setName("mode")
-        .setDescription("Deletion mode")
+        .setDescription("Purge mode")
         .setRequired(true)
         .addChoices(
-          { name: "user — delete all messages from a user", value: "user" },
-          { name: "all — clear entire channel", value: "all" },
+          { name: "user — purge all messages from a user", value: "user" },
+          { name: "all — purge entire channel", value: "all" },
           {
-            name: "trail — delete from a message onward (all users)",
+            name: "trail — purge from a message onward (all users)",
             value: "trail",
           },
           {
-            name: "trail_user — delete from a message onward (that user only)",
+            name: "trail_user — purge from a message onward (that user only)",
             value: "trail_user",
           },
         ),
@@ -115,7 +115,7 @@ export default {
       o
         .setName("user")
         .setDescription(
-          "Delete all messages from this user (mode: user / trail_user).",
+          "Purge all messages from this user (mode: user / trail_user).",
         )
         .setRequired(false),
     )
@@ -203,11 +203,11 @@ export default {
     }
 
     if (toDelete.length === 0) {
-      return interaction.editReply("✅ No matching messages found to delete.");
+      return interaction.editReply("✅ No matching messages found to purge.");
     }
 
     await interaction.editReply(
-      `⏳ Deleting **${toDelete.length}** message(s)...`,
+      `⏳ Purging **${toDelete.length}** message(s)...`,
     );
 
     const { deleted, failed } = await deleteMessages(channel, toDelete);
@@ -221,16 +221,16 @@ export default {
 
     const embed = new EmbedBuilder()
       .setColor(failed > 0 ? "#FF5722" : "#4CAF50")
-      .setTitle("🗑️ Delete Complete")
+      .setTitle("🗑️ Purge Complete")
       .addFields(
         { name: "Channel", value: `<#${channel.id}>`, inline: true },
         { name: "Mode", value: mode, inline: true },
-        { name: "Deleted", value: `${deleted}`, inline: true },
+        { name: "Purged", value: `${deleted}`, inline: true },
         ...(failed > 0
           ? [
               {
                 name: "Failed",
-                value: `${failed} (likely too old or already deleted)`,
+                value: `${failed} (likely too old or already purged)`,
                 inline: false,
               },
             ]

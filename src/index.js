@@ -7,6 +7,9 @@ import { dirname, join } from "path";
 import { readdirSync } from "fs";
 import ffmpegPath from "ffmpeg-static";
 import config from "../config.js";
+import { updateStatusMessage } from "./utils/statusUpdater.js";
+import { handleVerificationApply, handleApprovalAction, handleNicknameModal } from "./utils/verificationHandler.js";
+import { handleAutomodInteraction } from "./commands/automod.js";
 
 if (ffmpegPath) {
   process.env.FFMPEG_PATH = ffmpegPath;
@@ -33,21 +36,13 @@ const client = new Client({
 client.commands = new Collection();
 
 const commandsPath = join(__dirname, "commands");
-const commandFiles = readdirSync(commandsPath).filter((file) =>
-  file.endsWith(".js"),
-);
 
-for (const file of commandFiles) {
-  const filePath = join(commandsPath, file);
-  const command = await import(`file://${filePath}`);
-  if ("data" in command.default && "execute" in command.default) {
-    client.commands.set(command.default.data.name, command.default);
-    console.log(`[INFO] Loaded command: ${command.default.data.name}`);
-  } else {
-    console.log(
-      `[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`,
-    );
-  }
+import { loadCommands } from "./utils/commandLoader.js";
+const loadedCommands = await loadCommands();
+
+for (const command of loadedCommands) {
+  client.commands.set(command.data.name, command);
+  console.log(`[INFO] Loaded command: ${command.data.name}`);
 }
 
 const eventsPath = join(__dirname, "events");
@@ -77,9 +72,13 @@ for (const file of eventFiles) {
 
 client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.isButton()) {
+    if (interaction.customId === "automod_toggle_master") {
+      await handleAutomodInteraction(interaction);
+      return;
+    }
+
     if (interaction.customId === "refresh_stats") {
       await interaction.deferUpdate();
-      const { updateStatusMessage } = await import("./utils/statusUpdater.js");
       await updateStatusMessage(interaction.client);
       return;
     }
@@ -97,8 +96,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       interaction.customId === "verify_friends" ||
       interaction.customId === "verify_member"
     ) {
-      const { handleVerificationApply } =
-        await import("./utils/verificationHandler.js");
       await handleVerificationApply(interaction);
       return;
     }
@@ -107,8 +104,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       interaction.customId.startsWith("approve_") ||
       interaction.customId.startsWith("reject_")
     ) {
-      const { handleApprovalAction } =
-        await import("./utils/verificationHandler.js");
       await handleApprovalAction(interaction);
       return;
     }
@@ -116,9 +111,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   if (interaction.isModalSubmit()) {
     if (interaction.customId.startsWith("nickname_modal_")) {
-      const { handleNicknameModal } =
-        await import("./utils/verificationHandler.js");
       await handleNicknameModal(interaction);
+      return;
+    }
+    if (interaction.customId === "automod_limits_modal") {
+      await handleAutomodInteraction(interaction);
+      return;
+    }
+  }
+
+  if (interaction.isStringSelectMenu()) {
+    if (interaction.customId === "automod_feature_select") {
+      await handleAutomodInteraction(interaction);
       return;
     }
   }

@@ -1,5 +1,6 @@
 import { Events } from "discord.js";
 import config from "../../config.js";
+import { checkSpam, checkToxicity } from "../utils/automodRunner.js";
 
 const WAR_RESULTS_CHANNEL = "1473075469028167814";
 const ANNOUNCEMENTS_CHANNEL = "1473075468805738540";
@@ -115,6 +116,10 @@ export default {
     }
 
     if (message.author.bot) return;
+
+    // Trigger AutoMod
+    await checkSpam(message);
+    await checkToxicity(message);
 
     const isMentioned = message.mentions.has(message.client.user.id, {
       ignoreEveryone: true,

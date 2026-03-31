@@ -1,5 +1,6 @@
 import { Events } from "discord.js";
 import { updateStatusMessage } from "../utils/statusUpdater.js";
+import { checkMemberUpdate } from "../utils/automodRunner.js";
 
 let _statusDebounceTimer = null;
 
@@ -14,5 +15,7 @@ export default {
         15000,
       );
     }
+    
+    await checkMemberUpdate(oldMember, newMember);
   },
 };

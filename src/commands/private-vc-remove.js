@@ -7,7 +7,7 @@ import {
 
 export default {
   data: new SlashCommandBuilder()
-    .setName("remove")
+    .setName("vc-remove")
     .setDescription("Remove a member from your current private voice channel.")
     .addUserOption((o) =>
       o.setName("member").setDescription("Member to remove").setRequired(true),
