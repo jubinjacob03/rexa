@@ -7,15 +7,35 @@ import {
   PermissionFlagsBits,
 } from "discord.js";
 import config from "../../config.js";
+import {
+  getAutoDmEnabled,
+  setAutoDmEnabled,
+} from "../utils/verificationHandler.js";
 
 export default {
   data: new SlashCommandBuilder()
     .setName("setup-verification")
     .setDescription("Set up verification embeds in the verification channel")
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .addStringOption((option) =>
+      option
+        .setName("auto")
+        .setDescription(
+          "Auto-DM new members with the verification embed when they join (default: off)",
+        )
+        .setRequired(false)
+        .addChoices({ name: "on", value: "on" }, { name: "off", value: "off" }),
+    ),
 
   async execute(interaction) {
     try {
+      const autoOption = interaction.options.getString("auto");
+      if (autoOption !== null) {
+        const enabled = autoOption === "on";
+        setAutoDmEnabled(enabled);
+      }
+      const currentAutoDm = getAutoDmEnabled();
+
       const verificationChannel = await interaction.guild.channels.fetch(
         config.verificationChannelId,
       );
@@ -89,7 +109,7 @@ export default {
         }
 
         await interaction.reply({
-          content: "✅ Verification embed updated successfully!",
+          content: `✅ Verification embed updated successfully!\n📬 Auto-DM on join: **${currentAutoDm ? "on" : "off"}**`,
           ephemeral: true,
         });
       } else {
@@ -99,7 +119,7 @@ export default {
         });
         console.log("[INFO] Created new verification embed");
         await interaction.reply({
-          content: "✅ Verification embed set up successfully!",
+          content: `✅ Verification embed set up successfully!\n📬 Auto-DM on join: **${currentAutoDm ? "on" : "off"}**`,
           ephemeral: true,
         });
       }

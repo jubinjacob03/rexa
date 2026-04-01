@@ -8,7 +8,11 @@ import { readdirSync } from "fs";
 import ffmpegPath from "ffmpeg-static";
 import config from "../config.js";
 import { updateStatusMessage } from "./utils/statusUpdater.js";
-import { handleVerificationApply, handleApprovalAction, handleNicknameModal } from "./utils/verificationHandler.js";
+import {
+  handleVerificationApply,
+  handleApprovalAction,
+  handleNicknameModal,
+} from "./utils/verificationHandler.js";
 import { handleAutomodInteraction } from "./commands/automod.js";
 
 if (ffmpegPath) {
@@ -72,7 +76,10 @@ for (const file of eventFiles) {
 
 client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.isButton()) {
-    if (interaction.customId === "automod_toggle_master") {
+    if (
+      interaction.customId === "automod_toggle_master" ||
+      interaction.customId === "automod_edit_limits"
+    ) {
       await handleAutomodInteraction(interaction);
       return;
     }

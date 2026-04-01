@@ -113,7 +113,16 @@ export const serverInfoTool = tool({
   For lists with many people, the AI agent will respond natively with an Embed table containing the users.`,
   parameters: z.object({
     infoType: z
-      .enum(["stats", "member", "channel", "search", "presentMembers", "roleMembers", "kickedMembers", "bannedMembers"])
+      .enum([
+        "stats",
+        "member",
+        "channel",
+        "search",
+        "presentMembers",
+        "roleMembers",
+        "kickedMembers",
+        "bannedMembers",
+      ])
       .describe(
         "Type of info to retrieve from the server. (stats, member, channel, search, presentMembers, roleMembers, kickedMembers, bannedMembers)",
       ),
@@ -125,16 +134,27 @@ export const serverInfoTool = tool({
     searchQuery: z
       .string()
       .optional()
-      .describe(
-        "Search term for finding members by username, nickname, or ID",
-      ),
+      .describe("Search term for finding members by username, nickname, or ID"),
     roleName: z
       .string()
       .optional()
-      .describe("Name of the role to find members for (only with infoType='roleMembers')"),
-    limit: z.number().optional().default(20).describe("Max results for lists/searches"),
+      .describe(
+        "Name of the role to find members for (only with infoType='roleMembers')",
+      ),
+    limit: z
+      .number()
+      .optional()
+      .default(20)
+      .describe("Max results for lists/searches"),
   }),
-  execute: async ({ infoType, guildId, targetId, searchQuery, roleName, limit }) => {
+  execute: async ({
+    infoType,
+    guildId,
+    targetId,
+    searchQuery,
+    roleName,
+    limit,
+  }) => {
     if (!client) return { success: false, error: "Client not initialized" };
 
     try {
@@ -188,87 +208,123 @@ export const serverInfoTool = tool({
       if (infoType === "search" && searchQuery) {
         const fetched = await fetchMembersWithCache(guild);
         const q = searchQuery.toLowerCase();
-        
+
         let results = [];
-        
+
         // Exact ID match
         const exactMatch = fetched.get(searchQuery);
         if (exactMatch && !exactMatch.user.bot) {
-            results.push(exactMatch);
+          results.push(exactMatch);
         } else {
-            results = [...fetched.filter(m => 
-                !m.user.bot &&
-                (m.user.id === searchQuery ||
-                 m.user.username.toLowerCase().includes(q) ||
-                 m.displayName.toLowerCase().includes(q) ||
-                 (m.nickname && m.nickname.toLowerCase().includes(q)))
-            ).values()];
+          results = [
+            ...fetched
+              .filter(
+                (m) =>
+                  !m.user.bot &&
+                  (m.user.id === searchQuery ||
+                    m.user.username.toLowerCase().includes(q) ||
+                    m.displayName.toLowerCase().includes(q) ||
+                    (m.nickname && m.nickname.toLowerCase().includes(q))),
+              )
+              .values(),
+          ];
         }
-        
+
         results = results.slice(0, limit || 20).map((m) => ({
-            id: m.id,
-            username: m.user.username,
-            displayName: m.displayName,
-            nickname: m.nickname || null,
-            status: m.presence?.status || "offline",
-            roles: m.roles.cache.filter((r) => r.name !== "@everyone").map((r) => r.name).join(", "),
+          id: m.id,
+          username: m.user.username,
+          displayName: m.displayName,
+          nickname: m.nickname || null,
+          status: m.presence?.status || "offline",
+          roles: m.roles.cache
+            .filter((r) => r.name !== "@everyone")
+            .map((r) => r.name)
+            .join(", "),
         }));
         return { success: true, results, count: results.length };
       }
 
       if (infoType === "presentMembers") {
         const fetched = await fetchMembersWithCache(guild);
-        const members = [...fetched.filter((m) => !m.user.bot).values()].map(
-          (m) => ({
+        const members = [...fetched.filter((m) => !m.user.bot).values()]
+          .map((m) => ({
             id: m.id,
             username: m.user.username,
             displayName: m.displayName,
             nickname: m.nickname || null,
             status: m.presence?.status || "offline",
-          }),
-        ).slice(0, limit || 50);
-        return { success: true, members, count: fetched.filter(m => !m.user.bot).size, returned: members.length };
+          }))
+          .slice(0, limit || 50);
+        return {
+          success: true,
+          members,
+          count: fetched.filter((m) => !m.user.bot).size,
+          returned: members.length,
+        };
       }
-      
+
       if (infoType === "roleMembers" && roleName) {
         const fetched = await fetchMembersWithCache(guild);
         const q = roleName.toLowerCase();
-        const role = guild.roles.cache.find(r => r.name.toLowerCase().includes(q) || r.id === roleName);
-        
-        if (!role) return { success: false, error: `Role '${roleName}' not found.` };
-        
-        const roleMembers = [...fetched.filter(m => !m.user.bot && m.roles.cache.has(role.id)).values()].map(m => ({
+        const role = guild.roles.cache.find(
+          (r) => r.name.toLowerCase().includes(q) || r.id === roleName,
+        );
+
+        if (!role)
+          return { success: false, error: `Role '${roleName}' not found.` };
+
+        const roleMembers = [
+          ...fetched
+            .filter((m) => !m.user.bot && m.roles.cache.has(role.id))
+            .values(),
+        ]
+          .map((m) => ({
             id: m.id,
             username: m.user.username,
             displayName: m.displayName,
-        })).slice(0, limit || 50);
-        
-        return { success: true, roleName: role.name, roleId: role.id, members: roleMembers, count: role.members.size, returned: roleMembers.length };
+          }))
+          .slice(0, limit || 50);
+
+        return {
+          success: true,
+          roleName: role.name,
+          roleId: role.id,
+          members: roleMembers,
+          count: role.members.size,
+          returned: roleMembers.length,
+        };
       }
 
       if (infoType === "bannedMembers") {
         const bans = await guild.bans.fetch({ limit: limit || 50 });
-        const bannedUsers = bans.map(ban => ({
-            userId: ban.user.id,
-            username: ban.user.username,
-            reason: ban.reason || "No reason provided",
+        const bannedUsers = bans.map((ban) => ({
+          userId: ban.user.id,
+          username: ban.user.username,
+          reason: ban.reason || "No reason provided",
         }));
-        
-        return { success: true, bannedMembers: bannedUsers, count: bannedUsers.length };
+
+        return {
+          success: true,
+          bannedMembers: bannedUsers,
+          count: bannedUsers.length,
+        };
       }
-      
+
       if (infoType === "kickedMembers") {
-        const auditLogs = await guild.fetchAuditLogs({ limit: limit || 50, type: 20 }); // AuditLogEvent.MemberKick = 20
-        const kicks = auditLogs.entries.map(entry => ({
-            action: "Kicked",
-            targetId: entry.target?.id,
-            targetUsername: entry.target?.username || "Unknown",
-            executorId: entry.executor?.id,
-            executorUsername: entry.executor?.username || "Unknown",
-            reason: entry.reason || "No reason provided",
-            createdAt: entry.createdAt,
+        const auditLogs = await guild.fetchAuditLogs({
+          limit: limit || 50,
+          type: 20,
+        }); // AuditLogEvent.MemberKick = 20
+        const kicks = auditLogs.entries.map((entry) => ({
+          action: "Kicked",
+          targetId: entry.target?.id,
+          targetUsername: entry.target?.username || "Unknown",
+          executorId: entry.executor?.id,
+          executorUsername: entry.executor?.username || "Unknown",
+          reason: entry.reason || "No reason provided",
+          createdAt: entry.createdAt,
         }));
-        
+
         return { success: true, kickedMembers: kicks, count: kicks.length };
       }
 
@@ -609,15 +665,37 @@ The tool enforces role-based permissions internally. Always pass userId (invoker
       ]);
 
       if (ownerActions.has(action)) {
-        const allowed = await modTools.checkModerationPermission(guild, userId, "owner");
-        if (!allowed) return { success: false, error: "🔒 Permission denied. Only the server Owner can perform kick/ban actions." };
+        const allowed = await modTools.checkModerationPermission(
+          guild,
+          userId,
+          "owner",
+        );
+        if (!allowed)
+          return {
+            success: false,
+            error:
+              "🔒 Permission denied. Only the server Owner can perform kick/ban actions.",
+          };
       } else if (modActions.has(action)) {
-        const allowed = await modTools.checkModerationPermission(guild, userId, "mod");
-        if (!allowed) return { success: false, error: "🔒 Permission denied. You need a Moderator or higher role to perform this action." };
+        const allowed = await modTools.checkModerationPermission(
+          guild,
+          userId,
+          "mod",
+        );
+        if (!allowed)
+          return {
+            success: false,
+            error:
+              "🔒 Permission denied. You need a Moderator or higher role to perform this action.",
+          };
       }
 
       if (action === "change-bot-nickname") {
-        const message = await modTools.changeBotNickname(guild, nickname, reason);
+        const message = await modTools.changeBotNickname(
+          guild,
+          nickname,
+          reason,
+        );
         return { success: true, message };
       }
 
@@ -625,18 +703,41 @@ The tool enforces role-based permissions internally. Always pass userId (invoker
       let message = "";
 
       switch (action) {
-        case "voice-mute":      message = await modTools.voiceMute(member, reason); break;
-        case "voice-unmute":    message = await modTools.voiceUnmute(member, reason); break;
-        case "voice-deafen":    message = await modTools.voiceDeafen(member, reason); break;
-        case "voice-undeafen":  message = await modTools.voiceUndeafen(member, reason); break;
-        case "timeout":         message = await modTools.timeout(member, durationMinutes, reason); break;
-        case "remove-timeout":  message = await modTools.removeTimeout(member, reason); break;
-        case "kick":            message = await modTools.kick(member, reason); break;
-        case "ban":             message = await modTools.ban(member, deleteDays, reason); break;
-        case "change-nickname": message = await modTools.changeNickname(member, nickname, reason); break;
-        case "add-role":        message = await modTools.addRole(guild, member, roleName, reason); break;
-        case "remove-role":     message = await modTools.removeRole(guild, member, roleName, reason); break;
-        default: return { success: false, error: `Unknown action: ${action}` };
+        case "voice-mute":
+          message = await modTools.voiceMute(member, reason);
+          break;
+        case "voice-unmute":
+          message = await modTools.voiceUnmute(member, reason);
+          break;
+        case "voice-deafen":
+          message = await modTools.voiceDeafen(member, reason);
+          break;
+        case "voice-undeafen":
+          message = await modTools.voiceUndeafen(member, reason);
+          break;
+        case "timeout":
+          message = await modTools.timeout(member, durationMinutes, reason);
+          break;
+        case "remove-timeout":
+          message = await modTools.removeTimeout(member, reason);
+          break;
+        case "kick":
+          message = await modTools.kick(member, reason);
+          break;
+        case "ban":
+          message = await modTools.ban(member, deleteDays, reason);
+          break;
+        case "change-nickname":
+          message = await modTools.changeNickname(member, nickname, reason);
+          break;
+        case "add-role":
+          message = await modTools.addRole(guild, member, roleName, reason);
+          break;
+        case "remove-role":
+          message = await modTools.removeRole(guild, member, roleName, reason);
+          break;
+        default:
+          return { success: false, error: `Unknown action: ${action}` };
       }
 
       return { success: true, message };
@@ -647,7 +748,6 @@ The tool enforces role-based permissions internally. Always pass userId (invoker
 });
 
 export default {
-  ragTool,
   commandExecutorTool,
   serverInfoTool,
   musicControlTool,
