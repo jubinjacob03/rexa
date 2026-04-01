@@ -30,4 +30,4 @@ Make new members feel **welcomed**, **informed**, and **excited** to join the co
 4. **Commands**: Basic commands to get started
 5. **Community**: What makes this server special
 
-Consider generating a custom welcome banner for new members to make them feel special!
+Consider using `createEmbed` to generate a rich welcome card for new members \u2014 include the server name, key features, and a friendly greeting to make them feel special!
