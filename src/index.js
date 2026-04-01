@@ -78,7 +78,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.isButton()) {
     if (
       interaction.customId === "automod_toggle_master" ||
-      interaction.customId === "automod_edit_limits"
+      interaction.customId === "automod_edit_limits" ||
+      interaction.customId === "automod_toggle_spam" ||
+      interaction.customId === "automod_toggle_raid" ||
+      interaction.customId === "automod_toggle_toxicity"
     ) {
       await handleAutomodInteraction(interaction);
       return;
@@ -128,10 +131,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 
   if (interaction.isStringSelectMenu()) {
-    if (interaction.customId === "automod_feature_select") {
-      await handleAutomodInteraction(interaction);
-      return;
-    }
   }
 
   if (!interaction.isChatInputCommand()) return;

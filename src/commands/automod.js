@@ -4,8 +4,6 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  StringSelectMenuBuilder,
-  StringSelectMenuOptionBuilder,
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
@@ -13,30 +11,29 @@ import {
 } from "discord.js";
 import { loadConfig, updateConfig } from "../utils/automodManager.js";
 
-export function generateAutomodDashboard() {
+export function generateAutomodDashboard(guild = null) {
   const config = loadConfig();
-
   const on = config.enabled;
-  const icon = on ? "🟢" : "🔴";
 
   const description = [
-    `**ᴀᴜᴛᴏᴍᴏᴅ ɪꜱ ${on ? "ᴀᴄᴛɪᴠᴇ" : "ɪɴᴀᴄᴛɪᴠᴇ"}.**`,
-    "",
-    `${config.spam ? "✦" : "·"}  ꜱᴘᴀᴍ ꜰɪʟᴛᴇʀ       —  ${config.spam ? "**ᴏɴ**" : "ᴏꜰꜰ"}`,
-    `${config.raid ? "✦" : "·"}  ʀᴀɪᴅ ᴘʀᴏᴛᴇᴄᴛɪᴏɴ   —  ${config.raid ? "**ᴏɴ**" : "ᴏꜰꜰ"}`,
-    `${config.toxicity ? "✦" : "·"}  ᴛᴏxɪᴄɪᴛʏ ꜰɪʟᴛᴇʀ   —  ${config.toxicity ? "**ᴏɴ**" : "ᴏꜰꜰ"}`,
+    `**ᴀᴜᴛᴏᴍᴏᴅ ɪꜱ ${on ? "**ᴀᴄᴛɪᴠᴇ**" : "ɪɴᴀᴄᴛɪᴠᴇ"}**`,
     "",
     `**ʀᴀᴛᴇ ʟɪᴍɪᴛꜱ  ·  ᴘᴇʀ 10ꜱ**`,
-    `ᴍᴇꜱꜱᴀɢᴇꜱ  **${config.limits.messageSpam}**  ·  ᴄʜᴀɴɴᴇʟ ᴅᴇʟᴇᴛᴇꜱ  **${config.limits.channelDelete}**  ·  ɴɪᴄᴋɴᴀᴍᴇ ᴄʜᴀɴɢᴇꜱ  **${config.limits.nicknameChange}**  ·  ᴍᴇꜱꜱᴀɢᴇ ᴅᴇʟᴇᴛᴇꜱ  **${config.limits.messageDelete}**`,
+    `ᴍꜱɢ  **${config.limits.messageSpam}**  ·  ᴄʜ. ᴅᴇʟ  **${config.limits.channelDelete}**  ·  ɴɪᴄᴋ  **${config.limits.nicknameChange}**  ·  ᴍꜱɢ ᴅᴇʟ  **${config.limits.messageDelete}**`,
   ].join("\n");
 
   const embed = new EmbedBuilder()
-    .setTitle(`${icon} ᴀᴜᴛᴏᴍᴏᴅ ᴄᴏɴꜰɪɢᴜʀᴀᴛɪᴏɴ`)
+    .setTitle("ᴀᴜᴛᴏᴍᴏᴅ ᴄᴏɴꜰɪɢᴜʀᴀᴛɪᴏɴ")
     .setDescription(description)
-    .setColor(on ? "#57F287" : "#ED4245")
+    .setColor("#00CED1")
     .setTimestamp();
 
-  const toggleButtonRow = new ActionRowBuilder().addComponents(
+  if (guild?.iconURL()) {
+    embed.setThumbnail(guild.iconURL({ size: 256, dynamic: true }));
+  }
+
+  // Row 1: master toggle + edit limits
+  const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("automod_toggle_master")
       .setLabel(on ? "ᴅɪꜱᴀʙʟᴇ ᴀᴜᴛᴏᴍᴏᴅ" : "ᴇɴᴀʙʟᴇ ᴀᴜᴛᴏᴍᴏᴅ")
@@ -47,41 +44,23 @@ export function generateAutomodDashboard() {
       .setStyle(ButtonStyle.Secondary),
   );
 
-  const featureSelectRow = new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId("automod_feature_select")
-      .setPlaceholder("ᴛᴏɢɢʟᴇ ɪɴᴅɪᴠɪᴅᴜᴀʟ ꜰᴇᴀᴛᴜʀᴇꜱ...")
-      .setMinValues(1)
-      .setMaxValues(1)
-      .addOptions(
-        new StringSelectMenuOptionBuilder()
-          .setLabel("ꜱᴘᴀᴍ ꜰɪʟᴛᴇʀ")
-          .setDescription(
-            config.spam
-              ? "ᴇɴᴀʙʟᴇᴅ — ᴄʟɪᴄᴋ ᴛᴏ ᴅɪꜱᴀʙʟᴇ"
-              : "ᴅɪꜱᴀʙʟᴇᴅ — ᴄʟɪᴄᴋ ᴛᴏ ᴇɴᴀʙʟᴇ",
-          )
-          .setValue("toggle_spam"),
-        new StringSelectMenuOptionBuilder()
-          .setLabel("ʀᴀɪᴅ ᴘʀᴏᴛᴇᴄᴛɪᴏɴ")
-          .setDescription(
-            config.raid
-              ? "ᴇɴᴀʙʟᴇᴅ — ᴄʟɪᴄᴋ ᴛᴏ ᴅɪꜱᴀʙʟᴇ"
-              : "ᴅɪꜱᴀʙʟᴇᴅ — ᴄʟɪᴄᴋ ᴛᴏ ᴇɴᴀʙʟᴇ",
-          )
-          .setValue("toggle_raid"),
-        new StringSelectMenuOptionBuilder()
-          .setLabel("ᴛᴏxɪᴄɪᴛʏ ꜰɪʟᴛᴇʀ")
-          .setDescription(
-            config.toxicity
-              ? "ᴇɴᴀʙʟᴇᴅ — ᴄʟɪᴄᴋ ᴛᴏ ᴅɪꜱᴀʙʟᴇ"
-              : "ᴅɪꜱᴀʙʟᴇᴅ — ᴄʟɪᴄᴋ ᴛᴏ ᴇɴᴀʙʟᴇ",
-          )
-          .setValue("toggle_toxicity"),
-      ),
+  // Row 2: fixed-color feature buttons, label reflects on/off state
+  const row2 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("automod_toggle_spam")
+      .setLabel(`ꜱᴘᴀᴍ ꜰɪʟᴛᴇʀ — ${config.spam ? "ᴏɴ" : "ᴏꜰꜰ"}`)
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId("automod_toggle_raid")
+      .setLabel(`ʀᴀɪᴅ ᴘʀᴏᴛᴇᴄᴛɪᴏɴ — ${config.raid ? "ᴏɴ" : "ᴏꜰꜰ"}`)
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId("automod_toggle_toxicity")
+      .setLabel(`ᴛᴏxɪᴄɪᴛʏ ꜰɪʟᴛᴇʀ — ${config.toxicity ? "ᴏɴ" : "ᴏꜰꜰ"}`)
+      .setStyle(ButtonStyle.Success),
   );
 
-  return { embeds: [embed], components: [toggleButtonRow, featureSelectRow] };
+  return { embeds: [embed], components: [row1, row2] };
 }
 
 export default {
@@ -101,7 +80,7 @@ export default {
       });
     }
 
-    const dashboard = generateAutomodDashboard();
+    const dashboard = generateAutomodDashboard(interaction.guild);
     await interaction.reply({
       ...dashboard,
       ephemeral: true,
@@ -170,6 +149,21 @@ export async function handleAutomodInteraction(interaction) {
 
     return await interaction.showModal(modal);
   } else if (
+    interaction.isButton() &&
+    interaction.customId === "automod_toggle_spam"
+  ) {
+    newConfig = updateConfig({ spam: !currentConfig.spam });
+  } else if (
+    interaction.isButton() &&
+    interaction.customId === "automod_toggle_raid"
+  ) {
+    newConfig = updateConfig({ raid: !currentConfig.raid });
+  } else if (
+    interaction.isButton() &&
+    interaction.customId === "automod_toggle_toxicity"
+  ) {
+    newConfig = updateConfig({ toxicity: !currentConfig.toxicity });
+  } else if (
     interaction.isModalSubmit() &&
     interaction.customId === "automod_limits_modal"
   ) {
@@ -190,20 +184,9 @@ export async function handleAutomodInteraction(interaction) {
         messageDelete: msgDel,
       },
     });
-  } else if (
-    interaction.isStringSelectMenu() &&
-    interaction.customId === "automod_feature_select"
-  ) {
-    const selected = interaction.values[0];
-    if (selected === "toggle_spam")
-      newConfig = updateConfig({ spam: !currentConfig.spam });
-    if (selected === "toggle_raid")
-      newConfig = updateConfig({ raid: !currentConfig.raid });
-    if (selected === "toggle_toxicity")
-      newConfig = updateConfig({ toxicity: !currentConfig.toxicity });
   }
 
-  const updatedDashboard = generateAutomodDashboard();
+  const updatedDashboard = generateAutomodDashboard(interaction.guild);
   await interaction.update({
     ...updatedDashboard,
   });
