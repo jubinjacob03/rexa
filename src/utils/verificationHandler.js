@@ -7,20 +7,14 @@ import {
   TextInputBuilder,
   TextInputStyle,
 } from "discord.js";
+import { createClient } from "@supabase/supabase-js";
 import config from "../../config.js";
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const supabase = createClient(config.supabase.url, config.supabase.serviceKey, {
+  auth: { autoRefreshToken: false, persistSession: false },
+});
 
-const DATA_DIR = join(__dirname, "..", "..", "data");
-const DATA_FILE = join(DATA_DIR, "verification.json");
-
-if (!existsSync(DATA_DIR)) {
-  mkdirSync(DATA_DIR, { recursive: true });
-}
+const GUILD_ID = config.guildId;
 
 const defaultData = {
   pendingRequests: {},
@@ -28,41 +22,73 @@ const defaultData = {
   autoDmEnabled: false,
 };
 
-function loadData() {
-  try {
-    if (!existsSync(DATA_FILE)) {
-      saveData(defaultData);
-      return defaultData;
-    }
-    const rawData = readFileSync(DATA_FILE, "utf8");
-    return JSON.parse(rawData);
-  } catch (error) {
+// 5s in-memory cache
+let _cache = null;
+let _cacheTTL = 0;
+const CACHE_MS = 5_000;
+
+async function loadData() {
+  if (_cache && Date.now() < _cacheTTL) return _cache;
+
+  const { data, error } = await supabase
+    .from("bot_verification")
+    .select("*")
+    .eq("guild_id", GUILD_ID)
+    .single();
+
+  if (error && error.code !== "PGRST116") {
     console.error("[ERROR] Failed to load verification data:", error);
-    return defaultData;
+    return { ...defaultData };
   }
+
+  if (!data) {
+    await saveData({ ...defaultData });
+    return { ...defaultData };
+  }
+
+  const result = {
+    pendingRequests: data.pending_requests ?? {},
+    approvalLogs: data.approval_logs ?? [],
+    autoDmEnabled: data.auto_dm_enabled ?? false,
+  };
+
+  _cache = result;
+  _cacheTTL = Date.now() + CACHE_MS;
+  return result;
 }
 
-function saveData(data) {
-  try {
-    writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), "utf8");
-  } catch (error) {
+async function saveData(data) {
+  _cache = null;
+
+  const { error } = await supabase.from("bot_verification").upsert(
+    {
+      guild_id: GUILD_ID,
+      auto_dm_enabled: data.autoDmEnabled,
+      pending_requests: data.pendingRequests,
+      approval_logs: data.approvalLogs,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "guild_id" },
+  );
+
+  if (error) {
     console.error("[ERROR] Failed to save verification data:", error);
   }
 }
 
-export function hasPendingRequest(userId) {
-  const data = loadData();
+export async function hasPendingRequest(userId) {
+  const data = await loadData();
   return userId in data.pendingRequests;
 }
 
-export function createRequest(
+export async function createRequest(
   userId,
   username,
   requestedRole,
   requestedRoleId,
   approvalMessageId,
 ) {
-  const data = loadData();
+  const data = await loadData();
   data.pendingRequests[userId] = {
     userId,
     username,
@@ -71,21 +97,21 @@ export function createRequest(
     timestamp: new Date().toISOString(),
     approvalMessageId,
   };
-  saveData(data);
+  await saveData(data);
 }
 
-export function getRequest(userId) {
-  const data = loadData();
+export async function getRequest(userId) {
+  const data = await loadData();
   return data.pendingRequests[userId] || null;
 }
 
-export function removeRequest(userId) {
-  const data = loadData();
+export async function removeRequest(userId) {
+  const data = await loadData();
   delete data.pendingRequests[userId];
-  saveData(data);
+  await saveData(data);
 }
 
-export function logApproval(
+export async function logApproval(
   userId,
   username,
   requestedRole,
@@ -94,7 +120,7 @@ export function logApproval(
   nickname,
   status,
 ) {
-  const data = loadData();
+  const data = await loadData();
   data.approvalLogs.push({
     userId,
     username,
@@ -105,27 +131,27 @@ export function logApproval(
     status,
     timestamp: new Date().toISOString(),
   });
-  saveData(data);
+  await saveData(data);
 }
 
-export function getAllPendingRequests() {
-  const data = loadData();
+export async function getAllPendingRequests() {
+  const data = await loadData();
   return data.pendingRequests;
 }
 
-export function getAutoDmEnabled() {
-  const data = loadData();
+export async function getAutoDmEnabled() {
+  const data = await loadData();
   return data.autoDmEnabled ?? false;
 }
 
-export function setAutoDmEnabled(value) {
-  const data = loadData();
+export async function setAutoDmEnabled(value) {
+  const data = await loadData();
   data.autoDmEnabled = value;
-  saveData(data);
+  await saveData(data);
 }
 
-export function getApprovalLogs(limit = 50) {
-  const data = loadData();
+export async function getApprovalLogs(limit = 50) {
+  const data = await loadData();
   return data.approvalLogs.slice(-limit).reverse();
 }
 
@@ -134,7 +160,7 @@ export async function handleVerificationApply(interaction) {
     const userId = interaction.user.id;
     const username = interaction.user.tag;
 
-    if (hasPendingRequest(userId)) {
+    if (await hasPendingRequest(userId)) {
       return interaction.reply({
         content:
           "⚠️ You already have a pending verification request. Please wait for approval.",
@@ -184,7 +210,7 @@ export async function handleVerificationApply(interaction) {
       components: [approvalButtons],
     });
 
-    createRequest(
+    await createRequest(
       userId,
       username,
       requestedRole,
@@ -209,7 +235,7 @@ export async function handleApprovalAction(interaction) {
   try {
     const [action, userId, roleId] = interaction.customId.split("_");
 
-    const request = getRequest(userId);
+    const request = await getRequest(userId);
     if (!request) {
       return interaction.reply({
         content: "⚠️ This verification request no longer exists.",
@@ -223,7 +249,7 @@ export async function handleApprovalAction(interaction) {
       .catch(() => null);
 
     if (!member) {
-      removeRequest(userId);
+      await removeRequest(userId);
       return interaction.reply({
         content: "❌ User is no longer in the server.",
         ephemeral: true,
@@ -269,7 +295,7 @@ export async function handleApprovalAction(interaction) {
         components: [],
       });
 
-      logApproval(
+      await logApproval(
         userId,
         request.username,
         request.requestedRole,
@@ -279,7 +305,7 @@ export async function handleApprovalAction(interaction) {
         "rejected",
       );
 
-      removeRequest(userId);
+      await removeRequest(userId);
 
       await user
         .send({
@@ -321,7 +347,7 @@ export async function handleNicknameModal(interaction) {
     const isFriends = roleId === config.friendsRoleId;
     const finalNickname = isFriends ? nicknameInput : `God ${nicknameInput}`;
 
-    const request = getRequest(userId);
+    const request = await getRequest(userId);
     if (!request) {
       return interaction.editReply({
         content: "⚠️ This verification request no longer exists.",
@@ -332,7 +358,7 @@ export async function handleNicknameModal(interaction) {
       .fetch(userId)
       .catch(() => null);
     if (!member) {
-      removeRequest(userId);
+      await removeRequest(userId);
       return interaction.editReply({
         content: "❌ User is no longer in the server.",
       });
@@ -369,7 +395,7 @@ export async function handleNicknameModal(interaction) {
       components: [],
     });
 
-    logApproval(
+    await logApproval(
       userId,
       request.username,
       request.requestedRole,
@@ -379,7 +405,7 @@ export async function handleNicknameModal(interaction) {
       "approved",
     );
 
-    removeRequest(userId);
+    await removeRequest(userId);
 
     const user = await interaction.client.users.fetch(userId);
     await user

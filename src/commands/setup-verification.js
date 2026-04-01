@@ -32,9 +32,9 @@ export default {
       const autoOption = interaction.options.getString("auto");
       if (autoOption !== null) {
         const enabled = autoOption === "on";
-        setAutoDmEnabled(enabled);
+        await setAutoDmEnabled(enabled);
       }
-      const currentAutoDm = getAutoDmEnabled();
+      const currentAutoDm = await getAutoDmEnabled();
 
       const verificationChannel = await interaction.guild.channels.fetch(
         config.verificationChannelId,

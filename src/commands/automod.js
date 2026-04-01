@@ -11,8 +11,8 @@ import {
 } from "discord.js";
 import { loadConfig, updateConfig } from "../utils/automodManager.js";
 
-export function generateAutomodDashboard(guild = null) {
-  const config = loadConfig();
+export async function generateAutomodDashboard(guild = null) {
+  const config = await loadConfig();
   const on = config.enabled;
 
   const embed = new EmbedBuilder()
@@ -75,7 +75,7 @@ export default {
       });
     }
 
-    const dashboard = generateAutomodDashboard(interaction.guild);
+    const dashboard = await generateAutomodDashboard(interaction.guild);
     await interaction.reply({
       ...dashboard,
       ephemeral: true,
@@ -91,14 +91,14 @@ export async function handleAutomodInteraction(interaction) {
     });
   }
 
-  const currentConfig = loadConfig();
+  const currentConfig = await loadConfig();
   let newConfig = { ...currentConfig };
 
   if (
     interaction.isButton() &&
     interaction.customId === "automod_toggle_master"
   ) {
-    newConfig = updateConfig({ enabled: !currentConfig.enabled });
+    newConfig = await updateConfig({ enabled: !currentConfig.enabled });
   } else if (
     interaction.isButton() &&
     interaction.customId === "automod_edit_limits"
@@ -147,17 +147,17 @@ export async function handleAutomodInteraction(interaction) {
     interaction.isButton() &&
     interaction.customId === "automod_toggle_spam"
   ) {
-    newConfig = updateConfig({ spam: !currentConfig.spam });
+    newConfig = await updateConfig({ spam: !currentConfig.spam });
   } else if (
     interaction.isButton() &&
     interaction.customId === "automod_toggle_raid"
   ) {
-    newConfig = updateConfig({ raid: !currentConfig.raid });
+    newConfig = await updateConfig({ raid: !currentConfig.raid });
   } else if (
     interaction.isButton() &&
     interaction.customId === "automod_toggle_toxicity"
   ) {
-    newConfig = updateConfig({ toxicity: !currentConfig.toxicity });
+    newConfig = await updateConfig({ toxicity: !currentConfig.toxicity });
   } else if (
     interaction.isModalSubmit() &&
     interaction.customId === "automod_limits_modal"
@@ -171,7 +171,7 @@ export async function handleAutomodInteraction(interaction) {
     const msgDel =
       parseInt(interaction.fields.getTextInputValue("limit_msgdel")) || 3;
 
-    newConfig = updateConfig({
+    newConfig = await updateConfig({
       limits: {
         messageSpam: msg,
         channelDelete: chDel,
@@ -181,7 +181,7 @@ export async function handleAutomodInteraction(interaction) {
     });
   }
 
-  const updatedDashboard = generateAutomodDashboard(interaction.guild);
+  const updatedDashboard = await generateAutomodDashboard(interaction.guild);
   await interaction.update({
     ...updatedDashboard,
   });

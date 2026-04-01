@@ -1,8 +1,8 @@
-import { generateObject } from 'ai';
-import { z } from 'zod';
-import config, { getLanguageModel } from '../agents/config.js';
-import * as modTools from './moderation.js';
-import { loadConfig } from './automodManager.js';
+import { generateObject } from "ai";
+import { z } from "zod";
+import config, { getLanguageModel } from "../agents/config.js";
+import * as modTools from "./moderation.js";
+import { loadConfig } from "./automodManager.js";
 
 // In-memory rate trackers
 const userTrackers = new Map();
@@ -21,7 +21,7 @@ function getTracker(userId) {
       messageDeleteCount: 0,
       lastCheck: Date.now(),
       recentMessages: [],
-      recentMessageIds: []
+      recentMessageIds: [],
     });
   }
   return userTrackers.get(userId);
@@ -44,7 +44,7 @@ function cleanupTrackers() {
 setInterval(cleanupTrackers, 10000);
 
 export async function checkSpam(message) {
-  const cfg = loadConfig();
+  const cfg = await loadConfig();
   if (!cfg.enabled || !cfg.spam) return;
 
   const tracker = getTracker(message.author.id);
@@ -61,7 +61,7 @@ export async function checkSpam(message) {
       for (const msgData of tracker.recentMessageIds) {
         await msgData.channel.messages.delete(msgData.id).catch(() => {});
       }
-    } catch(err) {
+    } catch (err) {
       console.error("[AutoMod] Failed to delete spam msgs", err);
     }
 
@@ -73,12 +73,12 @@ export async function checkSpam(message) {
       async () => {
         // Anomaly detected - defer to AI for punishment length or default to timeout
         await triggerAIModeration(
-          message.guild, 
-          message.author.id, 
-          "Spam Filter Anomaly", 
-          `User sent ${tracker.messageCount} messages in a few seconds. Messages: ${JSON.stringify(tracker.recentMessages)}`
+          message.guild,
+          message.author.id,
+          "Spam Filter Anomaly",
+          `User sent ${tracker.messageCount} messages in a few seconds. Messages: ${JSON.stringify(tracker.recentMessages)}`,
         );
-      }
+      },
     );
     userTrackers.delete(message.author.id); // Reset after trigger
   }
@@ -87,7 +87,13 @@ export async function checkSpam(message) {
 // ── Deterministic Anti-Nuke Measures (Instant Execution) ──────────────
 // No AI overhead. This directly prevents rogue mods from destroying the server.
 
-async function triggerWarningOrAction(guild, userId, message, warningText, actionCallback) {
+async function triggerWarningOrAction(
+  guild,
+  userId,
+  message,
+  warningText,
+  actionCallback,
+) {
   const hasBeenWarned = UserWarnings.has(userId);
 
   if (hasBeenWarned) {
@@ -96,20 +102,23 @@ async function triggerWarningOrAction(guild, userId, message, warningText, actio
   } else {
     // First offense: Send Ephemeral warning (or DM if not a message context)
     UserWarnings.set(userId, Date.now());
-    
+
     // Attempt warning
     try {
       if (message) {
         const warningMsg = await message.channel.send({
-          content: `<@${userId}> ⚠️ **WARNING**: ${warningText} Repeating this within 20 minutes will result in severe server punishment.`
+          content: `<@${userId}> ⚠️ **WARNING**: ${warningText} Repeating this within 20 minutes will result in severe server punishment.`,
         });
         // Auto-delete warning after 10s to avoid clutter
         setTimeout(() => warningMsg.delete().catch(() => {}), 10000);
       } else {
         const member = await guild.members.fetch(userId).catch(() => null);
-        if (member) await member.send({ content: `⚠️ **SERVER WARNING**: ${warningText} Repeating this within 20 minutes will result in severe punishment.` });
+        if (member)
+          await member.send({
+            content: `⚠️ **SERVER WARNING**: ${warningText} Repeating this within 20 minutes will result in severe punishment.`,
+          });
       }
-    } catch(err) {
+    } catch (err) {
       console.error("[AutoMod] Failed sending warning", err);
     }
   }
@@ -121,10 +130,16 @@ async function instantAntiNuke(guild, userId, reason, actionType = "ban") {
     if (!member) return;
     if (member.id === guild.ownerId || member.user.bot) return;
 
-    console.log(`[ANTI-NUKE] EXECUTING INSTANT LOCKDOWN (${actionType}) ON ${member.user.tag}: ${reason}`);
-    
+    console.log(
+      `[ANTI-NUKE] EXECUTING INSTANT LOCKDOWN (${actionType}) ON ${member.user.tag}: ${reason}`,
+    );
+
     if (actionType.startsWith("ban")) {
-      await modTools.ban(member, actionType === "ban-wipe" ? 1 : 0, `[ANTI-NUKE] ${reason}`);
+      await modTools.ban(
+        member,
+        actionType === "ban-wipe" ? 1 : 0,
+        `[ANTI-NUKE] ${reason}`,
+      );
     } else if (actionType === "timeout") {
       await modTools.timeout(member, 60, `[ANTI-NUKE] ${reason}`); // 1 hour timeout
     }
@@ -134,7 +149,7 @@ async function instantAntiNuke(guild, userId, reason, actionType = "ban") {
 }
 
 export async function checkChannelDelete(channel, executor) {
-  const cfg = loadConfig();
+  const cfg = await loadConfig();
   if (!cfg.enabled || !cfg.raid) return;
   if (!executor) return;
 
@@ -152,19 +167,19 @@ export async function checkChannelDelete(channel, executor) {
       "You are deleting channels too rapidly! Stop immediately.",
       async () => {
         await instantAntiNuke(
-          channel.guild, 
-          executor.id, 
+          channel.guild,
+          executor.id,
           `Rapid Channel Deletion detected.`,
-          "ban"
+          "ban",
         );
-      }
+      },
     );
     userTrackers.delete(executor.id);
   }
 }
 
 export async function checkMemberUpdate(oldMember, newMember) {
-  const cfg = loadConfig();
+  const cfg = await loadConfig();
   if (!cfg.enabled || !cfg.raid) return;
 
   if (oldMember.nickname !== newMember.nickname) {
@@ -182,12 +197,12 @@ export async function checkMemberUpdate(oldMember, newMember) {
         "You are changing your nickname too rapidly. Please stop.",
         async () => {
           await instantAntiNuke(
-            newMember.guild, 
-            newMember.id, 
+            newMember.guild,
+            newMember.id,
             `Rapid Nickname Changes detected.`,
-            "timeout" // Punish with timeout instead of Ban for this
+            "timeout", // Punish with timeout instead of Ban for this
           );
-        }
+        },
       );
       userTrackers.delete(newMember.id);
     }
@@ -195,44 +210,54 @@ export async function checkMemberUpdate(oldMember, newMember) {
 }
 
 export async function checkMessageDelete(message, executor) {
-    const cfg = loadConfig();
-    if (!cfg.enabled || !cfg.raid) return;
-    if (!executor) return;
+  const cfg = await loadConfig();
+  if (!cfg.enabled || !cfg.raid) return;
+  if (!executor) return;
 
-    const tracker = getTracker(executor.id);
-    tracker.messageDeleteCount++;
-    tracker.lastCheck = Date.now();
+  const tracker = getTracker(executor.id);
+  tracker.messageDeleteCount++;
+  tracker.lastCheck = Date.now();
 
-    const msgDelLimit = cfg.limits?.messageDelete || 3;
+  const msgDelLimit = cfg.limits?.messageDelete || 3;
 
-    if (tracker.messageDeleteCount >= msgDelLimit) {
-      await triggerWarningOrAction(
-        message.guild,
-        executor.id,
-        message, // pass message to reply in channel
-        "You are rapid-deleting messages! Stop immediately.",
-        async () => {
-          await instantAntiNuke(
-            message.guild, 
-            executor.id, 
-            `Rapid Message Deletion (Wipe) detected.`,
-            "ban"
-          );
-        }
-      );
-      userTrackers.delete(executor.id);
-    }
+  if (tracker.messageDeleteCount >= msgDelLimit) {
+    await triggerWarningOrAction(
+      message.guild,
+      executor.id,
+      message, // pass message to reply in channel
+      "You are rapid-deleting messages! Stop immediately.",
+      async () => {
+        await instantAntiNuke(
+          message.guild,
+          executor.id,
+          `Rapid Message Deletion (Wipe) detected.`,
+          "ban",
+        );
+      },
+    );
+    userTrackers.delete(executor.id);
+  }
 }
 
 export async function checkToxicity(message) {
-  const cfg = loadConfig();
+  const cfg = await loadConfig();
   if (!cfg.enabled || !cfg.toxicity) return;
-  
+
   // Basic heuristic check before invoking expensive AI for every message
-  const toxicKeywords = ["bitch", "nigger", "faggot", "kys", "whore", "slut", "kill yourself", "retard", "rape"];
-  
+  const toxicKeywords = [
+    "bitch",
+    "nigger",
+    "faggot",
+    "kys",
+    "whore",
+    "slut",
+    "kill yourself",
+    "retard",
+    "rape",
+  ];
+
   const content = message.content.toLowerCase();
-  const hasToxic = toxicKeywords.some(kw => content.includes(kw));
+  const hasToxic = toxicKeywords.some((kw) => content.includes(kw));
 
   if (hasToxic) {
     await triggerWarningOrAction(
@@ -242,12 +267,12 @@ export async function checkToxicity(message) {
       "Your message contained highly toxic phrasing. Please refrain from using such language.",
       async () => {
         await triggerAIModeration(
-          message.guild, 
-          message.author.id, 
-          "Toxicity Filter Anomaly", 
-          `User sent potentially highly toxic message: "${message.content}"`
+          message.guild,
+          message.author.id,
+          "Toxicity Filter Anomaly",
+          `User sent potentially highly toxic message: "${message.content}"`,
         );
-      }
+      },
     );
   }
 }
@@ -262,11 +287,13 @@ async function triggerAIModeration(guild, userId, anomalyType, contextData) {
   try {
     const member = await guild.members.fetch(userId).catch(() => null);
     if (!member) return;
-    
+
     // Ignore owner/bots
     if (member.id === guild.ownerId || member.user.bot) return;
 
-    console.log(`[AutoMod] Triggering AI Decision for ${member.user.tag}: ${anomalyType}`);
+    console.log(
+      `[AutoMod] Triggering AI Decision for ${member.user.tag}: ${anomalyType}`,
+    );
 
     const prompt = `
       You are the autonomous AutoMod AI for the Discord server "${guild.name}".
@@ -284,41 +311,42 @@ async function triggerAIModeration(guild, userId, anomalyType, contextData) {
     `;
 
     const modelObj = getLanguageModel(config.model.provider, config.model.name);
-    
+
     const result = await generateObject({
       model: modelObj,
       prompt,
       schema: z.object({
-        action: z.enum(['timeout', 'kick', 'ban', 'ban-wipe', 'none']),
+        action: z.enum(["timeout", "kick", "ban", "ban-wipe", "none"]),
         durationMinutes: z.number().optional().describe("For timeout only"),
-        reason: z.string().describe("Audit log reason for taking this action")
-      })
+        reason: z.string().describe("Audit log reason for taking this action"),
+      }),
     });
 
     const { action, durationMinutes, reason } = result.object;
-    console.log(`[AutoMod AI Decision] Computed Action for ${member.user.tag}: ${action} (Reason: ${reason})`);
+    console.log(
+      `[AutoMod AI Decision] Computed Action for ${member.user.tag}: ${action} (Reason: ${reason})`,
+    );
 
     const finalReason = `[AutoMod] ${reason}`;
 
     try {
       switch (action) {
-        case 'timeout':
+        case "timeout":
           await modTools.timeout(member, durationMinutes || 10, finalReason);
           break;
-        case 'kick':
+        case "kick":
           await modTools.kick(member, finalReason);
           break;
-        case 'ban':
+        case "ban":
           await modTools.ban(member, 0, finalReason);
           break;
-        case 'ban-wipe':
+        case "ban-wipe":
           await modTools.ban(member, 1, finalReason);
           break;
       }
     } catch (execErr) {
       console.error(`[AutoMod Execution Error] Task failed:`, execErr.message);
     }
-    
   } catch (error) {
     console.error("[AutoMod Request Error]", error);
   } finally {

@@ -26,7 +26,7 @@ export default {
       }
     }
 
-    if (!member.user.bot && getAutoDmEnabled()) {
+    if (!member.user.bot && (await getAutoDmEnabled())) {
       try {
         const verificationEmbed = new EmbedBuilder()
           .setColor("#00ddff")

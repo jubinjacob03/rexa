@@ -23,8 +23,8 @@ function isModerator(member) {
   return [...MOD_ROLES].some((r) => member.roles.cache.has(r));
 }
 
-function broadcastVerification(guild) {
-  const pending = getAllPendingRequests();
+async function broadcastVerification(guild) {
+  const pending = await getAllPendingRequests();
   const list = Object.values(pending).map((r) => {
     const member = guild?.members.cache.get(r.userId);
     return {
@@ -45,7 +45,7 @@ router.get("/pending", async (req, res) => {
       return res.status(503).json({ success: false, error: "Guild not found" });
 
     await guild.members.fetch({ limit: 200 }).catch(() => {});
-    const pending = getAllPendingRequests();
+    const pending = await getAllPendingRequests();
     const list = Object.values(pending).map((r) => {
       const member = guild.members.cache.get(r.userId);
       return {
@@ -81,7 +81,7 @@ router.get("/user-status", async (req, res) => {
     const roleIds = [...member.roles.cache.keys()];
     const hasFriends = member.roles.cache.has(config.friendsRoleId);
     const hasMember = member.roles.cache.has(config.memberRoleId);
-    const pending = getRequest(userId);
+    const pending = await getRequest(userId);
 
     res.json({
       success: true,
@@ -118,7 +118,7 @@ router.post("/apply", async (req, res) => {
         .status(404)
         .json({ success: false, error: "Member not found" });
 
-    if (hasPendingRequest(userId)) {
+    if (await hasPendingRequest(userId)) {
       return res
         .status(409)
         .json({ success: false, error: "You already have a pending request." });
@@ -174,14 +174,14 @@ router.post("/apply", async (req, res) => {
       embeds: [approvalEmbed],
     });
 
-    createRequest(
+    await createRequest(
       userId,
       member.user.tag,
       requestedRole,
       requestedRoleId,
       approvalMessage.id,
     );
-    broadcastVerification(guild);
+    await broadcastVerification(guild);
 
     res.json({
       success: true,
@@ -218,7 +218,7 @@ router.post("/approve", async (req, res) => {
         .status(403)
         .json({ success: false, error: "Moderator+ required." });
 
-    const request = getRequest(targetUserId);
+    const request = await getRequest(targetUserId);
     if (!request)
       return res
         .status(404)
@@ -226,7 +226,7 @@ router.post("/approve", async (req, res) => {
 
     const member = await guild.members.fetch(targetUserId).catch(() => null);
     if (!member) {
-      removeRequest(targetUserId);
+      await removeRequest(targetUserId);
       return res
         .status(404)
         .json({ success: false, error: "Member no longer in server." });
@@ -264,7 +264,7 @@ router.post("/approve", async (req, res) => {
       }
     }
 
-    logApproval(
+    await logApproval(
       targetUserId,
       request.username,
       request.requestedRole,
@@ -273,7 +273,7 @@ router.post("/approve", async (req, res) => {
       finalNickname,
       "approved",
     );
-    removeRequest(targetUserId);
+    await removeRequest(targetUserId);
 
     const user = await client.users.fetch(targetUserId).catch(() => null);
     if (user) {
@@ -292,7 +292,7 @@ router.post("/approve", async (req, res) => {
         .catch(() => {});
     }
 
-    broadcastVerification(guild);
+    await broadcastVerification(guild);
     res.json({ success: true, data: { finalNickname } });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -325,7 +325,7 @@ router.post("/reject", async (req, res) => {
         .status(403)
         .json({ success: false, error: "Moderator+ required." });
 
-    const request = getRequest(targetUserId);
+    const request = await getRequest(targetUserId);
     if (!request)
       return res
         .status(404)
@@ -355,7 +355,7 @@ router.post("/reject", async (req, res) => {
       }
     }
 
-    logApproval(
+    await logApproval(
       targetUserId,
       request.username,
       request.requestedRole,
@@ -364,7 +364,7 @@ router.post("/reject", async (req, res) => {
       null,
       "rejected",
     );
-    removeRequest(targetUserId);
+    await removeRequest(targetUserId);
 
     const user = await client.users.fetch(targetUserId).catch(() => null);
     if (user) {
@@ -383,7 +383,7 @@ router.post("/reject", async (req, res) => {
         .catch(() => {});
     }
 
-    broadcastVerification(guild);
+    await broadcastVerification(guild);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
