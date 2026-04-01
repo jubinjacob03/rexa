@@ -13,95 +13,69 @@ import {
 } from "discord.js";
 import { loadConfig, updateConfig } from "../utils/automodManager.js";
 
-const ON = "` ᴏɴ `";
-const OFF = "` ᴏꜰꜰ `";
-
 export function generateAutomodDashboard() {
   const config = loadConfig();
 
+  const on = config.enabled;
+  const icon = on ? "🟢" : "🔴";
+
+  const description = [
+    `**AUTOMOD IS ${on ? "ACTIVE" : "INACTIVE"}.**`,
+    "",
+    `${config.spam ? "✦" : "·"}  Spam Filter       —  ${config.spam ? "**on**" : "off"}`,
+    `${config.raid ? "✦" : "·"}  Raid Protection   —  ${config.raid ? "**on**" : "off"}`,
+    `${config.toxicity ? "✦" : "·"}  Toxicity Filter   —  ${config.toxicity ? "**on**" : "off"}`,
+    "",
+    `**RATE LIMITS  ·  PER 10s**`,
+    `Messages  **${config.limits.messageSpam}**  ·  Channel deletes  **${config.limits.channelDelete}**  ·  Nickname changes  **${config.limits.nicknameChange}**  ·  Message deletes  **${config.limits.messageDelete}**`,
+  ].join("\n");
+
   const embed = new EmbedBuilder()
-    .setTitle("ᴀᴜᴛᴏᴍᴏᴅ ᴄᴏɴꜰɪɢᴜʀᴀᴛɪᴏɴ")
-    .setDescription(
-      "Manage autonomous moderation rules and rate limits for this server.",
-    )
-    .setColor(config.enabled ? "#57F287" : "#ED4245")
-    .addFields(
-      {
-        name: "ᴍᴀꜱᴛᴇʀ ꜱᴡɪᴛᴄʜ",
-        value: config.enabled ? ON : OFF,
-        inline: false,
-      },
-      { name: "\u200b", value: "\u200b", inline: false },
-      {
-        name: "ꜱᴘᴀᴍ ꜰɪʟᴛᴇʀ",
-        value: config.spam ? ON : OFF,
-        inline: true,
-      },
-      {
-        name: "ʀᴀɪᴅ ᴘʀᴏᴛᴇᴄᴛɪᴏɴ",
-        value: config.raid ? ON : OFF,
-        inline: true,
-      },
-      {
-        name: "ᴛᴏxɪᴄɪᴛʏ ꜰɪʟᴛᴇʀ",
-        value: config.toxicity ? ON : OFF,
-        inline: true,
-      },
-      { name: "\u200b", value: "\u200b", inline: false },
-      {
-        name: "ʀᴀᴛᴇ ʟɪᴍɪᴛꜱ  ·  ᴘᴇʀ 10ꜱ",
-        value: [
-          `ᴍᴇꜱꜱᴀɢᴇꜱ          **${config.limits.messageSpam}**`,
-          `ᴄʜᴀɴɴᴇʟ ᴅᴇʟᴇᴛᴇꜱ   **${config.limits.channelDelete}**`,
-          `ɴɪᴄᴋɴᴀᴍᴇ ᴄʜᴀɴɢᴇꜱ  **${config.limits.nicknameChange}**`,
-          `ᴍᴇꜱꜱᴀɢᴇ ᴅᴇʟᴇᴛᴇꜱ   **${config.limits.messageDelete}**`,
-        ].join("\n"),
-        inline: false,
-      },
-    )
-    .setFooter({ text: "Changes take effect immediately." })
+    .setTitle(`${icon} Automod Configuration`)
+    .setDescription(description)
+    .setColor(on ? "#57F287" : "#ED4245")
     .setTimestamp();
 
   const toggleButtonRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("automod_toggle_master")
-      .setLabel(config.enabled ? "ᴅɪꜱᴀʙʟᴇ ᴀᴜᴛᴏᴍᴏᴅ" : "ᴇɴᴀʙʟᴇ ᴀᴜᴛᴏᴍᴏᴅ")
-      .setStyle(config.enabled ? ButtonStyle.Danger : ButtonStyle.Success),
+      .setLabel(on ? "Disable Automod" : "Enable Automod")
+      .setStyle(on ? ButtonStyle.Danger : ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId("automod_edit_limits")
-      .setLabel("ᴇᴅɪᴛ ʟɪᴍɪᴛꜱ")
+      .setLabel("Edit Limits")
       .setStyle(ButtonStyle.Secondary),
   );
 
   const featureSelectRow = new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId("automod_feature_select")
-      .setPlaceholder("ᴛᴏɢɢʟᴇ ɪɴᴅɪᴠɪᴅᴜᴀʟ ꜰᴇᴀᴛᴜʀᴇꜱ")
+      .setPlaceholder("Toggle individual features...")
       .setMinValues(1)
       .setMaxValues(1)
       .addOptions(
         new StringSelectMenuOptionBuilder()
-          .setLabel("ꜱᴘᴀᴍ ꜰɪʟᴛᴇʀ")
+          .setLabel("Spam Filter")
           .setDescription(
             config.spam
-              ? "Currently enabled — click to disable"
-              : "Currently disabled — click to enable",
+              ? "Enabled — click to disable"
+              : "Disabled — click to enable",
           )
           .setValue("toggle_spam"),
         new StringSelectMenuOptionBuilder()
-          .setLabel("ʀᴀɪᴅ ᴘʀᴏᴛᴇᴄᴛɪᴏɴ")
+          .setLabel("Raid Protection")
           .setDescription(
             config.raid
-              ? "Currently enabled — click to disable"
-              : "Currently disabled — click to enable",
+              ? "Enabled — click to disable"
+              : "Disabled — click to enable",
           )
           .setValue("toggle_raid"),
         new StringSelectMenuOptionBuilder()
-          .setLabel("ᴛᴏxɪᴄɪᴛʏ ꜰɪʟᴛᴇʀ")
+          .setLabel("Toxicity Filter")
           .setDescription(
             config.toxicity
-              ? "Currently enabled — click to disable"
-              : "Currently disabled — click to enable",
+              ? "Enabled — click to disable"
+              : "Disabled — click to enable",
           )
           .setValue("toggle_toxicity"),
       ),
@@ -122,7 +96,7 @@ export default {
       interaction.user.id !== interaction.guild.ownerId
     ) {
       return interaction.reply({
-        content: "ᴏɴʟʏ ᴛʜᴇ ꜱᴇʀᴠᴇʀ ᴏᴡɴᴇʀ ᴄᴀɴ ᴄᴏɴꜰɪɢᴜʀᴇ ᴀᴜᴛᴏᴍᴏᴅ.",
+        content: "Only the server owner can configure Automod.",
         ephemeral: true,
       });
     }
@@ -138,7 +112,7 @@ export default {
 export async function handleAutomodInteraction(interaction) {
   if (interaction.guild && interaction.user.id !== interaction.guild.ownerId) {
     return interaction.reply({
-      content: "ᴏɴʟʏ ᴛʜᴇ ꜱᴇʀᴠᴇʀ ᴏᴡɴᴇʀ ᴄᴀɴ ᴍᴏᴅɪꜰʏ ᴀᴜᴛᴏᴍᴏᴅ ꜱᴇᴛᴛɪɴɢꜱ.",
+      content: "Only the server owner can modify Automod settings.",
       ephemeral: true,
     });
   }
