@@ -20,18 +20,18 @@ export function generateAutomodDashboard() {
   const icon = on ? "🟢" : "🔴";
 
   const description = [
-    `**AUTOMOD IS ${on ? "ACTIVE" : "INACTIVE"}.**`,
+    `**ᴀᴜᴛᴏᴍᴏᴅ ɪꜱ ${on ? "ᴀᴄᴛɪᴠᴇ" : "ɪɴᴀᴄᴛɪᴠᴇ"}.**`,
     "",
-    `${config.spam ? "✦" : "·"}  Spam Filter       —  ${config.spam ? "**on**" : "off"}`,
-    `${config.raid ? "✦" : "·"}  Raid Protection   —  ${config.raid ? "**on**" : "off"}`,
-    `${config.toxicity ? "✦" : "·"}  Toxicity Filter   —  ${config.toxicity ? "**on**" : "off"}`,
+    `${config.spam ? "✦" : "·"}  ꜱᴘᴀᴍ ꜰɪʟᴛᴇʀ       —  ${config.spam ? "**ᴏɴ**" : "ᴏꜰꜰ"}`,
+    `${config.raid ? "✦" : "·"}  ʀᴀɪᴅ ᴘʀᴏᴛᴇᴄᴛɪᴏɴ   —  ${config.raid ? "**ᴏɴ**" : "ᴏꜰꜰ"}`,
+    `${config.toxicity ? "✦" : "·"}  ᴛᴏxɪᴄɪᴛʏ ꜰɪʟᴛᴇʀ   —  ${config.toxicity ? "**ᴏɴ**" : "ᴏꜰꜰ"}`,
     "",
-    `**RATE LIMITS  ·  PER 10s**`,
-    `Messages  **${config.limits.messageSpam}**  ·  Channel deletes  **${config.limits.channelDelete}**  ·  Nickname changes  **${config.limits.nicknameChange}**  ·  Message deletes  **${config.limits.messageDelete}**`,
+    `**ʀᴀᴛᴇ ʟɪᴍɪᴛꜱ  ·  ᴘᴇʀ 10ꜱ**`,
+    `ᴍᴇꜱꜱᴀɢᴇꜱ  **${config.limits.messageSpam}**  ·  ᴄʜᴀɴɴᴇʟ ᴅᴇʟᴇᴛᴇꜱ  **${config.limits.channelDelete}**  ·  ɴɪᴄᴋɴᴀᴍᴇ ᴄʜᴀɴɢᴇꜱ  **${config.limits.nicknameChange}**  ·  ᴍᴇꜱꜱᴀɢᴇ ᴅᴇʟᴇᴛᴇꜱ  **${config.limits.messageDelete}**`,
   ].join("\n");
 
   const embed = new EmbedBuilder()
-    .setTitle(`${icon} Automod Configuration`)
+    .setTitle(`${icon} ᴀᴜᴛᴏᴍᴏᴅ ᴄᴏɴꜰɪɢᴜʀᴀᴛɪᴏɴ`)
     .setDescription(description)
     .setColor(on ? "#57F287" : "#ED4245")
     .setTimestamp();
@@ -39,43 +39,43 @@ export function generateAutomodDashboard() {
   const toggleButtonRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("automod_toggle_master")
-      .setLabel(on ? "Disable Automod" : "Enable Automod")
+      .setLabel(on ? "ᴅɪꜱᴀʙʟᴇ ᴀᴜᴛᴏᴍᴏᴅ" : "ᴇɴᴀʙʟᴇ ᴀᴜᴛᴏᴍᴏᴅ")
       .setStyle(on ? ButtonStyle.Danger : ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId("automod_edit_limits")
-      .setLabel("Edit Limits")
+      .setLabel("ᴇᴅɪᴛ ʟɪᴍɪᴛꜱ")
       .setStyle(ButtonStyle.Secondary),
   );
 
   const featureSelectRow = new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId("automod_feature_select")
-      .setPlaceholder("Toggle individual features...")
+      .setPlaceholder("ᴛᴏɢɢʟᴇ ɪɴᴅɪᴠɪᴅᴜᴀʟ ꜰᴇᴀᴛᴜʀᴇꜱ...")
       .setMinValues(1)
       .setMaxValues(1)
       .addOptions(
         new StringSelectMenuOptionBuilder()
-          .setLabel("Spam Filter")
+          .setLabel("ꜱᴘᴀᴍ ꜰɪʟᴛᴇʀ")
           .setDescription(
             config.spam
-              ? "Enabled — click to disable"
-              : "Disabled — click to enable",
+              ? "ᴇɴᴀʙʟᴇᴅ — ᴄʟɪᴄᴋ ᴛᴏ ᴅɪꜱᴀʙʟᴇ"
+              : "ᴅɪꜱᴀʙʟᴇᴅ — ᴄʟɪᴄᴋ ᴛᴏ ᴇɴᴀʙʟᴇ",
           )
           .setValue("toggle_spam"),
         new StringSelectMenuOptionBuilder()
-          .setLabel("Raid Protection")
+          .setLabel("ʀᴀɪᴅ ᴘʀᴏᴛᴇᴄᴛɪᴏɴ")
           .setDescription(
             config.raid
-              ? "Enabled — click to disable"
-              : "Disabled — click to enable",
+              ? "ᴇɴᴀʙʟᴇᴅ — ᴄʟɪᴄᴋ ᴛᴏ ᴅɪꜱᴀʙʟᴇ"
+              : "ᴅɪꜱᴀʙʟᴇᴅ — ᴄʟɪᴄᴋ ᴛᴏ ᴇɴᴀʙʟᴇ",
           )
           .setValue("toggle_raid"),
         new StringSelectMenuOptionBuilder()
-          .setLabel("Toxicity Filter")
+          .setLabel("ᴛᴏxɪᴄɪᴛʏ ꜰɪʟᴛᴇʀ")
           .setDescription(
             config.toxicity
-              ? "Enabled — click to disable"
-              : "Disabled — click to enable",
+              ? "ᴇɴᴀʙʟᴇᴅ — ᴄʟɪᴄᴋ ᴛᴏ ᴅɪꜱᴀʙʟᴇ"
+              : "ᴅɪꜱᴀʙʟᴇᴅ — ᴄʟɪᴄᴋ ᴛᴏ ᴇɴᴀʙʟᴇ",
           )
           .setValue("toggle_toxicity"),
       ),
