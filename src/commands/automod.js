@@ -15,34 +15,12 @@ export function generateAutomodDashboard(guild = null) {
   const config = loadConfig();
   const on = config.enabled;
 
-  const description = [
-    `**ᴀᴜᴛᴏᴍᴏᴅ ɪꜱ ${on ? "**ᴀᴄᴛɪᴠᴇ**" : "ɪɴᴀᴄᴛɪᴠᴇ"}**`,
-    "",
-    `**ʀᴀᴛᴇ ʟɪᴍɪᴛꜱ  ·  ᴘᴇʀ 10ꜱ**`,
-    `ᴍꜱɢ **${config.limits.messageSpam}** • ᴄʜ. ᴅᴇʟ **${config.limits.channelDelete}** • ɴɪᴄᴋ **${config.limits.nicknameChange}** • ᴍꜱɢ ᴅᴇʟ **${config.limits.messageDelete}**`,
-  ].join("\n");
-
   const embed = new EmbedBuilder()
-    .setTitle("ᴀᴜᴛᴏᴍᴏᴅ ᴄᴏɴꜰɪɢᴜʀᴀᴛɪᴏɴ")
-    .setDescription(description)
-    .setColor("#00CED1")
-    .addFields(
-      {
-        name: "ꜱᴘᴀᴍ ꜰɪʟᴛᴇʀ",
-        value: config.spam ? "**ᴏɴ**" : "ᴏꜰꜰ",
-        inline: true,
-      },
-      {
-        name: "ʀᴀɪᴅ ᴘʀᴏᴛᴇᴄᴛɪᴏɴ",
-        value: config.raid ? "**ᴏɴ**" : "ᴏꜰꜰ",
-        inline: true,
-      },
-      {
-        name: "ᴛᴏxɪᴄɪᴛʏ ꜰɪʟᴛᴇʀ",
-        value: config.toxicity ? "**ᴏɴ**" : "ᴏꜰꜰ",
-        inline: true,
-      },
+    .setTitle(`ᴀᴜᴛᴏᴍᴏᴅ — ${on ? "ᴀᴄᴛɪᴠᴇ" : "ɪɴᴀᴄᴛɪᴠᴇ"}`)
+    .setDescription(
+      `**ʀᴀᴛᴇ ʟɪᴍɪᴛꜱ • ᴘᴇʀ 10ꜱ**\nᴍꜱɢ **${config.limits.messageSpam}** • ᴄʜ. ᴅᴇʟ **${config.limits.channelDelete}** • ɴɪᴄᴋ **${config.limits.nicknameChange}** • ᴍꜱɢ ᴅᴇʟ **${config.limits.messageDelete}**`,
     )
+    .setColor("#00CED1")
     .setTimestamp();
 
   if (guild?.iconURL()) {
