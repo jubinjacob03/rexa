@@ -163,7 +163,21 @@ export async function handleVerificationApply(interaction) {
     if (await hasPendingRequest(userId)) {
       return interaction.reply({
         content:
-          "⚠️ You already have a pending verification request. Please wait for approval.",
+          "⚠️ ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀ ᴘᴇɴᴅɪɴɢ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ. ᴘʟᴇᴀsᴇ ᴡᴀɪᴛ ғᴏʀ ᴀᴘᴘʀᴏᴠᴀʟ.",
+        ephemeral: true,
+      });
+    }
+
+    const guild = await interaction.client.guilds.fetch(GUILD_ID);
+    const guildMember = await guild.members.fetch(userId).catch(() => null);
+    if (
+      guildMember &&
+      (guildMember.roles.cache.has(config.friendsRoleId) ||
+        guildMember.roles.cache.has(config.memberRoleId))
+    ) {
+      return interaction.reply({
+        content:
+          "⚠️ ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀɴ ᴀᴄᴛɪᴠᴇ ʀᴏʟᴇ. ᴘʟᴇᴀsᴇ ᴀsᴋ ᴀ ᴍᴏᴅᴇʀᴀᴛᴏʀ ғᴏʀ ᴀɴʏ ᴄʜᴀɴɢᴇs.",
         ephemeral: true,
       });
     }
