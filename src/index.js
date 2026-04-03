@@ -116,7 +116,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await handleTicketInteraction(interaction);
       return;
     }
+  }
 
+  if (interaction.isUserSelectMenu()) {
+    if (interaction.customId.startsWith("tsetup_")) {
+      await handleTicketInteraction(interaction);
+      return;
+    }
+  }
+
+  if (interaction.isButton()) {
     if (interaction.customId === "dev_check") {
       await interaction.reply({
         content:
