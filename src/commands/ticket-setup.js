@@ -63,7 +63,7 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
       { name: "ᴀᴛᴛᴀᴄʜᴇᴅ ʙᴜᴛᴛᴏɴꜱ", value: buttonPreview, inline: false },
     )
     .setFooter({
-      text: "ᴜꜱᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴꜱ ʙᴇʟᴏᴡ ᴛᴏ ᴄᴏɴꜰɪɢᴜʀᴇ ᴀɴᴅ ᴘᴜʙʟɪꜱʜ. (ᴍᴀx 5 ʙᴜᴛᴛᴏɴꜱ)",
+      text: "ᴜꜱᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴꜱ ʙᴇʟᴏᴡ ᴛᴏ ᴄᴏɴꜰɪɢᴜʀᴇ ᴀɴᴅ ᴘᴜʙʟɪꜱʜ. (ᴍᴀx 3 ʙᴜᴛᴛᴏɴꜱ)",  
     });
 
   const row1 = new ActionRowBuilder().addComponents(
@@ -75,17 +75,17 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
       .setCustomId("tsetup_add_ticket")
       .setLabel("💠ᴀᴅᴅ ᴛɪᴄᴋᴇᴛ ʙᴜᴛᴛᴏɴ")
       .setStyle(ButtonStyle.Primary)
-      .setDisabled(config.buttons.length >= 5),
+      .setDisabled(config.buttons.length >= 3),
     new ButtonBuilder()
       .setCustomId("tsetup_add_text")
       .setLabel("💠ᴀᴅᴅ ᴛᴇxᴛ ʀᴇᴘʟʏ")
       .setStyle(ButtonStyle.Primary)
-      .setDisabled(config.buttons.length >= 5),
+      .setDisabled(config.buttons.length >= 3),
     new ButtonBuilder()
       .setCustomId("tsetup_add_image")
       .setLabel("💠ᴀᴅᴅ ɪᴍᴀɢᴇ ʀᴇᴘʟʏ")
       .setStyle(ButtonStyle.Primary)
-      .setDisabled(config.buttons.length >= 5),
+      .setDisabled(config.buttons.length >= 3),
   );
 
   const row2 = new ActionRowBuilder().addComponents(
@@ -108,7 +108,11 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
   };
 
   if (isUpdate) {
-    await interaction.update(payload);
+    if (interaction.replied || interaction.deferred) {
+      await interaction.editReply(payload);
+    } else {
+      await interaction.update(payload);
+    }
   } else {
     await interaction.reply(payload);
   }

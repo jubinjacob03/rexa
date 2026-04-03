@@ -36,7 +36,7 @@ export async function handleTicketInteraction(interaction) {
     if (interaction.customId === "tsetup_edit_embed") {
       const modal = new ModalBuilder()
         .setCustomId("tsetup_modal_embed")
-        .setTitle("📝 ᴇᴅɪᴛ ᴛɪᴄᴋᴇᴛ ᴇᴍʙᴇᴅ");
+        .setTitle("🖋️ ᴇᴅɪᴛ ᴛɪᴄᴋᴇᴛ ᴇᴍʙᴇᴅ");
 
       const titleInput = new TextInputBuilder()
         .setCustomId("titleInput")
@@ -63,18 +63,18 @@ export async function handleTicketInteraction(interaction) {
     if (interaction.customId === "tsetup_add_ticket") {
       const modal = new ModalBuilder()
         .setCustomId("tsetup_modal_tkt")
-        .setTitle("➕ ᴀᴅᴅ ᴛɪᴄᴋᴇᴛ ʙᴜᴛᴛᴏɴ");
+        .setTitle("💠 ᴀᴅᴅ ᴛɪᴄᴋᴇᴛ ʙᴜᴛᴛᴏɴ");
       const labelInput = new TextInputBuilder()
         .setCustomId("labelBtn")
         .setLabel("ʙᴜᴛᴛᴏɴ ʟᴀʙᴇʟ")
         .setStyle(TextInputStyle.Short)
-        .setValue("📩 ᴏᴘᴇɴ ᴛɪᴄᴋᴇᴛ")
+        .setValue("🎫 ᴏᴘᴇɴ ᴛɪᴄᴋᴇᴛ")
         .setRequired(true);
       const typeInput = new TextInputBuilder()
         .setCustomId("typeInput")
-        .setLabel("ᴛʏᴘᴇ (thread, text, or vc)")
+        .setLabel("ᴛʏᴘᴇ (text or vc)")
         .setStyle(TextInputStyle.Short)
-        .setValue("thread")
+        .setValue("text")
         .setRequired(true);
       const aiInput = new TextInputBuilder()
         .setCustomId("aiInput")
@@ -93,12 +93,12 @@ export async function handleTicketInteraction(interaction) {
     if (interaction.customId === "tsetup_add_text") {
       const modal = new ModalBuilder()
         .setCustomId("tsetup_modal_txt")
-        .setTitle("➕ ᴀᴅᴅ ᴛᴇxᴛ ʀᴇᴘʟʏ");
+        .setTitle("💠 ᴀᴅᴅ ᴛᴇxᴛ ʀᴇᴘʟʏ");
       const labelInput = new TextInputBuilder()
         .setCustomId("labelBtn")
         .setLabel("ʙᴜᴛᴛᴏɴ ʟᴀʙᴇʟ")
         .setStyle(TextInputStyle.Short)
-        .setValue("📖 ꜰᴀQ")
+        .setValue("📕 ᴛɪᴛʟᴇ ᴏғ ᴛʜɪs ʙᴜᴛᴛᴏɴ")
         .setRequired(true);
       const contentInput = new TextInputBuilder()
         .setCustomId("contentInput")
@@ -115,22 +115,14 @@ export async function handleTicketInteraction(interaction) {
     if (interaction.customId === "tsetup_add_image") {
       const modal = new ModalBuilder()
         .setCustomId("tsetup_modal_img")
-        .setTitle("➕ ᴀᴅᴅ ɪᴍᴀɢᴇ ʀᴇᴘʟʏ");
+        .setTitle("💠 ᴀᴅᴅ ɪᴍᴀɢᴇ ʀᴇᴘʟʏ");
       const labelInput = new TextInputBuilder()
         .setCustomId("labelBtn")
         .setLabel("ʙᴜᴛᴛᴏɴ ʟᴀʙᴇʟ")
         .setStyle(TextInputStyle.Short)
-        .setValue("🖼️ ᴠɪᴇᴡ ᴍᴀᴘ")
+        .setValue("💳 ᴘᴀʏᴍᴇɴᴛ")
         .setRequired(true);
-      const urlInput = new TextInputBuilder()
-        .setCustomId("urlInput")
-        .setLabel("ɪᴍᴀɢᴇ ᴜʀʟ (must end in .jpg, .png)")
-        .setStyle(TextInputStyle.Short)
-        .setRequired(true);
-      modal.addComponents(
-        new ActionRowBuilder().addComponents(labelInput),
-        new ActionRowBuilder().addComponents(urlInput),
-      );
+      modal.addComponents(new ActionRowBuilder().addComponents(labelInput));
       return await interaction.showModal(modal);
     }
 
@@ -207,7 +199,16 @@ export async function handleTicketInteraction(interaction) {
     interaction.customId.startsWith("tsetup_modal_")
   ) {
     const session = setupSessions.get(interaction.user.id);
-    if (!session) return;
+    if (!session) {
+      if (!interaction.replied && !interaction.deferred) {
+        return await interaction.reply({
+          content:
+            "❌ **ꜱᴇꜱꜱɪᴏɴ ᴇxᴘɪʀᴇᴅ:** ᴛʜᴇ ʙᴏᴛ ʀᴇꜱᴛᴀʀᴛᴇᴅ. ᴘʟᴇᴀꜱᴇ ʀᴜɴ `/setup-ticket` ᴀɢᴀɪɴ.",
+          ephemeral: true,
+        });
+      }
+      return;
+    }
 
     if (interaction.customId === "tsetup_modal_embed") {
       session.title = interaction.fields.getTextInputValue("titleInput");
@@ -220,11 +221,7 @@ export async function handleTicketInteraction(interaction) {
           interaction.fields.getTextInputValue("typeInput").toLowerCase() ===
           "vc"
             ? "vc"
-            : interaction.fields
-                  .getTextInputValue("typeInput")
-                  .toLowerCase() === "text"
-              ? "text"
-              : "thread",
+            : "text",
         aiAssist:
           interaction.fields.getTextInputValue("aiInput").toLowerCase() ===
           "true",
@@ -236,11 +233,60 @@ export async function handleTicketInteraction(interaction) {
         content: interaction.fields.getTextInputValue("contentInput"),
       });
     } else if (interaction.customId === "tsetup_modal_img") {
-      session.buttons.push({
-        type: "image",
-        label: interaction.fields.getTextInputValue("labelBtn"),
-        content: interaction.fields.getTextInputValue("urlInput"),
+      const label = interaction.fields.getTextInputValue("labelBtn");
+
+      await interaction.reply({
+        content: `⏳ **Waiting for image:** Please send the image for the \`${label}\` button in this channel now. (You have 60 seconds).\n*The bot will automatically secure the image in the CDN logging channel and delete your original message to keep the chat clean.*`,
+        ephemeral: true,
       });
+
+      const filter = (m) =>
+        m.author.id === interaction.user.id && m.attachments.size > 0;
+      try {
+        const collected = await interaction.channel.awaitMessages({
+          filter,
+          max: 1,
+          time: 60000,
+          errors: ["time"],
+        });
+        const msg = collected.first();
+        const attachment = msg.attachments.first();
+
+        let finalImageUrl = attachment.url;
+        const logChannelId =
+          config.ticketLogsChannelId || "1489647372811243742";
+        const logChannel = await interaction.client.channels
+          .fetch(logChannelId)
+          .catch(() => null);
+
+        if (logChannel) {
+          const sentMsg = await logChannel.send({
+            content: `**Panel Image Upload:** \`${label}\` (via <@${interaction.user.id}>)`,
+            files: [
+              {
+                attachment: attachment.url,
+                name: attachment.name || "image.png",
+              },
+            ],
+          });
+          if (sentMsg.attachments.size > 0) {
+            finalImageUrl = sentMsg.attachments.first().url;
+            msg.delete().catch(() => null); // Clean up original upload
+          }
+        }
+
+        session.buttons.push({
+          type: "image",
+          label: label,
+          content: finalImageUrl,
+        });
+        return await renderTicketDashboard(interaction, true);
+      } catch (err) {
+        return interaction.followUp({
+          content: "❌ **Time expired:** You didn't upload an image in time.",
+          ephemeral: true,
+        });
+      }
     }
     return await renderTicketDashboard(interaction, true);
   }
@@ -341,26 +387,17 @@ async function createTicketInstance(interaction) {
     }
 
     // Branch logic based on Admin's preferred Creation Type
-    if (ticketType === "thread") {
-      ticketChannel = await channel.threads.create({
-        name: ticketName,
-        autoArchiveDuration: 1440,
-        type: ChannelType.PrivateThread,
-        invitable: false,
-        reason: `ᴛɪᴄᴋᴇᴛ ᴄʀᴇᴀᴛᴇᴅ ʙʏ ${interaction.user.username}`,
-      });
-      await ticketChannel.members.add(interaction.user.id);
-    } else if (ticketType === "text") {
-      ticketChannel = await guild.channels.create({
-        name: ticketName,
-        type: ChannelType.GuildText,
-        parent: channel.parentId, // Create in same category as ticket panel
-        permissionOverwrites: permissionOverwrites,
-      });
-    } else if (ticketType === "vc") {
+    if (ticketType === "vc") {
       ticketChannel = await guild.channels.create({
         name: `${interaction.user.username}'s ᴛɪᴄᴋᴇᴛ`,
         type: ChannelType.GuildVoice,
+        parent: channel.parentId, // Create in same category as ticket panel
+        permissionOverwrites: permissionOverwrites,
+      });
+    } else {
+      ticketChannel = await guild.channels.create({
+        name: ticketName,
+        type: ChannelType.GuildText,
         parent: channel.parentId, // Create in same category as ticket panel
         permissionOverwrites: permissionOverwrites,
       });
@@ -369,7 +406,7 @@ async function createTicketInstance(interaction) {
     activeTickets.add(interaction.user.id);
 
     // Only send the greeting UI if it's a text-compatible interface
-    if (ticketType === "thread" || ticketType === "text") {
+    if (ticketType !== "vc") {
       const descriptionText = aiEnabled
         ? "ᴘʟᴇᴀꜱᴇ ᴅᴇꜱᴄʀɪʙᴇ ʏᴏᴜʀ ɪꜱꜱᴜᴇ ɪɴ ᴅᴇᴛᴀɪʟ. ᴏᴜʀ **ᴀɪ ꜱᴜᴘᴘᴏʀᴛ ʙᴏᴛ** ᴡɪʟʟ ᴀꜱꜱɪꜱᴛ ʏᴏᴜ ꜱʜᴏʀᴛʟʏ. ɪꜰ ɪᴛ ʀᴇQᴜɪʀᴇꜱ ʜᴜᴍᴀɴ ɪɴᴛᴇʀᴠᴇɴᴛɪᴏɴ, ᴄʟɪᴄᴋ 'ᴇꜱᴄᴀʟᴀᴛᴇ'."
         : "ᴘʟᴇᴀꜱᴇ ᴅᴇꜱᴄʀɪʙᴇ ʏᴏᴜʀ ɪꜱꜱᴜᴇ. ᴀ **ʜᴜᴍᴀɴ ᴍᴏᴅᴇʀᴀᴛᴏʀ** ᴡɪʟʟ ʙᴇ ᴡɪᴛʜ ʏᴏᴜ ᴀꜱ ꜱᴏᴏɴ ᴀꜱ ᴘᴏꜱꜱɪʙʟᴇ. ʏᴏᴜ ᴍᴀʏ ᴘɪɴɢ ᴛʜᴇᴍ ᴠɪᴀ ᴛʜᴇ 'ᴇꜱᴄᴀʟᴀᴛᴇ' ʙᴜᴛᴛᴏɴ.";
