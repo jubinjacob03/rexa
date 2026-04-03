@@ -11,3 +11,6 @@ CREATE TABLE IF NOT EXISTS ticket_actions (
   content TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Add auto_approve column to bot_verification if not already present --
+ALTER TABLE bot_verification ADD COLUMN IF NOT EXISTS auto_approve BOOLEAN DEFAULT FALSE;

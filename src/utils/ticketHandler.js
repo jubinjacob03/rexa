@@ -253,10 +253,11 @@ export async function handleTicketInteraction(interaction) {
     } else if (interaction.customId === "tsetup_modal_img") {
       const label = interaction.fields.getTextInputValue("labelBtn");
 
-      await interaction.update({
-        content: `⏳ **Waiting for image:** Please send the image for the \`${label}\` button in this channel now. (You have 60 seconds).\n*The bot will automatically secure the image in the CDN logging channel and delete your original message to keep the chat clean.*`,
-        embeds: [],
-        components: [],
+      await interaction.deferUpdate();
+
+      const waitingMsg = await interaction.followUp({
+        content: `⏳ **ᴡᴀɪᴛɪɴɢ ꜰᴏʀ ɪᴍᴀɢᴇ:** ᴘʟᴇᴀꜱᴇ ꜱᴇɴᴅ ᴛʜᴇ ɪᴍᴀɢᴇ ꜰᴏʀ ᴛʜᴇ \`${label}\` ʙᴜᴛᴛᴏɴ ɪɴ ᴛʜɪꜱ ᴄʜᴀɴɴᴇʟ ɴᴏᴡ. (ʏᴏᴜ ʜᴀᴠᴇ 60 ꜱᴇᴄᴏɴᴅꜱ).\n*ᴛʜᴇ ʙᴏᴛ ᴡɪʟʟ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ꜱᴇᴄᴜʀᴇ ᴛʜᴇ ɪᴍᴀɢᴇ ɪɴ ᴛʜᴇ ᴄᴅɴ ʟᴏɢɢɪɴɢ ᴄʜᴀɴɴᴇʟ ᴀɴᴅ ᴅᴇʟᴇᴛᴇ ʏᴏᴜʀ ᴏʀɪɢɪɴᴀʟ ᴍᴇꜱꜱᴀɢᴇ ᴛᴏ ᴋᴇᴇᴘ ᴛʜᴇ ᴄʜᴀᴛ ᴄʟᴇᴀɴ.*`,
+        ephemeral: true,
       });
 
       const filter = (m) =>
@@ -290,7 +291,7 @@ export async function handleTicketInteraction(interaction) {
           });
           if (sentMsg.attachments.size > 0) {
             finalImageUrl = sentMsg.attachments.first().url;
-            msg.delete().catch(() => null); // Clean up original upload
+            msg.delete().catch(() => null);
           }
         }
 
@@ -299,11 +300,12 @@ export async function handleTicketInteraction(interaction) {
           label: label,
           content: finalImageUrl,
         });
+        await waitingMsg.delete().catch(() => null);
         return await renderTicketDashboard(interaction, true);
       } catch (err) {
         return interaction.editReply({
           content:
-            "❌ **Time expired:** You didn't upload an image in time. Run `/setup-ticket` to resume or try again.",
+            "❌ **ᴛɪᴍᴇ ᴇxᴘɪʀᴇᴅ:** ʏᴏᴜ ᴅɪᴅɴ'ᴛ ᴜᴘʟᴏᴀᴅ ᴀɴ ɪᴍᴀɢᴇ ɪɴ ᴛɪᴍᴇ. ʀᴜɴ `/setup-ticket` ᴛᴏ ʀᴇꜱᴜᴍᴇ ᴏʀ ᴛʀʏ ᴀɢᴀɪɴ.",
           embeds: [],
           components: [],
         });

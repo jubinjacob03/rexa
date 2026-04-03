@@ -10,6 +10,8 @@ import config from "../../config.js";
 import {
   getAutoDmEnabled,
   setAutoDmEnabled,
+  getAutoApprove,
+  setAutoApprove,
 } from "../utils/verificationHandler.js";
 
 export default {
@@ -25,6 +27,18 @@ export default {
         )
         .setRequired(false)
         .addChoices({ name: "on", value: "on" }, { name: "off", value: "off" }),
+    )
+    .addStringOption((option) =>
+      option
+        .setName("approve")
+        .setDescription(
+          "auto: AI DM interrogation auto-grants role. manual: sends to #approvals for human review (default: manual)",
+        )
+        .setRequired(false)
+        .addChoices(
+          { name: "auto", value: "auto" },
+          { name: "manual", value: "manual" },
+        ),
     ),
 
   async execute(interaction) {
@@ -34,7 +48,12 @@ export default {
         const enabled = autoOption === "on";
         await setAutoDmEnabled(enabled);
       }
+      const approveOption = interaction.options.getString("approve");
+      if (approveOption !== null) {
+        await setAutoApprove(approveOption === "auto");
+      }
       const currentAutoDm = await getAutoDmEnabled();
+      const currentAutoApprove = await getAutoApprove();
 
       const verificationChannel = await interaction.guild.channels.fetch(
         config.verificationChannelId,
@@ -109,7 +128,7 @@ export default {
         }
 
         await interaction.reply({
-          content: `✅ Verification embed updated successfully!\n📬 Auto-DM on join: **${currentAutoDm ? "on" : "off"}**`,
+          content: `✅ Verification embed updated successfully!\n📬 Auto-DM on join: **${currentAutoDm ? "on" : "off"}**\n🤖 Approve mode: **${currentAutoApprove ? "auto (AI DM)" : "manual (approvals channel)"}**`,
           ephemeral: true,
         });
       } else {
@@ -119,7 +138,7 @@ export default {
         });
         console.log("[INFO] Created new verification embed");
         await interaction.reply({
-          content: `✅ Verification embed set up successfully!\n📬 Auto-DM on join: **${currentAutoDm ? "on" : "off"}**`,
+          content: `✅ Verification embed set up successfully!\n📬 Auto-DM on join: **${currentAutoDm ? "on" : "off"}**\n🤖 Approve mode: **${currentAutoApprove ? "auto (AI DM)" : "manual (approvals channel)"}**`,
           ephemeral: true,
         });
       }

@@ -117,6 +117,14 @@ export default {
 
     if (message.author.bot) return;
 
+    if (!message.guild) {
+      const { handleVerificationDM, getAutoApprove } =
+        await import("../utils/verificationHandler.js");
+      if (await getAutoApprove()) {
+        const fromVerification = await handleVerificationDM(message);
+        if (fromVerification) return;
+      }
+    }
     // Trigger AutoMod
     await checkSpam(message);
     await checkToxicity(message);

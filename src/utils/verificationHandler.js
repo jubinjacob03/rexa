@@ -9,10 +9,22 @@ import {
 } from "discord.js";
 import { createClient } from "@supabase/supabase-js";
 import config from "../../config.js";
+import { generateText } from "ai";
+import { getLanguageModel } from "../agents/config.js";
 
 const supabase = createClient(config.supabase.url, config.supabase.serviceKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
+
+/* THE AI DM INTERROGATOR */
+export const pendingInterrogations = new Map();
+const VERIFICATION_QUESTIONS = [
+  "What brings you to our community today?",
+  "Are you looking forward to any specific game or event here?",
+  "If you had to describe your vibe with one emoji, what would it be and why?",
+  "What's your favorite thing to do in Discord communities?",
+  "Tell me a quick fun fact about yourself before we let you in!",
+];
 
 const GUILD_ID = config.guildId;
 
@@ -20,6 +32,7 @@ const defaultData = {
   pendingRequests: {},
   approvalLogs: [],
   autoDmEnabled: false,
+  autoApprove: false,
 };
 
 // 5s in-memory cache
@@ -50,6 +63,7 @@ async function loadData() {
     pendingRequests: data.pending_requests ?? {},
     approvalLogs: data.approval_logs ?? [],
     autoDmEnabled: data.auto_dm_enabled ?? false,
+    autoApprove: data.auto_approve ?? false,
   };
 
   _cache = result;
@@ -64,6 +78,7 @@ async function saveData(data) {
     {
       guild_id: GUILD_ID,
       auto_dm_enabled: data.autoDmEnabled,
+      auto_approve: data.autoApprove,
       pending_requests: data.pendingRequests,
       approval_logs: data.approvalLogs,
       updated_at: new Date().toISOString(),
@@ -150,6 +165,17 @@ export async function setAutoDmEnabled(value) {
   await saveData(data);
 }
 
+export async function getAutoApprove() {
+  const data = await loadData();
+  return data.autoApprove ?? false;
+}
+
+export async function setAutoApprove(value) {
+  const data = await loadData();
+  data.autoApprove = value;
+  await saveData(data);
+}
+
 export async function getApprovalLogs(limit = 50) {
   const data = await loadData();
   return data.approvalLogs.slice(-limit).reverse();
@@ -160,14 +186,6 @@ export async function handleVerificationApply(interaction) {
     const userId = interaction.user.id;
     const username = interaction.user.tag;
 
-    if (await hasPendingRequest(userId)) {
-      return interaction.reply({
-        content:
-          "⚠️ ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀ ᴘᴇɴᴅɪɴɢ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ. ᴘʟᴇᴀsᴇ ᴡᴀɪᴛ ғᴏʀ ᴀᴘᴘʀᴏᴠᴀʟ.",
-        ephemeral: true,
-      });
-    }
-
     const guild = await interaction.client.guilds.fetch(GUILD_ID);
     const guildMember = await guild.members.fetch(userId).catch(() => null);
     if (
@@ -177,7 +195,7 @@ export async function handleVerificationApply(interaction) {
     ) {
       return interaction.reply({
         content:
-          "⚠️ ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀɴ ᴀᴄᴛɪᴠᴇ ʀᴏʟᴇ. ᴘʟᴇᴀsᴇ ᴀsᴋ ᴀ ᴍᴏᴅᴇʀᴀᴛᴏʀ ғᴏʀ ᴀɴʏ ᴄʜᴀɴɢᴇs.",
+          "⚠️ ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀɴ ᴀᴄᴛɪᴠᴇ ʀᴏʟᴇ. ᴘʟᴇᴀsᴇ ᴀsᴋ ᴀ ᴍᴏᴅᴇʀᴀᴛᴏʀ ғᴏʀ ᴀɴʏ ᴄʜʜᴀɴɢᴇs.",
         ephemeral: true,
       });
     }
@@ -187,6 +205,56 @@ export async function handleVerificationApply(interaction) {
     const requestedRoleId = isFriends
       ? config.friendsRoleId
       : config.memberRoleId;
+
+    // --- AUTO-APPROVE PATH ---
+    const autoApproveEnabled = await getAutoApprove();
+    if (autoApproveEnabled) {
+      if (pendingInterrogations.has(userId)) {
+        return interaction.reply({
+          content:
+            "⏳ ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀ ᴘᴇɴᴅɪɴɢ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ. ᴘʟᴇᴀsᴇ ᴄʜᴇᴄᴋ ʏᴏᴜʀ ᴅᴍs!",
+          ephemeral: true,
+        });
+      }
+
+      const question =
+        VERIFICATION_QUESTIONS[
+          Math.floor(Math.random() * VERIFICATION_QUESTIONS.length)
+        ];
+      pendingInterrogations.set(userId, {
+        requestedRole,
+        requestedRoleId,
+        question,
+        timestamp: Date.now(),
+      });
+
+      try {
+        await interaction.user.send(
+          `**🛡️ sᴇʀᴠᴇʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜɪʀᴇᴅ!**\n\nᴛᴏ ᴇɴsᴜʀᴇ ʏᴏᴜ'ʀᴇ ᴀ ʜᴜᴍᴀɴ, ᴘʟᴇᴀsᴇ ʀᴇᴘʟʏ ʜᴇʀᴇ ʙʏ ᴀɴsᴡᴇʀɪɴɢ ᴛʜɪs ǫᴜᴇsᴛɪᴏɴ ᴏʀɢᴀɴɪᴄᴀʟʟʏ:\n> *${question}*`,
+        );
+        return interaction.reply({
+          content:
+            "✅ **ᴄʜᴇᴄᴋ ʏᴏᴜʀ ᴅᴍs!** ɪ'ᴠᴇ sᴇɴᴛ ʏᴏᴜ ᴀ ǫᴜɪᴄᴋ ǫᴜᴇsᴛɪᴏɴ ᴛᴏ ᴠᴇʀɪғʏ ʏᴏᴜ'ʀᴇ ʜᴜᴍᴀɴ. ᴀɴsᴡᴇʀ ɪᴛ ᴛʜᴇʀᴇ ᴛᴏ ʀᴇᴄᴇɪᴠᴇ ʏᴏᴜʀ ʀᴏʟᴇ.",
+          ephemeral: true,
+        });
+      } catch (e) {
+        pendingInterrogations.delete(userId);
+        return interaction.reply({
+          content:
+            "❌ **ɪ ᴄᴏᴜʟᴅɴ'ᴛ ᴅᴍ ʏᴏᴜ!** ᴘʟᴇᴀsᴇ ᴇɴᴀʙʟᴇ ᴅᴍs ғʀᴏᴍ sᴇʀᴠᴇʀ ᴍᴇᴍʙᴇʀs sᴏ ᴡᴇ ᴄᴀɴ ᴠᴇʀɪғʏ ʏᴏᴜ.",
+          ephemeral: true,
+        });
+      }
+    }
+
+    // --- MANUAL APPROVAL PATH (original flow) ---
+    if (await hasPendingRequest(userId)) {
+      return interaction.reply({
+        content:
+          "⚠️ ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀ ᴘᴇɴᴅɪɴɢ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ. ᴘʟᴇᴀsᴇ ᴡᴀɪᴛ ғᴏʀ ᴀᴘᴘʀᴏᴠᴀʟ.",
+        ephemeral: true,
+      });
+    }
 
     const approvalEmbed = new EmbedBuilder()
       .setColor(isFriends ? "#0099FF" : "#00FF00")
@@ -233,16 +301,97 @@ export async function handleVerificationApply(interaction) {
     );
 
     await interaction.reply({
-      content: `✅ Your verification request for **${requestedRole}** has been submitted. Please wait for approval.`,
+      content: `✅ ʏᴏᴜʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ ғᴏʀ **${requestedRole}** ʜᴀs ʙᴇᴇɴ sᴜʙᴍɪᴛᴛᴇᴅ. ᴘʟᴇᴀsᴇ ᴡᴀɪᴛ ғᴏʀ ᴀᴘᴘʀᴏᴠᴀʟ.`,
       ephemeral: true,
     });
   } catch (error) {
     console.error("[ERROR] Error handling verification apply:", error);
-    await interaction.reply({
-      content: "❌ Failed to submit verification request.",
-      ephemeral: true,
-    });
+    if (!interaction.replied)
+      await interaction.reply({
+        content: "❌ ғᴀɪʟᴇᴅ ᴛᴏ sᴜʙᴍɪᴛ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ.",
+        ephemeral: true,
+      });
   }
+}
+
+export async function handleVerificationDM(message) {
+  if (message.author.bot) return false;
+  const pending = pendingInterrogations.get(message.author.id);
+  if (!pending) return false;
+
+  // Timeout (10 minutes)
+  if (Date.now() - pending.timestamp > 10 * 60 * 1000) {
+    pendingInterrogations.delete(message.author.id);
+    await message.author
+      .send(
+        "⏳ ʏᴏᴜʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴛɪᴍᴇᴅ ᴏᴜᴛ. ᴘʟᴇᴀsᴇ ᴄʟɪᴄᴋ ᴛʜᴇ ᴠᴇʀɪғʏ ʙᴜᴛᴛᴏɴ ɪɴ ᴛʜᴇ sᴇʀᴠᴇʀ ᴀɢᴀɪɴ.",
+      )
+      .catch(() => null);
+    return true;
+  }
+
+  try {
+    const analyzingMsg = await message.author
+      .send("🤖 ᴀɴᴀʟʏᴢɪɴɢ ʏᴏᴜʀ ʀᴇsᴘᴏɴsᴇ...")
+      .catch(() => null);
+
+    const prompt =
+      "You are a server bot verifying if someone is a real human, not a bot or spam account.\n" +
+      'The question asked was: "' +
+      pending.question +
+      '"\n' +
+      'The user replied: "' +
+      message.content +
+      '"\n' +
+      'Your only job is to check if this reply could have been written by a real human. Even if the answer is short, silly, off-topic, or incorrect — if it reads like a human typed it, output "PASS". Only output "FAIL" if the response is completely empty, pure gibberish (random characters), or is an obvious automated/bot reply. Output only "PASS" or "FAIL", nothing else.';
+
+    const result = await generateText({
+      model: getLanguageModel("fast"),
+      prompt: prompt,
+    });
+
+    const decision = result.text.trim().toUpperCase();
+
+    if (decision.includes("PASS")) {
+      const guild = await message.client.guilds.fetch(GUILD_ID);
+      const member = await guild.members.fetch(message.author.id);
+
+      await member.roles.add(pending.requestedRoleId);
+      if (
+        config.unverifiedRoleId &&
+        member.roles.cache.has(config.unverifiedRoleId)
+      ) {
+        await member.roles.remove(config.unverifiedRoleId).catch(() => null);
+      }
+
+      pendingInterrogations.delete(message.author.id);
+      if (analyzingMsg) await analyzingMsg.delete().catch(() => null);
+      await message.author
+        .send(
+          "✅ **ᴀᴜᴛʜᴇɴᴛɪᴄᴀᴛɪᴏɴ ᴄᴏᴍᴘʟᴇᴛᴇ.** ʏᴏᴜ'ᴠᴇ ʙᴇᴇɴ ɢʀᴀɴᴛᴇᴅ ᴛʜᴇ **" +
+            pending.requestedRole +
+            "** ʀᴏʟᴇ. ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ ᴛʜᴇ sᴇʀᴠᴇʀ!",
+        )
+        .catch(() => null);
+    } else {
+      pendingInterrogations.delete(message.author.id);
+      if (analyzingMsg) await analyzingMsg.delete().catch(() => null);
+      await message.author
+        .send(
+          "❌ **ᴀᴜᴛʜᴇɴᴛɪᴄᴀᴛɪᴏɴ ғᴀɪʟᴇᴅ.** ʏᴏᴜʀ ʀᴇsᴘᴏɴsᴇ ᴅɪᴅ ɴᴏᴛ ᴘᴀss ᴏᴜʀ ᴄʜᴇᴄᴋs. ɪғ ʏᴏᴜ ᴛʜɪɴᴋ ᴛʜɪs ᴡᴀs ᴀ ᴍɪsᴛᴀᴋᴇ, ʏᴏᴜ ᴄᴀɴ ᴛʀʏ ᴀɢᴀɪɴ ʙʏ ᴄʟɪᴄᴋɪɴɢ ᴛʜᴇ ᴠᴇʀɪғʏ ʙᴜᴛᴛᴏɴ ɪɴ ᴛʜᴇ sᴇʀᴠᴇʀ.",
+        )
+        .catch(() => null);
+    }
+  } catch (e) {
+    console.error("[ERROR] Verification AI Error:", e);
+    await message.author
+      .send(
+        "⚠️ sᴏʀʀʏ, ᴏᴜʀ ᴀɪ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ sʏsᴛᴇᴍ ᴇɴᴄᴏᴜɴᴛᴇʀᴇᴅ ᴀɴ ᴇʀʀᴏʀ. ᴘʟᴇᴀsᴇ ᴛʀʏ ᴀɢᴀɪɴ ʟᴀᴛᴇʀ.",
+      )
+      .catch(() => null);
+    pendingInterrogations.delete(message.author.id);
+  }
+  return true;
 }
 
 export async function handleApprovalAction(interaction) {
