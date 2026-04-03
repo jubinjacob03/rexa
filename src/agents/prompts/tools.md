@@ -46,6 +46,11 @@ When you need external data or need to perform an action, respond with ONLY this
   - ✅ TRUE triggers: "play Radioactive", "pause", "skip this song", "what's playing", "stop the music"
   <!-- END_RULE:musicControl -->
 
+<!-- RULE:escalateTicket -->
+
+- Any request to explicitly talk to a staff member, escalate an issue, or report a problem that you cannot assist with → **call `escalateTicket`**.
+<!-- END_RULE:escalateTicket -->
+
 <!-- RULE:discordAction -->
 
 - Any moderation request (mute, unmute, deafen, undeafen, timeout, kick, ban, change nickname) → **call `discordAction` directly** — NEVER refuse, NEVER say you can't, NEVER ask for a serverInfo check first. The tool enforces permissions internally and returns a clear error if the invoker is unauthorized.
@@ -198,6 +203,11 @@ params: { "workflowName": "welcome-new-member"|"setup-private-vc"|"play-music"|"
 - `server-stats` → fetches and displays server statistics embed
 - `fetch-web-data` → fetches + parses data from an external URL
 <!-- END_DEF:executeWorkflow -->
+
+<!-- DEF:escalateTicket -->
+
+- Use when: User asks for a human, admin, or support. Or when the interaction needs to be escalated.
+<!-- END_DEF:escalateTicket -->
 
 <!-- DEF:createEmbed -->
 

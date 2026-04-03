@@ -34,6 +34,7 @@ export const tools = {
   // Core tools
   createEmbed: agentTools.embedTool,
   ragQuery: knowledgeBase.ragTool,
+  escalateTicket: discordTools.escalateTicketTool,
 
   // Discord tools
   serverInfo: discordTools.serverInfoTool,

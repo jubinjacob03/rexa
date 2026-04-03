@@ -573,6 +573,39 @@ export const createPrivateVCTool = tool({
 });
 
 // ── Moderation Tool wrapper over src/utils/moderation.js ──────────────────────
+export const escalateTicketTool = tool({
+  description: `Escalates a user's support ticket to human staff. Use this ONLY if the user is in a ticket thread, you cannot solve their problem, or they explicitly demand a human moderator. Provide a summary of the issue.`,
+  parameters: z.object({
+    summary: z
+      .string()
+      .describe(
+        "A very brief 1-2 sentence summary of what the user needs help with and what troubleshooting steps you've already tried.",
+      ),
+    channelId: z
+      .string()
+      .describe("The ID of the channel/thread the command is executed in."),
+  }),
+  execute: async ({ summary, channelId }) => {
+    try {
+      if (!client) return { output: "Error: Discord client not initialized." };
+      const channel = await client.channels.fetch(channelId).catch(() => null);
+      if (!channel) return { output: `[SYSTEM] Could not find channel.` };
+
+      await channel.send({
+        content: `🔔 <@&${config.moderatorRoleId}> **TICKET ESCALATION!**\n**AI Context Summary:**\n> ${summary}`,
+      });
+
+      return {
+        output:
+          "[SYSTEM] Ticket successfully escalated to staff. They have been pinged.",
+      };
+    } catch (e) {
+      console.error("[TOOLS] Escalate ticket failed:", e);
+      return { output: `[SYSTEM] Error: ${e.message}` };
+    }
+  },
+});
+
 export const discordActionTool = tool({
   description: `Perform a real Discord moderation or administration action directly via the Discord API.
 Available actions:

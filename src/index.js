@@ -14,6 +14,7 @@ import {
   handleNicknameModal,
 } from "./utils/verificationHandler.js";
 import { handleAutomodInteraction } from "./commands/automod.js";
+import { handleTicketInteraction } from "./utils/ticketHandler.js";
 
 if (ffmpegPath) {
   process.env.FFMPEG_PATH = ffmpegPath;
@@ -75,6 +76,14 @@ for (const file of eventFiles) {
 }
 
 client.on(Events.InteractionCreate, async (interaction) => {
+  if (
+    interaction.isModalSubmit() &&
+    interaction.customId.startsWith("tsetup_modal_")
+  ) {
+    await handleTicketInteraction(interaction);
+    return;
+  }
+
   if (interaction.isButton()) {
     if (
       interaction.customId === "automod_toggle_master" ||
@@ -90,6 +99,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.customId === "refresh_stats") {
       await interaction.deferUpdate();
       await updateStatusMessage(interaction.client);
+      return;
+    }
+
+    if (
+      interaction.customId.startsWith("ticket_") ||
+      interaction.customId.startsWith("tsetup_") ||
+      interaction.customId.startsWith("tkt_")
+    ) {
+      await handleTicketInteraction(interaction);
       return;
     }
 

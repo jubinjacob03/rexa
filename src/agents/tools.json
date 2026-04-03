@@ -8,6 +8,7 @@
   "discordAction": true,
   "executeCommand": true,
   "createPrivateVC": true,
+  "escalateTicket": true,
   "executeWorkflow": true,
   "createEmbed": true
 }

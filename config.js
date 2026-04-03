@@ -21,6 +21,7 @@ export default {
   memberRoleId: process.env.MEMBER_ROLE_ID,
   moderatorRoleId: process.env.MODERATOR_ROLE_ID,
   managerRoleId: process.env.MANAGER_ROLE_ID,
+  ticketModeratorRoles: ["1020316661070438430"],
   ownerRoleId: process.env.OWNER_ROLE_ID,
   botRoleId: process.env.BOT_ROLE_ID,
 
