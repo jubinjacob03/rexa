@@ -148,7 +148,7 @@ export async function handleTicketInteraction(interaction) {
         .setColor(session.color)
         .setTitle(session.title)
         .setDescription(session.description)
-        .setFooter({ text: "ꜱʜᴀɴᴛʜᴀ ꜱᴜᴘᴘᴏʀᴛ ꜱʏꜱᴛᴇᴍ" });
+        .setTimestamp();
 
       const row = new ActionRowBuilder();
       const dbConfigStore = {}; // Memory/Supabase JSON fallback trick
@@ -161,11 +161,9 @@ export async function handleTicketInteraction(interaction) {
             new ButtonBuilder()
               .setCustomId(statelessCustomId)
               .setLabel(btn.label)
-              .setStyle(ButtonStyle.Primary),
+              .setStyle(ButtonStyle.Secondary),
           );
         } else {
-          // It's text or image, we must compress it or store it if it's too long
-          // A trick for short text limit is injecting into customId, but since Discord `customId` limit is 100 characters, we'll store custom actions in memory map for now until Supabase is fully configured
           const actionKey = Math.random().toString(36).substr(2, 9);
           global.customActions = global.customActions || new Map();
           global.customActions.set(actionKey, {
@@ -177,7 +175,7 @@ export async function handleTicketInteraction(interaction) {
             new ButtonBuilder()
               .setCustomId(`tkt_action|${actionKey}`)
               .setLabel(btn.label)
-              .setStyle(ButtonStyle.Secondary),
+              .setStyle(ButtonStyle.Success),
           );
         }
       });
@@ -235,9 +233,10 @@ export async function handleTicketInteraction(interaction) {
     } else if (interaction.customId === "tsetup_modal_img") {
       const label = interaction.fields.getTextInputValue("labelBtn");
 
-      await interaction.reply({
+      await interaction.update({
         content: `⏳ **Waiting for image:** Please send the image for the \`${label}\` button in this channel now. (You have 60 seconds).\n*The bot will automatically secure the image in the CDN logging channel and delete your original message to keep the chat clean.*`,
-        ephemeral: true,
+        embeds: [],
+        components: [],
       });
 
       const filter = (m) =>
@@ -282,9 +281,11 @@ export async function handleTicketInteraction(interaction) {
         });
         return await renderTicketDashboard(interaction, true);
       } catch (err) {
-        return interaction.followUp({
-          content: "❌ **Time expired:** You didn't upload an image in time.",
-          ephemeral: true,
+        return interaction.editReply({
+          content:
+            "❌ **Time expired:** You didn't upload an image in time. Run `/setup-ticket` to resume or try again.",
+          embeds: [],
+          components: [],
         });
       }
     }
@@ -382,6 +383,21 @@ async function createTicketInstance(interaction) {
           PermissionsBitField.Flags.ReadMessageHistory,
           PermissionsBitField.Flags.SendMessages,
           PermissionsBitField.Flags.Connect,
+          PermissionsBitField.Flags.Speak,
+        ],
+      });
+    }
+
+    // Add owner role natively
+    if (config.ownerRoleId) {
+      permissionOverwrites.push({
+        id: config.ownerRoleId,
+        allow: [
+          PermissionsBitField.Flags.ViewChannel,
+          PermissionsBitField.Flags.ReadMessageHistory,
+          PermissionsBitField.Flags.SendMessages,
+          PermissionsBitField.Flags.Connect,
+          PermissionsBitField.Flags.Speak,
         ],
       });
     }
