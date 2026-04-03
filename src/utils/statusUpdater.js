@@ -91,6 +91,17 @@ export async function updateStatusMessage(client) {
             msg.embeds[0].title === "sᴇʀᴠᴇʀ sᴛᴀᴛs",
         );
 
+        // Fallback: scan recent messages if not pinned
+        if (!statusMessage) {
+          const recent = await channel.messages.fetch({ limit: 20 });
+          statusMessage = [...recent.values()].find(
+            (msg) =>
+              msg.author.id === client.user.id &&
+              msg.embeds.length > 0 &&
+              msg.embeds[0].title === "sᴇʀᴠᴇʀ sᴛᴀᴛs",
+          );
+        }
+
         if (statusMessage) {
           console.log("[INFO] Found existing stats message, will update it");
         }
