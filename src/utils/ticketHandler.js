@@ -68,13 +68,13 @@ export async function handleTicketInteraction(interaction) {
       const isVc = interaction.customId === "tsetup_add_vc_tkt";
       const modal = new ModalBuilder()
         .setCustomId(isVc ? "tsetup_modal_tkt_vc" : "tsetup_modal_tkt_txt")
-        .setTitle(`💠 ᴀᴅᴅ ${isVc ? "ᴠᴏɪᴄᴇ" : "ᴛᴇxᴛ"} ᴛɪᴄᴋᴇᴛ`);
+        .setTitle(`💠${isVc ? "ᴠᴏɪᴄᴇ" : "ᴛᴇxᴛ"} ᴛɪᴄᴋᴇᴛ`);
 
       const labelInput = new TextInputBuilder()
         .setCustomId("labelBtn")
         .setLabel("ʙᴜᴛᴛᴏɴ ʟᴀʙᴇʟ")
         .setStyle(TextInputStyle.Short)
-        .setValue(`🎫 ${isVc ? "Join VC Ticket" : "Open Text Ticket"}`)
+        .setValue("🎫 ᴏᴘᴇɴ ᴛɪᴄᴋᴇᴛ")
         .setRequired(true);
 
       modal.addComponents(new ActionRowBuilder().addComponents(labelInput));
@@ -96,7 +96,7 @@ export async function handleTicketInteraction(interaction) {
     if (interaction.customId === "tsetup_add_text") {
       const modal = new ModalBuilder()
         .setCustomId("tsetup_modal_txt")
-        .setTitle("💠 ᴀᴅᴅ ᴛᴇxᴛ ʀᴇᴘʟʏ");
+        .setTitle("💠ᴛᴇxᴛ ʀᴇᴘʟʏ");
       const labelInput = new TextInputBuilder()
         .setCustomId("labelBtn")
         .setLabel("ʙᴜᴛᴛᴏɴ ʟᴀʙᴇʟ")
@@ -118,7 +118,7 @@ export async function handleTicketInteraction(interaction) {
     if (interaction.customId === "tsetup_add_image") {
       const modal = new ModalBuilder()
         .setCustomId("tsetup_modal_img")
-        .setTitle("💠 ᴀᴅᴅ ɪᴍᴀɢᴇ ʀᴇᴘʟʏ");
+        .setTitle("💠ɪᴍᴀɢᴇ ʀᴇᴘʟʏ");
       const labelInput = new TextInputBuilder()
         .setCustomId("labelBtn")
         .setLabel("ʙᴜᴛᴛᴏɴ ʟᴀʙᴇʟ")
@@ -161,7 +161,7 @@ export async function handleTicketInteraction(interaction) {
       for (const btn of session.buttons) {
         if (btn.type === "ticket") {
           const aiFlag = btn.aiAssist ? "1" : "0";
-          const statelessCustomId = "tkt_open|${btn.ticketType}|${aiFlag}";
+          const statelessCustomId = `tkt_open|${btn.ticketType}|${aiFlag}`;
           row.addComponents(
             new ButtonBuilder()
               .setCustomId(statelessCustomId)
@@ -192,7 +192,7 @@ export async function handleTicketInteraction(interaction) {
 
           row.addComponents(
             new ButtonBuilder()
-              .setCustomId("tkt_action|${actionKey}")
+              .setCustomId(`tkt_action|${actionKey}`)
               .setLabel(btn.label)
               .setStyle(ButtonStyle.Success),
           );

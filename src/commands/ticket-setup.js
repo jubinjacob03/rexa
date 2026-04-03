@@ -63,7 +63,7 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
       { name: "ᴀᴛᴛᴀᴄʜᴇᴅ ʙᴜᴛᴛᴏɴꜱ", value: buttonPreview, inline: false },
     )
     .setFooter({
-      text: "ᴜꜱᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴꜱ ʙᴇʟᴏᴡ ᴛᴏ ᴄᴏɴꜰɪɢᴜʀᴇ ᴀɴᴅ ᴘᴜʙʟɪꜱʜ. (ᴍᴀx 3 ʙᴜᴛᴛᴏɴꜱ)",  
+      text: "ᴜꜱᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴꜱ ʙᴇʟᴏᴡ ᴛᴏ ᴄᴏɴꜰɪɢᴜʀᴇ ᴀɴᴅ ᴘᴜʙʟɪꜱʜ. (ᴍᴀx 3 ʙᴜᴛᴛᴏɴꜱ)",
     });
 
   const row1 = new ActionRowBuilder().addComponents(
@@ -73,17 +73,17 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("tsetup_add_text_tkt")
-      .setLabel("💠ᴀᴅᴅ ᴛᴇxᴛ ᴛɪᴄᴋᴇᴛ")
+      .setLabel("💠ᴛᴇxᴛ ᴛɪᴄᴋᴇᴛ")
       .setStyle(ButtonStyle.Primary)
       .setDisabled(config.buttons.length >= 3),
     new ButtonBuilder()
       .setCustomId("tsetup_add_vc_tkt")
-      .setLabel("💠ᴀᴅᴅ ᴠᴄ ᴛɪᴄᴋᴇᴛ")
+      .setLabel("💠ᴠᴄ ᴛɪᴄᴋᴇᴛ")
       .setStyle(ButtonStyle.Primary)
       .setDisabled(config.buttons.length >= 3),
     new ButtonBuilder()
       .setCustomId("tsetup_add_text")
-      .setLabel("💠ᴀᴅᴅ ᴛᴇxᴛ ʀᴇᴘʟʏ")
+      .setLabel("💠ᴛᴇxᴛ ʀᴇᴘʟʏ")
       .setStyle(ButtonStyle.Primary)
       .setDisabled(config.buttons.length >= 3),
   );
@@ -91,7 +91,7 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
   const row2 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("tsetup_add_image")
-      .setLabel("💠ᴀᴅᴅ ɪᴍᴀɢᴇ ʀᴇᴘʟʏ")
+      .setLabel("💠ɪᴍᴀɢᴇ ʀᴇᴘʟʏ")
       .setStyle(ButtonStyle.Primary)
       .setDisabled(config.buttons.length >= 3),
     new ButtonBuilder()
@@ -113,9 +113,9 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
   };
 
   if (isUpdate) {
-    if (interaction.replied || interaction.deferred) {
+    try {
       await interaction.editReply(payload);
-    } else {
+    } catch {
       await interaction.update(payload);
     }
   } else {
