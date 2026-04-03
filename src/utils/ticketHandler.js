@@ -10,6 +10,7 @@ import {
   TextInputBuilder,
   TextInputStyle,
 } from "discord.js";
+import supabase from "./supabaseClient.js";
 import config from "../../config.js";
 import {
   setupSessions,
@@ -60,33 +61,35 @@ export async function handleTicketInteraction(interaction) {
       return await interaction.showModal(modal);
     }
 
-    if (interaction.customId === "tsetup_add_ticket") {
+    if (
+      interaction.customId === "tsetup_add_text_tkt" ||
+      interaction.customId === "tsetup_add_vc_tkt"
+    ) {
+      const isVc = interaction.customId === "tsetup_add_vc_tkt";
       const modal = new ModalBuilder()
-        .setCustomId("tsetup_modal_tkt")
-        .setTitle("💠 ᴀᴅᴅ ᴛɪᴄᴋᴇᴛ ʙᴜᴛᴛᴏɴ");
+        .setCustomId(isVc ? "tsetup_modal_tkt_vc" : "tsetup_modal_tkt_txt")
+        .setTitle(`💠 ᴀᴅᴅ ${isVc ? "ᴠᴏɪᴄᴇ" : "ᴛᴇxᴛ"} ᴛɪᴄᴋᴇᴛ`);
+
       const labelInput = new TextInputBuilder()
         .setCustomId("labelBtn")
         .setLabel("ʙᴜᴛᴛᴏɴ ʟᴀʙᴇʟ")
         .setStyle(TextInputStyle.Short)
-        .setValue("🎫 ᴏᴘᴇɴ ᴛɪᴄᴋᴇᴛ")
+        .setValue(`🎫 ${isVc ? "Join VC Ticket" : "Open Text Ticket"}`)
         .setRequired(true);
-      const typeInput = new TextInputBuilder()
-        .setCustomId("typeInput")
-        .setLabel("ᴛʏᴘᴇ (text or vc)")
-        .setStyle(TextInputStyle.Short)
-        .setValue("text")
-        .setRequired(true);
-      const aiInput = new TextInputBuilder()
-        .setCustomId("aiInput")
-        .setLabel("ᴀɪ ᴀꜱꜱɪꜱᴛᴀɴᴄᴇ? (true/false)")
-        .setStyle(TextInputStyle.Short)
-        .setValue("true")
-        .setRequired(true);
-      modal.addComponents(
-        new ActionRowBuilder().addComponents(labelInput),
-        new ActionRowBuilder().addComponents(typeInput),
-        new ActionRowBuilder().addComponents(aiInput),
-      );
+
+      modal.addComponents(new ActionRowBuilder().addComponents(labelInput));
+
+      // AI Assistance is NOT added for VC tickets
+      if (!isVc) {
+        const aiInput = new TextInputBuilder()
+          .setCustomId("aiInput")
+          .setLabel("ᴀɪ ᴀꜱꜱɪꜱᴛᴀɴᴄᴇ? (true/false)")
+          .setStyle(TextInputStyle.Short)
+          .setValue("true")
+          .setRequired(true);
+        modal.addComponents(new ActionRowBuilder().addComponents(aiInput));
+      }
+
       return await interaction.showModal(modal);
     }
 
@@ -153,10 +156,12 @@ export async function handleTicketInteraction(interaction) {
       const row = new ActionRowBuilder();
       const dbConfigStore = {}; // Memory/Supabase JSON fallback trick
 
-      session.buttons.forEach((btn, index) => {
+      global.customActions = global.customActions || new Map();
+
+      for (const btn of session.buttons) {
         if (btn.type === "ticket") {
           const aiFlag = btn.aiAssist ? "1" : "0";
-          const statelessCustomId = `tkt_open|${btn.ticketType}|${aiFlag}`;
+          const statelessCustomId = "tkt_open|${btn.ticketType}|${aiFlag}";
           row.addComponents(
             new ButtonBuilder()
               .setCustomId(statelessCustomId)
@@ -165,20 +170,34 @@ export async function handleTicketInteraction(interaction) {
           );
         } else {
           const actionKey = Math.random().toString(36).substr(2, 9);
-          global.customActions = global.customActions || new Map();
+
           global.customActions.set(actionKey, {
             type: btn.type,
             content: btn.content,
           });
 
+          // Persistent Save via Supabase
+          if (supabase) {
+            await supabase
+              .from("ticket_actions")
+              .insert({
+                action_id: actionKey,
+                type: btn.type,
+                content: btn.content,
+              })
+              .catch((err) =>
+                console.error("[SUPABASE] Error saving custom action:", err),
+              );
+          }
+
           row.addComponents(
             new ButtonBuilder()
-              .setCustomId(`tkt_action|${actionKey}`)
+              .setCustomId("tkt_action|${actionKey}")
               .setLabel(btn.label)
               .setStyle(ButtonStyle.Success),
           );
         }
-      });
+      }
 
       await targetChannel.send({ embeds: [embed], components: [row] });
       setupSessions.delete(interaction.user.id);
@@ -211,18 +230,19 @@ export async function handleTicketInteraction(interaction) {
     if (interaction.customId === "tsetup_modal_embed") {
       session.title = interaction.fields.getTextInputValue("titleInput");
       session.description = interaction.fields.getTextInputValue("descInput");
-    } else if (interaction.customId === "tsetup_modal_tkt") {
+    } else if (
+      interaction.customId === "tsetup_modal_tkt_txt" ||
+      interaction.customId === "tsetup_modal_tkt_vc"
+    ) {
+      const isVc = interaction.customId === "tsetup_modal_tkt_vc";
       session.buttons.push({
         type: "ticket",
         label: interaction.fields.getTextInputValue("labelBtn"),
-        ticketType:
-          interaction.fields.getTextInputValue("typeInput").toLowerCase() ===
-          "vc"
-            ? "vc"
-            : "text",
-        aiAssist:
-          interaction.fields.getTextInputValue("aiInput").toLowerCase() ===
-          "true",
+        ticketType: isVc ? "vc" : "text",
+        aiAssist: isVc
+          ? false
+          : interaction.fields.getTextInputValue("aiInput").toLowerCase() ===
+            "true",
       });
     } else if (interaction.customId === "tsetup_modal_txt") {
       session.buttons.push({
@@ -297,8 +317,26 @@ export async function handleTicketInteraction(interaction) {
     await createTicketInstance(interaction);
   } else if (interaction.customId.startsWith("tkt_action|")) {
     const key = interaction.customId.split("|")[1];
+
+    let actionData = null;
     if (global.customActions && global.customActions.has(key)) {
-      const actionData = global.customActions.get(key);
+      actionData = global.customActions.get(key);
+    } else if (supabase) {
+      // Fallback: look it up in Supabase if the bot restarted
+      const { data } = await supabase
+        .from("ticket_actions")
+        .select("type, content")
+        .eq("action_id", key)
+        .single();
+      if (data) {
+        actionData = data;
+        // Re-cache it locally
+        global.customActions = global.customActions || new Map();
+        global.customActions.set(key, actionData);
+      }
+    }
+
+    if (actionData) {
       if (actionData.type === "text") {
         await interaction.reply({
           content: actionData.content,
@@ -325,11 +363,27 @@ export async function handleTicketInteraction(interaction) {
 }
 
 async function createTicketInstance(interaction) {
+  // First check memory to save db calls, otherwise ping db
   if (activeTickets.has(interaction.user.id)) {
     return interaction.reply({
       content: "❌ ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀɴ ᴀᴄᴛɪᴠᴇ ᴛɪᴄᴋᴇᴛ.",
       ephemeral: true,
     });
+  }
+
+  if (supabase) {
+    const { data } = await supabase
+      .from("active_tickets")
+      .select("user_id")
+      .eq("user_id", interaction.user.id)
+      .single();
+    if (data) {
+      activeTickets.add(interaction.user.id);
+      return interaction.reply({
+        content: "❌ ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀɴ ᴀᴄᴛɪᴠᴇ ᴛɪᴄᴋᴇᴛ.",
+        ephemeral: true,
+      });
+    }
   }
 
   await interaction.deferReply({ ephemeral: true });
@@ -420,49 +474,61 @@ async function createTicketInstance(interaction) {
     }
 
     activeTickets.add(interaction.user.id);
-
-    // Only send the greeting UI if it's a text-compatible interface
-    if (ticketType !== "vc") {
-      const descriptionText = aiEnabled
-        ? "ᴘʟᴇᴀꜱᴇ ᴅᴇꜱᴄʀɪʙᴇ ʏᴏᴜʀ ɪꜱꜱᴜᴇ ɪɴ ᴅᴇᴛᴀɪʟ. ᴏᴜʀ **ᴀɪ ꜱᴜᴘᴘᴏʀᴛ ʙᴏᴛ** ᴡɪʟʟ ᴀꜱꜱɪꜱᴛ ʏᴏᴜ ꜱʜᴏʀᴛʟʏ. ɪꜰ ɪᴛ ʀᴇQᴜɪʀᴇꜱ ʜᴜᴍᴀɴ ɪɴᴛᴇʀᴠᴇɴᴛɪᴏɴ, ᴄʟɪᴄᴋ 'ᴇꜱᴄᴀʟᴀᴛᴇ'."
-        : "ᴘʟᴇᴀꜱᴇ ᴅᴇꜱᴄʀɪʙᴇ ʏᴏᴜʀ ɪꜱꜱᴜᴇ. ᴀ **ʜᴜᴍᴀɴ ᴍᴏᴅᴇʀᴀᴛᴏʀ** ᴡɪʟʟ ʙᴇ ᴡɪᴛʜ ʏᴏᴜ ᴀꜱ ꜱᴏᴏɴ ᴀꜱ ᴘᴏꜱꜱɪʙʟᴇ. ʏᴏᴜ ᴍᴀʏ ᴘɪɴɢ ᴛʜᴇᴍ ᴠɪᴀ ᴛʜᴇ 'ᴇꜱᴄᴀʟᴀᴛᴇ' ʙᴜᴛᴛᴏɴ.";
-
-      const embed = new EmbedBuilder()
-        .setColor("#00ff00")
-        .setTitle(`🎫 ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ, ${interaction.user.username}`)
-        .setDescription(descriptionText)
-        .setFooter({
-          text: "ᴜꜱᴇ ᴛʜᴇ ᴄʟᴏꜱᴇ ʙᴜᴛᴛᴏɴ ᴡʜᴇɴ ʏᴏᴜʀ ɪꜱꜱᴜᴇ ɪꜱ ʀᴇꜱᴏʟᴠᴇᴅ.",
-        })
-        .setTimestamp();
-
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("ticket_escalate")
-          .setLabel("🔔 ᴇꜱᴄᴀʟᴀᴛᴇ ᴛᴏ ꜱᴛᴀꜰꜰ")
-          .setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder()
-          .setCustomId("ticket_close")
-          .setLabel("🔒 ᴄʟᴏꜱᴇ ᴛɪᴄᴋᴇᴛ")
-          .setStyle(ButtonStyle.Danger),
-      );
-
-      // Core feature logic: automatically ping if AI is disabled
-      let mentionText = `<@${interaction.user.id}>`;
-      if (!aiEnabled) {
-        const pingStr =
-          modRoles.length > 0
-            ? modRoles.map((r) => `<@&${r}>`).join(" ")
-            : `<@&${config.moderatorRoleId}>`;
-        mentionText += ` ${pingStr} **A ɴᴇᴡ ᴛɪᴄᴋᴇᴛ ʀᴇQᴜɪʀᴇꜱ ᴀᴛᴛᴇɴᴛɪᴏɴ.**`;
-      }
-
-      await ticketChannel.send({
-        content: mentionText,
-        embeds: [embed],
-        components: [row],
-      });
+    if (supabase) {
+      await supabase
+        .from("active_tickets")
+        .insert({ user_id: interaction.user.id })
+        .catch(() => null);
     }
+
+    if (ticketType === "vc" && interaction.member.voice?.channel) {
+      await interaction.member.voice.setChannel(ticketChannel).catch(() => {});
+    }
+
+    const descriptionText = aiEnabled
+      ? "ᴘʟᴇᴀꜱᴇ ᴅᴇꜱᴄʀɪʙᴇ ʏᴏᴜʀ ɪꜱꜱᴜᴇ ɪɴ ᴅᴇᴛᴀɪʟ. ᴏᴜʀ **ᴀɪ ꜱᴜᴘᴘᴏʀᴛ ʙᴏᴛ** ᴡɪʟʟ ᴀꜱꜱɪꜱᴛ ʏᴏᴜ ꜱʜᴏʀᴛʟʏ. ɪꜰ ɪᴛ ʀᴇQᴜɪʀᴇꜱ ʜᴜᴍᴀɴ ɪɴᴛᴇʀᴠᴇɴᴛɪᴏɴ, ᴄʟɪᴄᴋ 'ᴇꜱᴄᴀʟᴀᴛᴇ'."
+      : "ᴘʟᴇᴀꜱᴇ ᴅᴇꜱᴄʀɪʙᴇ ʏᴏᴜʀ ɪꜱꜱᴜᴇ. ᴀ **ʜᴜᴍᴀɴ ᴍᴏᴅᴇʀᴀᴛᴏʀ** ᴡɪʟʟ ʙᴇ ᴡɪᴛʜ ʏᴏᴜ ᴀꜱ ꜱᴏᴏɴ ᴀꜱ ᴘᴏꜱꜱɪʙʟᴇ. ʏᴏᴜ ᴍᴀʏ ᴘɪɴɢ ᴛʜᴇᴍ ᴠɪᴀ ᴛʜᴇ 'ᴇꜱᴄᴀʟᴀᴛᴇ' ʙᴜᴛᴛᴏɴ.";
+
+    const embed = new EmbedBuilder()
+      .setColor("#00ff00")
+      .setTitle(`🎫 ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ, ${interaction.user.username}`)
+      .setDescription(descriptionText)
+      .setFooter({
+        text: "ᴜꜱᴇ ᴛʜᴇ ᴄʟᴏꜱᴇ ʙᴜᴛᴛᴏɴ ᴡʜᴇɴ ʏᴏᴜʀ ɪꜱꜱᴜᴇ ɪꜱ ʀᴇꜱᴏʟᴠᴇᴅ.",
+      })
+      .setTimestamp();
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("ticket_escalate")
+        .setLabel("🔔 ᴇꜱᴄᴀʟᴀᴛᴇ ᴛᴏ ꜱᴛᴀꜰꜰ")
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId("ticket_close")
+        .setLabel("🔒 ᴄʟᴏꜱᴇ ᴛɪᴄᴋᴇᴛ")
+        .setStyle(ButtonStyle.Danger),
+    );
+
+    let mentionText = `<@${interaction.user.id}>`;
+    if (!aiEnabled) {
+      const pingStr =
+        modRoles.length > 0
+          ? modRoles.map((r) => `<@&${r}>`).join(" ")
+          : `<@&${config.moderatorRoleId}>`;
+      mentionText += ` ${pingStr} **A ɴᴇᴡ ᴛɪᴄᴋᴇᴛ ʀᴇQᴜɪʀᴇꜱ ᴀᴛᴛᴇɴᴛɪᴏɴ.**`;
+    } else {
+      const pingStr =
+        modRoles.length > 0
+          ? modRoles.map((r) => `<@&${r}>`).join(" ")
+          : `<@&${config.moderatorRoleId}>`;
+      mentionText += ` ${pingStr} **A ɴᴇᴡ ᴛɪᴄᴋᴇᴛ \(ᴀɪ-ᴀꜱꜱɪꜱᴛᴇᴅ\) ʜᴀꜱ ʙᴇᴇɴ ᴄʀᴇᴀᴛᴇᴅ.**`;
+    }
+
+    await ticketChannel.send({
+      content: mentionText,
+      embeds: [embed],
+      components: [row],
+    });
 
     await interaction.editReply({
       content: `✅ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ ʜᴀꜱ ʙᴇᴇɴ ᴄʀᴇᴀᴛᴇᴅ: <#${ticketChannel.id}>`,
@@ -483,66 +549,101 @@ async function closeTicketThread(interaction) {
   const thread = interaction.channel;
   const isTextCompatible =
     thread.type === ChannelType.PrivateThread ||
-    thread.type === ChannelType.GuildText;
+    thread.type === ChannelType.GuildText ||
+    thread.type === ChannelType.GuildVoice;
 
   if (!isTextCompatible) {
     return interaction.editReply(
-      "❌ ᴛʜɪꜱ ᴄᴏᴍᴍᴀɴᴅ ᴄᴀɴ ᴏɴʟʏ ʙᴇ ᴜꜱᴇᴅ ɪɴ ᴛᴇxᴛ-ʙᴀꜱᴇᴅ ᴛɪᴄᴋᴇᴛꜱ.",
+      "❌ ᴛʜɪꜱ ᴄᴏᴍᴍᴀɴᴅ ᴄᴀɴ ᴏɴʟʏ ʙᴇ ᴜꜱᴇᴅ ɪɴ ᴛᴇxᴛ-ʙᴀꜱᴇᴅ ᴏʀ ᴠᴏɪᴄᴇ-ʙᴀꜱᴇᴅ ᴛɪᴄᴋᴇᴛꜱ.",
     );
   }
 
   try {
-    const messages = await thread.messages.fetch({ limit: 100 });
-    let transcript = `TRANSCRIPT FOR TICKET: ${thread.name}\n`;
-    transcript += `====================================================\n\n`;
-
-    const messageArr = Array.from(messages.values()).reverse();
-
-    for (const msg of messageArr) {
-      if (
-        msg.embeds.length > 0 &&
-        msg.author.bot &&
-        msg.author.id === interaction.client.user.id
-      )
-        continue;
-      const time = new Date(msg.createdTimestamp).toLocaleString();
-      transcript += `[${time}] ${msg.author.tag}:\n${msg.content || "<Embed/Attachments>"}\n\n`;
-    }
-
-    const attachment = new AttachmentBuilder(Buffer.from(transcript, "utf-8"), {
-      name: `${thread.name}-transcript.txt`,
-    });
-
     const logChannelId = config.ticketLogsChannelId || "1489647372811243742"; // Hardcode fallback
+    let logChannel = null;
     if (logChannelId) {
-      const logChannel = await interaction.guild.channels
+      logChannel = await interaction.guild.channels
         .fetch(logChannelId)
         .catch(() => null);
+    }
+
+    if (thread.type === ChannelType.GuildVoice) {
       if (logChannel) {
         await logChannel.send({
-          content: `🔒 **ᴛɪᴄᴋᴇᴛ ᴄʟᴏꜱᴇᴅ:** \`${thread.name}\` ᴄʟᴏꜱᴇᴅ ʙʏ <@${interaction.user.id}>. ᴛʀᴀɴꜱᴄʀɪᴘᴛ ᴀᴛᴛᴀᴄʜᴇᴅ.`,
+          content:
+            "🔒 **ᴠᴏɪᴄᴇ ᴛɪᴄᴋᴇᴛ ᴄʟᴏꜱᴇᴅ:** \${thread.name}\ ᴄʟᴏꜱᴇᴅ ʙʏ <@>. (Nᴏ ᴛʀᴀɴꜱᴄʀɪᴘᴛ ꜰᴏʀ ᴠᴏɪᴄᴇ ᴛɪᴄᴋᴇᴛꜱ)",
+        });
+      }
+      await interaction.editReply({
+        content: "🔒 **ᴠᴏɪᴄᴇ ᴛɪᴄᴋᴇᴛ ɪꜱ ᴄʟᴏꜱɪɴɢ.**",
+      });
+    } else {
+      const messages = await thread.messages.fetch({ limit: 100 });
+      let transcript = "TRANSCRIPT FOR TICKET: ${thread.name}\n";
+      transcript += "====================================================\n\n";
+
+      const messageArr = Array.from(messages.values()).reverse();
+
+      for (const msg of messageArr) {
+        if (
+          msg.embeds.length > 0 &&
+          msg.author.bot &&
+          msg.author.id === interaction.client.user.id
+        )
+          continue;
+        const time = new Date(msg.createdTimestamp).toLocaleString();
+        transcript +=
+          "[${time}] ${msg.author.tag}:\n${msg.content || " <
+          Embed / Attachments >
+          "}\n\n";
+      }
+
+      const attachment = new AttachmentBuilder(
+        Buffer.from(transcript, "utf-8"),
+        {
+          name: "${thread.name}-transcript.txt",
+        },
+      );
+
+      if (logChannel) {
+        await logChannel.send({
+          content:
+            "🔒 **ᴛɪᴄᴋᴇᴛ ᴄʟᴏꜱᴇᴅ:** \${thread.name}\ ᴄʟᴏꜱᴇᴅ ʙʏ <@>. ᴛʀᴀɴꜱᴄʀɪᴘᴛ ᴀᴛᴛᴀᴄʜᴇᴅ.",
           files: [attachment],
         });
       }
-    }
 
-    await interaction.editReply({
-      content:
-        "🔒 **ᴛɪᴄᴋᴇᴛ ɪꜱ ᴄʟᴏꜱɪɴɢ.** ᴛʜᴇ ᴛʀᴀɴꜱᴄʀɪᴘᴛ ʜᴀꜱ ʙᴇᴇɴ ꜱᴀᴠᴇᴅ ᴛᴏ ᴛʜᴇ ʟᴏɢɢɪɴɢ ᴄʜᴀɴɴᴇʟ.",
-    });
+      await interaction.editReply({
+        content:
+          "🔒 **ᴛɪᴄᴋᴇᴛ ɪꜱ ᴄʟᴏꜱɪɴɢ.** ᴛʜᴇ ᴛʀᴀɴꜱᴄʀɪᴘᴛ ʜᴀꜱ ʙᴇᴇɴ ꜱᴀᴠᴇᴅ ᴛᴏ ᴛʜᴇ ʟᴏɢɢɪɴɢ ᴄʜᴀɴɴᴇʟ.",
+      });
+    }
 
     setTimeout(async () => {
       try {
+        const usersToRemove = [];
         if (thread.isThread()) {
           thread.members.cache.forEach((member) => {
             activeTickets.delete(member.id);
+            usersToRemove.push(member.id);
           });
         } else {
-          // It's a channel, no standard thread members cache mapped the same way, just find players mapped to overwrites
-          interaction.guild.members.cache.forEach((m) =>
-            activeTickets.delete(m.id),
-          );
+          interaction.guild.members.cache.forEach((m) => {
+            if (activeTickets.has(m.id)) {
+              activeTickets.delete(m.id);
+              usersToRemove.push(m.id);
+            }
+          });
         }
+
+        if (supabase && usersToRemove.length > 0) {
+          await supabase
+            .from("active_tickets")
+            .delete()
+            .in("user_id", usersToRemove)
+            .catch(() => null);
+        }
+
         await thread.delete();
       } catch (err) {
         console.error("[TICKETS] Error archiving channel/thread:", err);
@@ -563,11 +664,13 @@ async function escalateTicket(interaction) {
     const thread = interaction.channel;
     const isTextCompatible =
       thread.type === ChannelType.PrivateThread ||
-      thread.type === ChannelType.GuildText;
+      thread.type === ChannelType.GuildText ||
+      thread.type === ChannelType.GuildVoice;
 
     if (!isTextCompatible) {
       return interaction.reply({
-        content: "❌ ᴛʜɪꜱ ᴄᴏᴍᴍᴀɴᴅ ᴄᴀɴ ᴏɴʟʏ ʙᴇ ᴜꜱᴇᴅ ɪɴ ᴛᴇxᴛ-ʙᴀꜱᴇᴅ ᴛɪᴄᴋᴇᴛꜱ.",
+        content:
+          "❌ ᴛʜɪꜱ ᴄᴏᴍᴍᴀɴᴅ ᴄᴀɴ ᴏɴʟʏ ʙᴇ ᴜꜱᴇᴅ ɪɴ ᴛᴇxᴛ-ʙᴀꜱᴇᴅ ᴏʀ ᴠᴏɪᴄᴇ-ʙᴀꜱᴇᴅ ᴛɪᴄᴋᴇᴛꜱ.",
         ephemeral: true,
       });
     }

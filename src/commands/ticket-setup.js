@@ -72,8 +72,13 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
       .setLabel("🖋️ ᴇᴅɪᴛ ᴇᴍʙᴇᴅ ᴛᴇxᴛ")
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
-      .setCustomId("tsetup_add_ticket")
-      .setLabel("💠ᴀᴅᴅ ᴛɪᴄᴋᴇᴛ ʙᴜᴛᴛᴏɴ")
+      .setCustomId("tsetup_add_text_tkt")
+      .setLabel("💠ᴀᴅᴅ ᴛᴇxᴛ ᴛɪᴄᴋᴇᴛ")
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(config.buttons.length >= 3),
+    new ButtonBuilder()
+      .setCustomId("tsetup_add_vc_tkt")
+      .setLabel("💠ᴀᴅᴅ ᴠᴄ ᴛɪᴄᴋᴇᴛ")
       .setStyle(ButtonStyle.Primary)
       .setDisabled(config.buttons.length >= 3),
     new ButtonBuilder()
@@ -81,14 +86,14 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
       .setLabel("💠ᴀᴅᴅ ᴛᴇxᴛ ʀᴇᴘʟʏ")
       .setStyle(ButtonStyle.Primary)
       .setDisabled(config.buttons.length >= 3),
+  );
+
+  const row2 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("tsetup_add_image")
       .setLabel("💠ᴀᴅᴅ ɪᴍᴀɢᴇ ʀᴇᴘʟʏ")
       .setStyle(ButtonStyle.Primary)
       .setDisabled(config.buttons.length >= 3),
-  );
-
-  const row2 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("tsetup_clear_buttons")
       .setLabel("❗ᴄʟᴇᴀʀ ᴀʟʟ ʙᴜᴛᴛᴏɴꜱ")
