@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { SlashCommandBuilder, MessageFlags } from "discord.js";
 import {
   getVCByMember,
   getVCData,
@@ -14,7 +14,7 @@ export default {
     ),
 
   async execute(interaction) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const guild = interaction.guild;
     const invokerId = interaction.user.id;

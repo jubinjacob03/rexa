@@ -5,6 +5,7 @@ import {
   ButtonBuilder,
   ButtonStyle,
   PermissionFlagsBits,
+  MessageFlags,
 } from "discord.js";
 import config from "../../config.js";
 import {
@@ -32,7 +33,7 @@ export default {
       option
         .setName("approve")
         .setDescription(
-          "auto: AI DM interrogation auto-grants role. manual: sends to #approvals for human review (default: manual)",
+          "auto: AI DM auto-grants role. manual: sends to #approvals for human review.",
         )
         .setRequired(false)
         .addChoices(
@@ -62,7 +63,7 @@ export default {
       if (!verificationChannel) {
         return interaction.reply({
           content: "❌ Verification channel not found!",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
@@ -129,7 +130,7 @@ export default {
 
         await interaction.reply({
           content: `✅ Verification embed updated successfully!\n📬 Auto-DM on join: **${currentAutoDm ? "on" : "off"}**\n🤖 Approve mode: **${currentAutoApprove ? "auto (AI DM)" : "manual (approvals channel)"}**`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       } else {
         await verificationChannel.send({
@@ -139,14 +140,14 @@ export default {
         console.log("[INFO] Created new verification embed");
         await interaction.reply({
           content: `✅ Verification embed set up successfully!\n📬 Auto-DM on join: **${currentAutoDm ? "on" : "off"}**\n🤖 Approve mode: **${currentAutoApprove ? "auto (AI DM)" : "manual (approvals channel)"}**`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     } catch (error) {
       console.error("[ERROR] Error setting up verification:", error);
       await interaction.reply({
         content: "❌ Failed to set up verification embed.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
   },

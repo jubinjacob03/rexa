@@ -6,6 +6,7 @@ import {
   ChannelType,
   AttachmentBuilder,
   PermissionsBitField,
+  MessageFlags,
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
@@ -28,7 +29,7 @@ export async function handleTicketInteraction(interaction) {
       if (!interaction.replied && !interaction.deferred) {
         return interaction.reply({
           content: "❌ ꜱᴇꜱꜱɪᴏɴ ᴇxᴘɪʀᴇᴅ. ᴘʟᴇᴀꜱᴇ ʀᴜɴ `/setup-ticket` ᴀɢᴀɪɴ.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
       return;
@@ -134,6 +135,22 @@ export async function handleTicketInteraction(interaction) {
       return await renderTicketDashboard(interaction, true);
     }
 
+    if (interaction.customId === "tsetup_set_mods") {
+      const modal = new ModalBuilder()
+        .setCustomId("tsetup_modal_mods")
+        .setTitle("🛡️ ꜱᴇᴛ ᴛɪᴄᴋᴇᴛ ᴍᴏᴅᴇʀᴀᴛᴏʀꜱ");
+      const modsInput = new TextInputBuilder()
+        .setCustomId("modsInput")
+        .setLabel("ᴜꜱᴇʀ ɪᴅꜱ ᴏʀ @ᴍᴇɴᴛɪᴏɴꜱ (ᴄᴏᴍᴍᴀ-ꜱᴇᴘᴀʀᴀᴛᴇᴅ)")
+        .setStyle(TextInputStyle.Paragraph)
+        .setPlaceholder("123456789012345678, 987654321098765432")
+        .setValue((session.ticketMods || []).join(", "))
+        .setRequired(false)
+        .setMaxLength(1000);
+      modal.addComponents(new ActionRowBuilder().addComponents(modsInput));
+      return await interaction.showModal(modal);
+    }
+
     if (interaction.customId === "tsetup_publish") {
       const targetChannel = await interaction.guild.channels
         .fetch(session.targetChannelId)
@@ -221,7 +238,7 @@ export async function handleTicketInteraction(interaction) {
         return await interaction.reply({
           content:
             "❌ **ꜱᴇꜱꜱɪᴏɴ ᴇxᴘɪʀᴇᴅ:** ᴛʜᴇ ʙᴏᴛ ʀᴇꜱᴛᴀʀᴛᴇᴅ. ᴘʟᴇᴀꜱᴇ ʀᴜɴ `/setup-ticket` ᴀɢᴀɪɴ.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
       return;
@@ -257,7 +274,7 @@ export async function handleTicketInteraction(interaction) {
 
       const waitingMsg = await interaction.followUp({
         content: `⏳ **ᴡᴀɪᴛɪɴɢ ꜰᴏʀ ɪᴍᴀɢᴇ:** ᴘʟᴇᴀꜱᴇ ꜱᴇɴᴅ ᴛʜᴇ ɪᴍᴀɢᴇ ꜰᴏʀ ᴛʜᴇ \`${label}\` ʙᴜᴛᴛᴏɴ ɪɴ ᴛʜɪꜱ ᴄʜᴀɴɴᴇʟ ɴᴏᴡ. (ʏᴏᴜ ʜᴀᴠᴇ 60 ꜱᴇᴄᴏɴᴅꜱ).\n*ᴛʜᴇ ʙᴏᴛ ᴡɪʟʟ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ꜱᴇᴄᴜʀᴇ ᴛʜᴇ ɪᴍᴀɢᴇ ɪɴ ᴛʜᴇ ᴄᴅɴ ʟᴏɢɢɪɴɢ ᴄʜᴀɴɴᴇʟ ᴀɴᴅ ᴅᴇʟᴇᴛᴇ ʏᴏᴜʀ ᴏʀɪɢɪɴᴀʟ ᴍᴇꜱꜱᴀɢᴇ ᴛᴏ ᴋᴇᴇᴘ ᴛʜᴇ ᴄʜᴀᴛ ᴄʟᴇᴀɴ.*`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
 
       const filter = (m) =>
@@ -310,6 +327,30 @@ export async function handleTicketInteraction(interaction) {
           components: [],
         });
       }
+    } else if (interaction.customId === "tsetup_modal_mods") {
+      const raw = interaction.fields.getTextInputValue("modsInput");
+      const ids = raw
+        .split(",")
+        .map((s) => s.trim().replace(/<@!?|>/g, ""))
+        .filter((s) => /^\d{17,20}$/.test(s));
+
+      session.ticketMods = ids;
+
+      if (supabase) {
+        await supabase
+          .from("ticket_actions")
+          .upsert(
+            {
+              action_id: "ticket_mods_config",
+              type: "config",
+              content: JSON.stringify(ids),
+            },
+            { onConflict: "action_id" },
+          )
+          .catch((err) =>
+            console.error("[SUPABASE] Error saving ticket mods:", err),
+          );
+      }
     }
     return await renderTicketDashboard(interaction, true);
   }
@@ -342,19 +383,19 @@ export async function handleTicketInteraction(interaction) {
       if (actionData.type === "text") {
         await interaction.reply({
           content: actionData.content,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       } else if (actionData.type === "image") {
         await interaction.reply({
           content: actionData.content,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     } else {
       await interaction.reply({
         content:
           "❌ ᴛʜɪꜱ ᴄᴜꜱᴛᴏᴍ ʙᴜᴛᴛᴏɴ ʜᴀꜱ ᴇxᴘɪʀᴇᴅ ᴏʀ ɪꜱ ɪɴᴠᴀʟɪᴅ (ʙᴏᴛ ʀᴇꜱᴛᴀʀᴛᴇᴅ).",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
   } else if (interaction.customId === "ticket_close") {
@@ -369,7 +410,7 @@ async function createTicketInstance(interaction) {
   if (activeTickets.has(interaction.user.id)) {
     return interaction.reply({
       content: "❌ ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀɴ ᴀᴄᴛɪᴠᴇ ᴛɪᴄᴋᴇᴛ.",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -383,12 +424,12 @@ async function createTicketInstance(interaction) {
       activeTickets.add(interaction.user.id);
       return interaction.reply({
         content: "❌ ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀɴ ᴀᴄᴛɪᴠᴇ ᴛɪᴄᴋᴇᴛ.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
   }
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const customIdParts = interaction.customId.split("|");
   const ticketType = customIdParts[1]; // 'thread', 'text', or 'vc'
@@ -673,15 +714,31 @@ async function escalateTicket(interaction) {
       return interaction.reply({
         content:
           "❌ ᴛʜɪꜱ ᴄᴏᴍᴍᴀɴᴅ ᴄᴀɴ ᴏɴʟʏ ʙᴇ ᴜꜱᴇᴅ ɪɴ ᴛᴇxᴛ-ʙᴀꜱᴇᴅ ᴏʀ ᴠᴏɪᴄᴇ-ʙᴀꜱᴇᴅ ᴛɪᴄᴋᴇᴛꜱ.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
-    // Ping all specialized ticket moderator roles, or default mod role if undefined
-    let pings =
-      config.ticketModeratorRoles && config.ticketModeratorRoles.length > 0
-        ? config.ticketModeratorRoles.map((r) => `<@&${r}>`).join(" ")
-        : `<@&${config.moderatorRoleId}>`;
+    // Load ticket mods from DB
+    let ticketModIds = [];
+    if (supabase) {
+      const { data: modsData } = await supabase
+        .from("ticket_actions")
+        .select("content")
+        .eq("action_id", "ticket_mods_config")
+        .single();
+      if (modsData?.content) {
+        try {
+          ticketModIds = JSON.parse(modsData.content);
+        } catch {}
+      }
+    }
+
+    const pings =
+      ticketModIds.length > 0
+        ? ticketModIds.map((id) => `<@${id}>`).join(" ")
+        : config.ticketModeratorRoles?.length > 0
+          ? config.ticketModeratorRoles.map((r) => `<@&${r}>`).join(" ")
+          : `<@&${config.moderatorRoleId}>`;
 
     await interaction.reply({
       content: `🔔 ${pings} **A uꜱᴇʀ ʜᴀꜱ ᴇꜱᴄᴀʟᴀᴛᴇᴅ ᴛʜɪꜱ ᴛɪᴄᴋᴇᴛ ᴛᴏ ʜᴜᴍᴀɴ ꜱᴛᴀꜰꜰ!**`,

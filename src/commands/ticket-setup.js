@@ -5,7 +5,9 @@ import {
   ButtonBuilder,
   ButtonStyle,
   PermissionFlagsBits,
+  MessageFlags,
 } from "discord.js";
+import supabase from "../utils/supabaseClient.js";
 
 // Stateless in-memory store for admin setup sessions (only lasts during mapping)
 export const setupSessions = new Map();
@@ -25,6 +27,20 @@ export default {
   async execute(interaction) {
     const targetChannel = interaction.options.getChannel("channel");
 
+    let ticketMods = [];
+    if (supabase) {
+      const { data } = await supabase
+        .from("ticket_actions")
+        .select("content")
+        .eq("action_id", "ticket_mods_config")
+        .single();
+      if (data?.content) {
+        try {
+          ticketMods = JSON.parse(data.content);
+        } catch {}
+      }
+    }
+
     // Initialize default ticket configuration for this admin session
     setupSessions.set(interaction.user.id, {
       title: "🎟️ ꜱᴜᴘᴘᴏʀᴛ ᴛɪᴄᴋᴇᴛꜱ",
@@ -33,7 +49,8 @@ export default {
       color: "#00FFFF",
       targetChannelId: targetChannel.id,
       targetChannelName: targetChannel.name,
-      buttons: [], // Array of { type: 'ticket'|'text'|'image', label: string, content: string, aiAssist: boolean, ticketType: string }
+      buttons: [],
+      ticketMods,
     });
 
     await renderTicketDashboard(interaction);
@@ -51,6 +68,11 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
           .join("\n")
       : "❌ ɴᴏ ʙᴜᴛᴛᴏɴꜱ ᴀᴅᴅᴇᴅ ʏᴇᴛ.";
 
+  const modsPreview =
+    config.ticketMods && config.ticketMods.length > 0
+      ? config.ticketMods.map((id) => `<@${id}>`).join(" ")
+      : "❌ ɴᴏɴᴇ ꜱᴇᴛ — ᴜꜱɪɴɢ ᴅᴇꜰᴀᴜʟᴛ ᴍᴏᴅ ʀᴏʟᴇ.";
+
   const dashboardEmbed = new EmbedBuilder()
     .setColor("#00FFFF")
     .setTitle("🎟️ ꜱᴜᴘᴘᴏʀᴛ ᴛɪᴄᴋᴇᴛꜱ")
@@ -61,6 +83,7 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
       { name: "ᴘʀᴇᴠɪᴇᴡ ᴛɪᴛʟᴇ", value: config.title, inline: false },
       { name: "ᴘʀᴇᴠɪᴇᴡ ᴅᴇꜱᴄʀɪᴘᴛɪᴏɴ", value: config.description, inline: false },
       { name: "ᴀᴛᴛᴀᴄʜᴇᴅ ʙᴜᴛᴛᴏɴꜱ", value: buttonPreview, inline: false },
+      { name: "🛡️ ᴛɪᴄᴋᴇᴛ ᴍᴏᴅᴇʀᴀᴛᴏʀꜱ", value: modsPreview, inline: false },
     )
     .setFooter({
       text: "ᴜꜱᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴꜱ ʙᴇʟᴏᴡ ᴛᴏ ᴄᴏɴꜰɪɢᴜʀᴇ ᴀɴᴅ ᴘᴜʙʟɪꜱʜ. (ᴍᴀx 3 ʙᴜᴛᴛᴏɴꜱ)",
@@ -106,10 +129,17 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
       .setDisabled(config.buttons.length === 0),
   );
 
+  const row3 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("tsetup_set_mods")
+      .setLabel("🛡️ᴛɪᴄᴋᴇᴛ ᴍᴏᴅꜱ")
+      .setStyle(ButtonStyle.Secondary),
+  );
+
   const payload = {
     embeds: [dashboardEmbed],
-    components: [row1, row2],
-    ephemeral: true,
+    components: [row1, row2, row3],
+    flags: MessageFlags.Ephemeral,
   };
 
   if (isUpdate) {

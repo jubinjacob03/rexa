@@ -1,7 +1,13 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import { Client, GatewayIntentBits, Collection, Events } from "discord.js";
+import {
+  Client,
+  GatewayIntentBits,
+  Collection,
+  Events,
+  MessageFlags,
+} from "discord.js";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { readdirSync } from "fs";
@@ -115,7 +121,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.reply({
         content:
           "✅ You're all set for your device check! Feel free to explore.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -168,7 +174,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     const errorMessage = {
       content: "There was an error while executing this command!",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     };
 
     if (interaction.replied || interaction.deferred) {

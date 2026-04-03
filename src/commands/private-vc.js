@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { SlashCommandBuilder, MessageFlags } from "discord.js";
 import {
   canCreate,
   activeCount,
@@ -40,7 +40,7 @@ export default {
     ),
 
   async execute(interaction) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const guild = interaction.guild;
     const invoker = interaction.member;

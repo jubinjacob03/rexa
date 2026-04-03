@@ -6,6 +6,7 @@ import {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
+  MessageFlags,
 } from "discord.js";
 import { createClient } from "@supabase/supabase-js";
 import config from "../../config.js";
@@ -196,7 +197,7 @@ export async function handleVerificationApply(interaction) {
       return interaction.reply({
         content:
           "⚠️ ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀɴ ᴀᴄᴛɪᴠᴇ ʀᴏʟᴇ. ᴘʟᴇᴀsᴇ ᴀsᴋ ᴀ ᴍᴏᴅᴇʀᴀᴛᴏʀ ғᴏʀ ᴀɴʏ ᴄʜʜᴀɴɢᴇs.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -213,7 +214,7 @@ export async function handleVerificationApply(interaction) {
         return interaction.reply({
           content:
             "⏳ ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀ ᴘᴇɴᴅɪɴɢ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ. ᴘʟᴇᴀsᴇ ᴄʜᴇᴄᴋ ʏᴏᴜʀ ᴅᴍs!",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
@@ -235,14 +236,14 @@ export async function handleVerificationApply(interaction) {
         return interaction.reply({
           content:
             "✅ **ᴄʜᴇᴄᴋ ʏᴏᴜʀ ᴅᴍs!** ɪ'ᴠᴇ sᴇɴᴛ ʏᴏᴜ ᴀ ǫᴜɪᴄᴋ ǫᴜᴇsᴛɪᴏɴ ᴛᴏ ᴠᴇʀɪғʏ ʏᴏᴜ'ʀᴇ ʜᴜᴍᴀɴ. ᴀɴsᴡᴇʀ ɪᴛ ᴛʜᴇʀᴇ ᴛᴏ ʀᴇᴄᴇɪᴠᴇ ʏᴏᴜʀ ʀᴏʟᴇ.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       } catch (e) {
         pendingInterrogations.delete(userId);
         return interaction.reply({
           content:
             "❌ **ɪ ᴄᴏᴜʟᴅɴ'ᴛ ᴅᴍ ʏᴏᴜ!** ᴘʟᴇᴀsᴇ ᴇɴᴀʙʟᴇ ᴅᴍs ғʀᴏᴍ sᴇʀᴠᴇʀ ᴍᴇᴍʙᴇʀs sᴏ ᴡᴇ ᴄᴀɴ ᴠᴇʀɪғʏ ʏᴏᴜ.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     }
@@ -252,7 +253,7 @@ export async function handleVerificationApply(interaction) {
       return interaction.reply({
         content:
           "⚠️ ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀ ᴘᴇɴᴅɪɴɢ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ. ᴘʟᴇᴀsᴇ ᴡᴀɪᴛ ғᴏʀ ᴀᴘᴘʀᴏᴠᴀʟ.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -302,14 +303,14 @@ export async function handleVerificationApply(interaction) {
 
     await interaction.reply({
       content: `✅ ʏᴏᴜʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ ғᴏʀ **${requestedRole}** ʜᴀs ʙᴇᴇɴ sᴜʙᴍɪᴛᴛᴇᴅ. ᴘʟᴇᴀsᴇ ᴡᴀɪᴛ ғᴏʀ ᴀᴘᴘʀᴏᴠᴀʟ.`,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   } catch (error) {
     console.error("[ERROR] Error handling verification apply:", error);
     if (!interaction.replied)
       await interaction.reply({
         content: "❌ ғᴀɪʟᴇᴅ ᴛᴏ sᴜʙᴍɪᴛ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
   }
 }
@@ -402,7 +403,7 @@ export async function handleApprovalAction(interaction) {
     if (!request) {
       return interaction.reply({
         content: "⚠️ This verification request no longer exists.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -415,7 +416,7 @@ export async function handleApprovalAction(interaction) {
       await removeRequest(userId);
       return interaction.reply({
         content: "❌ User is no longer in the server.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -486,7 +487,7 @@ export async function handleApprovalAction(interaction) {
 
       await interaction.followUp({
         content: `✅ Verification request rejected and logged.`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
   } catch (error) {
@@ -494,7 +495,7 @@ export async function handleApprovalAction(interaction) {
     if (!interaction.replied && !interaction.deferred) {
       await interaction.reply({
         content: "❌ Failed to process approval action.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
   }
@@ -502,7 +503,7 @@ export async function handleApprovalAction(interaction) {
 
 export async function handleNicknameModal(interaction) {
   try {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const [, , userId, roleId] = interaction.customId.split("_");
     const nicknameInput =

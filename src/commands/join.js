@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { SlashCommandBuilder, MessageFlags } from "discord.js";
 import voiceManager from "../voice/VoiceManager.js";
 import { ChannelType } from "discord.js";
 
@@ -8,7 +8,7 @@ export default {
     .setDescription("Join voice channel for playback"),
 
   async execute(interaction) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const member = interaction.member;
     const guild = interaction.guild;

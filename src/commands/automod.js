@@ -8,6 +8,7 @@ import {
   TextInputBuilder,
   TextInputStyle,
   PermissionFlagsBits,
+  MessageFlags,
 } from "discord.js";
 import { loadConfig, updateConfig } from "../utils/automodManager.js";
 
@@ -71,14 +72,14 @@ export default {
     ) {
       return interaction.reply({
         content: "Only the server owner can configure Automod.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
     const dashboard = await generateAutomodDashboard(interaction.guild);
     await interaction.reply({
       ...dashboard,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   },
 };
@@ -87,7 +88,7 @@ export async function handleAutomodInteraction(interaction) {
   if (interaction.guild && interaction.user.id !== interaction.guild.ownerId) {
     return interaction.reply({
       content: "Only the server owner can modify Automod settings.",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 

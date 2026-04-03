@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { SlashCommandBuilder, MessageFlags } from "discord.js";
 import voiceManager from "../voice/VoiceManager.js";
 
 export default {
@@ -13,7 +13,7 @@ export default {
     if (!connection) {
       return interaction.reply({
         content: "\u274c Not connected to any voice channel",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -22,7 +22,7 @@ export default {
 
     await interaction.reply({
       content: "\u23f9\ufe0f Stopped and left voice channel",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   },
 };

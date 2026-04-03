@@ -7,8 +7,8 @@ CREATE TABLE IF NOT EXISTS active_tickets (
 
 CREATE TABLE IF NOT EXISTS ticket_actions (
   action_id TEXT PRIMARY KEY,
-  type TEXT NOT NULL,
-  content TEXT,
+  type TEXT NOT NULL,  -- 'text' | 'image' | 'config'
+  content TEXT,        -- JSON array of user IDs when action_id = 'ticket_mods_config'
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

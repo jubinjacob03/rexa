@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { SlashCommandBuilder, MessageFlags } from "discord.js";
 import voiceManager from "../voice/VoiceManager.js";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
@@ -64,7 +64,7 @@ export default {
 
     await interaction.reply({
       content: status,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   },
 };
