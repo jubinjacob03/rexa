@@ -84,7 +84,7 @@ export async function updateStatusMessage(client) {
     if (!statusMessage) {
       try {
         const pinnedMessages = await channel.messages.fetchPins();
-        statusMessage = pinnedMessages.find(
+        statusMessage = [...pinnedMessages.values()].find(
           (msg) =>
             msg.author.id === client.user.id &&
             msg.embeds.length > 0 &&

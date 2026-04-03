@@ -337,19 +337,18 @@ export async function handleTicketInteraction(interaction) {
       session.ticketMods = ids;
 
       if (supabase) {
-        await supabase
-          .from("ticket_actions")
-          .upsert(
+        try {
+          await supabase.from("ticket_actions").upsert(
             {
               action_id: "ticket_mods_config",
               type: "config",
               content: JSON.stringify(ids),
             },
             { onConflict: "action_id" },
-          )
-          .catch((err) =>
-            console.error("[SUPABASE] Error saving ticket mods:", err),
           );
+        } catch (err) {
+          console.error("[SUPABASE] Error saving ticket mods:", err);
+        }
       }
     }
     return await renderTicketDashboard(interaction, true);
