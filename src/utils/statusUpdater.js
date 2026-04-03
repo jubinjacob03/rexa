@@ -5,6 +5,7 @@ import {
   ButtonStyle,
 } from "discord.js";
 import config from "../../config.js";
+import supabase from "./supabaseClient.js";
 
 let statusMessage = null;
 let updateInterval = null;
@@ -83,30 +84,28 @@ export async function updateStatusMessage(client) {
 
     if (!statusMessage) {
       try {
-        const pinnedMessages = await channel.messages.fetchPins();
-        statusMessage = [...pinnedMessages.values()].find(
-          (msg) =>
-            msg.author.id === client.user.id &&
-            msg.embeds.length > 0 &&
-            msg.embeds[0].title === "sᴇʀᴠᴇʀ sᴛᴀᴛs",
-        );
+        const { data } = await supabase
+          .from("bot_settings")
+          .select("value")
+          .eq("key", "stats_message_id")
+          .single();
 
-        // Fallback: scan recent messages if not pinned
-        if (!statusMessage) {
-          const recent = await channel.messages.fetch({ limit: 20 });
-          statusMessage = [...recent.values()].find(
-            (msg) =>
-              msg.author.id === client.user.id &&
-              msg.embeds.length > 0 &&
-              msg.embeds[0].title === "sᴇʀᴠᴇʀ sᴛᴀᴛs",
-          );
-        }
-
-        if (statusMessage) {
-          console.log("[INFO] Found existing stats message, will update it");
+        if (data?.value) {
+          try {
+            statusMessage = await channel.messages.fetch(data.value);
+            console.log("[INFO] Restored stats message from saved ID");
+          } catch {
+            console.log(
+              "[INFO] Saved stats message ID no longer valid, will create new",
+            );
+            statusMessage = null;
+          }
         }
       } catch (error) {
-        console.error("[WARN] Could not fetch pinned messages:", error.message);
+        console.error(
+          "[WARN] Could not load stats message ID from DB:",
+          error.message,
+        );
       }
     }
 
@@ -135,6 +134,16 @@ export async function updateStatusMessage(client) {
       });
       await statusMessage.pin();
       console.log("[INFO] New server info message created and pinned!");
+      try {
+        await supabase
+          .from("bot_settings")
+          .upsert(
+            { key: "stats_message_id", value: statusMessage.id },
+            { onConflict: "key" },
+          );
+      } catch (err) {
+        console.error("[WARN] Could not save stats message ID:", err.message);
+      }
     }
   } catch (error) {
     console.error("[ERROR] Failed to update server info:", error);
