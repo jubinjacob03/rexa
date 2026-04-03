@@ -195,16 +195,15 @@ export async function handleTicketInteraction(interaction) {
 
           // Persistent Save via Supabase
           if (supabase) {
-            await supabase
-              .from("ticket_actions")
-              .insert({
+            try {
+              await supabase.from("ticket_actions").insert({
                 action_id: actionKey,
                 type: btn.type,
                 content: btn.content,
-              })
-              .catch((err) =>
-                console.error("[SUPABASE] Error saving custom action:", err),
-              );
+              });
+            } catch (err) {
+              console.error("[SUPABASE] Error saving custom action:", err);
+            }
           }
 
           row.addComponents(
@@ -517,10 +516,13 @@ async function createTicketInstance(interaction) {
 
     activeTickets.add(interaction.user.id);
     if (supabase) {
-      await supabase
-        .from("active_tickets")
-        .insert({ user_id: interaction.user.id })
-        .catch(() => null);
+      try {
+        await supabase
+          .from("active_tickets")
+          .insert({ user_id: interaction.user.id });
+      } catch {
+        null;
+      }
     }
 
     if (ticketType === "vc" && interaction.member.voice?.channel) {
@@ -612,8 +614,7 @@ async function closeTicketThread(interaction) {
     if (thread.type === ChannelType.GuildVoice) {
       if (logChannel) {
         await logChannel.send({
-          content:
-            "🔒 **ᴠᴏɪᴄᴇ ᴛɪᴄᴋᴇᴛ ᴄʟᴏꜱᴇᴅ:** \${thread.name}\ ᴄʟᴏꜱᴇᴅ ʙʏ <@>. (Nᴏ ᴛʀᴀɴꜱᴄʀɪᴘᴛ ꜰᴏʀ ᴠᴏɪᴄᴇ ᴛɪᴄᴋᴇᴛꜱ)",
+          content: `🔒 **ᴠᴏɪᴄᴇ ᴛɪᴄᴋᴇᴛ ᴄʟᴏꜱᴇᴅ:** \`${thread.name}\` ᴄʟᴏꜱᴇᴅ ʙʏ <@${interaction.user.id}>. (Nᴏ ᴛʀᴀɴꜱᴄʀɪᴘᴛ ꜰᴏʀ ᴠᴏɪᴄᴇ ᴛɪᴄᴋᴇᴛꜱ)`,
         });
       }
       await interaction.editReply({
@@ -621,7 +622,7 @@ async function closeTicketThread(interaction) {
       });
     } else {
       const messages = await thread.messages.fetch({ limit: 100 });
-      let transcript = "TRANSCRIPT FOR TICKET: ${thread.name}\n";
+      let transcript = `TRANSCRIPT FOR TICKET: ${thread.name}\n`;
       transcript += "====================================================\n\n";
 
       const messageArr = Array.from(messages.values()).reverse();
@@ -634,23 +635,19 @@ async function closeTicketThread(interaction) {
         )
           continue;
         const time = new Date(msg.createdTimestamp).toLocaleString();
-        transcript +=
-          "[${time}] ${msg.author.tag}:\n${msg.content || " <
-          Embed / Attachments >
-          "}\n\n";
+        transcript += `[${time}] ${msg.author.username}:\n${msg.content || "<Embed/Attachments>"}\n\n`;
       }
 
       const attachment = new AttachmentBuilder(
         Buffer.from(transcript, "utf-8"),
         {
-          name: "${thread.name}-transcript.txt",
+          name: `${thread.name}-transcript.txt`,
         },
       );
 
       if (logChannel) {
         await logChannel.send({
-          content:
-            "🔒 **ᴛɪᴄᴋᴇᴛ ᴄʟᴏꜱᴇᴅ:** \${thread.name}\ ᴄʟᴏꜱᴇᴅ ʙʏ <@>. ᴛʀᴀɴꜱᴄʀɪᴘᴛ ᴀᴛᴛᴀᴄʜᴇᴅ.",
+          content: `🔒 **ᴛɪᴄᴋᴇᴛ ᴄʟᴏꜱᴇᴅ:** \`${thread.name}\` ᴄʟᴏꜱᴇᴅ ʙʏ <@${interaction.user.id}>. ᴛʀᴀɴꜱᴄʀɪᴘᴛ ᴀᴛᴛᴀᴄʜᴇᴅ.`,
           files: [attachment],
         });
       }
@@ -670,20 +667,25 @@ async function closeTicketThread(interaction) {
             usersToRemove.push(member.id);
           });
         } else {
-          interaction.guild.members.cache.forEach((m) => {
-            if (activeTickets.has(m.id)) {
-              activeTickets.delete(m.id);
-              usersToRemove.push(m.id);
+          // Find ticket owner from channel permission overwrites (type 1 = member)
+          thread.permissionOverwrites.cache.forEach((overwrite) => {
+            if (
+              overwrite.type === 1 &&
+              overwrite.id !== interaction.client.user.id
+            ) {
+              activeTickets.delete(overwrite.id);
+              usersToRemove.push(overwrite.id);
             }
           });
         }
 
         if (supabase && usersToRemove.length > 0) {
-          await supabase
-            .from("active_tickets")
-            .delete()
-            .in("user_id", usersToRemove)
-            .catch(() => null);
+          try {
+            await supabase
+              .from("active_tickets")
+              .delete()
+              .in("user_id", usersToRemove);
+          } catch {}
         }
 
         await thread.delete();
