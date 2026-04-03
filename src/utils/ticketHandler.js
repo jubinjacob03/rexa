@@ -10,6 +10,7 @@ import {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
+  UserSelectMenuBuilder,
 } from "discord.js";
 import supabase from "./supabaseClient.js";
 import config from "../../config.js";
@@ -136,19 +137,44 @@ export async function handleTicketInteraction(interaction) {
     }
 
     if (interaction.customId === "tsetup_set_mods") {
-      const modal = new ModalBuilder()
-        .setCustomId("tsetup_modal_mods")
-        .setTitle("🛡️ ꜱᴇᴛ ᴛɪᴄᴋᴇᴛ ᴍᴏᴅᴇʀᴀᴛᴏʀꜱ");
-      const modsInput = new TextInputBuilder()
-        .setCustomId("modsInput")
-        .setLabel("ᴜꜱᴇʀ ɪᴅꜱ ᴏʀ @ᴍᴇɴᴛɪᴏɴꜱ (ᴄᴏᴍᴍᴀ-ꜱᴇᴘᴀʀᴀᴛᴇᴅ)")
-        .setStyle(TextInputStyle.Paragraph)
-        .setPlaceholder("123456789012345678, 987654321098765432")
-        .setValue((session.ticketMods || []).join(", "))
-        .setRequired(false)
-        .setMaxLength(1000);
-      modal.addComponents(new ActionRowBuilder().addComponents(modsInput));
-      return await interaction.showModal(modal);
+      const currentMods = session.ticketMods || [];
+      const userSelect = new UserSelectMenuBuilder()
+        .setCustomId("tsetup_mods_select")
+        .setPlaceholder("ꜱᴇᴀʀᴄʜ ᴀɴᴅ ꜱᴇʟᴇᴄᴛ ᴍᴏᴅᴇʀᴀᴛᴏʀꜱ")
+        .setMinValues(0)
+        .setMaxValues(10);
+      const row = new ActionRowBuilder().addComponents(userSelect);
+      const currentDisplay =
+        currentMods.length > 0
+          ? currentMods.map((id) => `<@${id}>`).join(", ")
+          : "ɴᴏɴᴇ";
+      return await interaction.reply({
+        content: `🛡️ **ꜱᴇᴛ ᴛɪᴄᴋᴇᴛ ᴍᴏᴅᴇʀᴀᴛᴏʀꜱ**\nᴄᴜʀʀᴇɴᴛ: ${currentDisplay}\n\nꜱᴇʟᴇᴄᴛ ᴜᴘ ᴛᴏ 10 ᴜꜱᴇʀꜱ ʙᴇʟᴏᴡ. ʟᴇᴀᴠᴇ ᴇᴍᴘᴛʏ ᴀɴᴅ ꜱᴜʙᴍɪᴛ ᴛᴏ ᴄʟᴇᴀʀ.`,
+        components: [row],
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
+    if (interaction.customId === "tsetup_mods_select") {
+      const ids = interaction.values;
+      session.ticketMods = ids;
+      if (supabase) {
+        try {
+          await supabase
+            .from("ticket_actions")
+            .upsert(
+              {
+                action_id: "ticket_mods_config",
+                type: "config",
+                content: JSON.stringify(ids),
+              },
+              { onConflict: "action_id" },
+            );
+        } catch (err) {
+          console.error("[SUPABASE] Error saving ticket mods:", err);
+        }
+      }
+      return await renderTicketDashboard(interaction, true);
     }
 
     if (interaction.customId === "tsetup_publish") {
@@ -325,29 +351,6 @@ export async function handleTicketInteraction(interaction) {
           embeds: [],
           components: [],
         });
-      }
-    } else if (interaction.customId === "tsetup_modal_mods") {
-      const raw = interaction.fields.getTextInputValue("modsInput");
-      const ids = raw
-        .split(",")
-        .map((s) => s.trim().replace(/<@!?|>/g, ""))
-        .filter((s) => /^\d{17,20}$/.test(s));
-
-      session.ticketMods = ids;
-
-      if (supabase) {
-        try {
-          await supabase.from("ticket_actions").upsert(
-            {
-              action_id: "ticket_mods_config",
-              type: "config",
-              content: JSON.stringify(ids),
-            },
-            { onConflict: "action_id" },
-          );
-        } catch (err) {
-          console.error("[SUPABASE] Error saving ticket mods:", err);
-        }
       }
     }
     return await renderTicketDashboard(interaction, true);
