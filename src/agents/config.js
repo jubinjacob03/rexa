@@ -4,6 +4,21 @@ dotenv.config();
 import { google } from "@ai-sdk/google";
 import { createGroq } from "@ai-sdk/groq";
 import { createOpenAI } from "@ai-sdk/openai";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+let parsedToolsConfig = {};
+try {
+  parsedToolsConfig = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "tools.json"), "utf-8"),
+  );
+} catch (e) {
+  console.warn("Could not parse tools.json");
+}
 
 const config = {
   apiKeys: {
@@ -58,6 +73,8 @@ const config = {
     defaultStyle: process.env.IMAGE_DEFAULT_STYLE || "digital-art",
     backupProvider: "pollinations",
   },
+
+  agentTools: parsedToolsConfig,
 
   security: {
     allowSensitiveOps: process.env.ALLOW_SENSITIVE_OPS === "true",

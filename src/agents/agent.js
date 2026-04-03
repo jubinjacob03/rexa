@@ -1,5 +1,6 @@
 import { generateText } from "ai";
 import fs from "fs/promises";
+import fsSync from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import config, { getLanguageModel } from "./config.js";
@@ -45,49 +46,57 @@ async function loadPrompt(promptName, useCache = true) {
   }
 
   const promptPath = path.join(__dirname, "prompts", `${promptName}.md`);
-  const content = await fs.readFile(promptPath, "utf-8");
+  let content = await fs.readFile(promptPath, "utf-8");
+
+  if (promptName === "tools" || promptName === "master") {
+    content = filterToolsContext(content);
+  }
+
   promptCache.set(promptName, content);
   return content;
 }
 
+function filterToolsContext(content) {
+  let toolsConfig;
+  try {
+    const configPath = path.join(__dirname, "tools.json");
+    toolsConfig = JSON.parse(fsSync.readFileSync(configPath, "utf-8"));
+  } catch (err) {
+    // Fallback if file doesn't exist
+    return content;
+  }
+
+  let filteredContent = content;
+
+  for (const [toolName, isEnabled] of Object.entries(toolsConfig)) {
+    if (isEnabled === false) {
+      // Remove RULE blocks
+      const ruleRegex = new RegExp(
+        `<!-- RULE:${toolName} -->[\\s\\S]*?<!-- END_RULE:${toolName} -->\\n?`,
+        "g",
+      );
+      filteredContent = filteredContent.replace(ruleRegex, "");
+
+      // Remove DEF blocks
+      const defRegex = new RegExp(
+        `<!-- DEF:${toolName} -->[\\s\\S]*?<!-- END_DEF:${toolName} -->\\n?`,
+        "g",
+      );
+      filteredContent = filteredContent.replace(defRegex, "");
+    }
+  }
+
+  return filteredContent;
+}
+
 async function getSystemPromptWithoutTools() {
   if (_cachedBasePrompt) return _cachedBasePrompt;
-  const [master, music, creative, moderation, welcome, info] =
-    await Promise.all([
-      loadPrompt("master-agent"),
-      loadPrompt("music-context"),
-      loadPrompt("creative-context"),
-      loadPrompt("moderation-context"),
-      loadPrompt("welcome-context"),
-      loadPrompt("info-context"),
-    ]);
+  const [personality, master] = await Promise.all([
+    loadPrompt("personality"),
+    loadPrompt("master"),
+  ]);
 
-  _cachedBasePrompt = `${master}
-
----
-
-## 🎵 Music & Entertainment Capabilities
-${music}
-
----
-
-## 🎨 Creative & Content Generation
-${creative}
-
----
-
-## 🛡️ Moderation & Server Management
-${moderation}
-
----
-
-## 👋 Welcome & Onboarding
-${welcome}
-
----
-
-## 📚 Information & Help
-${info}`;
+  _cachedBasePrompt = `${personality}\n\n---\n\n${master}`;
   return _cachedBasePrompt;
 }
 
@@ -95,24 +104,25 @@ async function getSystemPrompt() {
   if (_cachedFullPrompt) return _cachedFullPrompt;
   const [base, toolsCtx] = await Promise.all([
     getSystemPromptWithoutTools(),
-    loadPrompt("tools-context"),
+    loadPrompt("tools"),
   ]);
   _cachedFullPrompt = `${base}\n\n---\n\n${toolsCtx}`;
   return _cachedFullPrompt;
 }
 
-// Pass 1: just tools-context + 2-line instruction
+// Pass 1: just tools + 2-line instruction
 async function getPass1BasePrompt() {
   if (_cachedPass1Base) return _cachedPass1Base;
-  const toolsCtx = await loadPrompt("tools-context");
+  const toolsCtx = await loadPrompt("tools");
   _cachedPass1Base = `You are Shantha, a Discord bot. Your ONLY task right now: read the user's message and output the correct JSON tool_call, or answer directly if no tool is needed. When calling a tool, output ONLY the JSON — no extra text.\n\n${toolsCtx}`;
   return _cachedPass1Base;
 }
 
-// Pass 2: master-agent personality + short synthesis rule
+// Pass 2: personality + short synthesis rule
 async function getPass2BasePrompt() {
   if (_cachedPass2Base) return _cachedPass2Base;
-  const master = await loadPrompt("master-agent");
+  const master = await loadPrompt("personality");
+
   _cachedPass2Base = `${master}\n\nKeep your response short (1–3 sentences), casual, and conversational. Do NOT output raw JSON, IDs, or object dumps. CRITICAL: You are in synthesis mode — you MUST NOT emit any tool calls, function calls, XML tags like <tool_call> or <tool_calls_section_begin>, or JSON tool-call objects. Only write a plain conversational reply. IMPORTANT: If the tool result contains "success": false or an "error" field, the action FAILED — tell the user you couldn't get that information or the action didn't work. Do NOT say you'll check or that you'll look it up — just report the failure naturally.`;
   return _cachedPass2Base;
 }
@@ -149,6 +159,18 @@ export async function initializeAgent(client) {
 
 async function executeToolByName(toolName, params) {
   try {
+    let toolsConfig = {};
+    try {
+      const configPath = path.join(__dirname, "tools.json");
+      toolsConfig = JSON.parse(fsSync.readFileSync(configPath, "utf-8"));
+    } catch (err) {}
+
+    if (toolsConfig[toolName] === false) {
+      return {
+        success: false,
+        error: `Tool ${toolName} is currently disabled by configuration.`,
+      };
+    }
     const toolObj = tools[toolName];
     if (!toolObj?.execute) {
       return { success: false, error: `Unknown tool: ${toolName}` };

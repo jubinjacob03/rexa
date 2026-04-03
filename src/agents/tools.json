@@ -1,0 +1,13 @@
+{
+  "ragQuery": true,
+  "serverInfo": true,
+  "webSearch": true,
+  "fetchWebPage": true,
+  "httpRequest": true,
+  "musicControl": true,
+  "discordAction": true,
+  "executeCommand": true,
+  "createPrivateVC": true,
+  "executeWorkflow": true,
+  "createEmbed": true
+}
