@@ -280,7 +280,7 @@ export async function handleTicketInteraction(interaction) {
 
         if (logChannel) {
           const sentMsg = await logChannel.send({
-            content: `**Panel Image Upload:** \`${label}\` (via <@${interaction.user.id}>)`,
+            content: `**Ticket Image Upload:** \`${label}\` (via <@${interaction.user.id}>)`,
             files: [
               {
                 attachment: attachment.url,
