@@ -9,7 +9,7 @@ import { i } from "../utils/icons.js";
 
 export default {
   data: new SlashCommandBuilder()
-    .setName("vc-remove")
+    .setName("private-vc-remove")
     .setDescription("Remove a member from your current private voice channel.")
     .addUserOption((o) =>
       o.setName("member").setDescription("Member to remove").setRequired(true),

@@ -1,4 +1,4 @@
-import iconMap from "./icon-map.json" assert { type: "json" };
+import iconMap from "./icon-map.json" with { type: "json" };
 
 /**
  * Resolved custom emoji strings, populated by initIcons().

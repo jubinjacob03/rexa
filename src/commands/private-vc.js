@@ -11,7 +11,7 @@ import { i } from "../utils/icons.js";
 
 export default {
   data: new SlashCommandBuilder()
-    .setName("vc")
+    .setName("private-vc")
     .setDescription("Create a private voice channel for selected members.")
     .addUserOption((o) =>
       o.setName("member1").setDescription("Member to invite").setRequired(true),

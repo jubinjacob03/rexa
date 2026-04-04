@@ -9,7 +9,7 @@ import { i } from "../utils/icons.js";
 
 export default {
   data: new SlashCommandBuilder()
-    .setName("vc-add")
+    .setName("private-vc-add")
     .setDescription("Add a member to your current private voice channel.")
     .addUserOption((o) =>
       o.setName("member").setDescription("Member to add").setRequired(true),
