@@ -23,6 +23,7 @@ import {
 } from "./utils/verificationHandler.js";
 import { handleAutomodInteraction } from "./commands/automod.js";
 import { handleTicketInteraction } from "./utils/ticketHandler.js";
+import { buildStatusPayload } from "./commands/status.js";
 
 if (ffmpegPath) {
   process.env.FFMPEG_PATH = ffmpegPath;
@@ -110,6 +111,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
+    if (interaction.customId === "refresh_bot_status") {
+      await interaction.update(
+        await buildStatusPayload(interaction.client, interaction.guild),
+      );
+      return;
+    }
+
     if (
       interaction.customId.startsWith("ticket_") ||
       interaction.customId.startsWith("tsetup_") ||
@@ -167,6 +175,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 
   if (interaction.isStringSelectMenu()) {
+    if (interaction.customId.startsWith("tsetup_")) {
+      await handleTicketInteraction(interaction);
+      return;
+    }
   }
 
   if (!interaction.isChatInputCommand()) return;

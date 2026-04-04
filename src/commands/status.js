@@ -1,4 +1,9 @@
-import { SlashCommandBuilder, MessageFlags } from "discord.js";
+import {
+  SlashCommandBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+} from "discord.js";
 import voiceManager from "../voice/VoiceManager.js";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
@@ -15,58 +20,66 @@ export default {
     .setDescription("Show overall bot status"),
 
   async execute(interaction) {
-    const client = interaction.client;
-    const guild = interaction.guild;
-
-    let status = `${icon("BOT")} **ʙᴏᴛ sᴛᴀᴛᴜs**\n\n\n`;
-    status += `${icon("UPTIME")} **ᴜᴘᴛɪᴍᴇ:** ${formatUptime(client.uptime)}\n\n`;
-    status += `${icon("STATS")} **ɢᴜɪʟᴅs:** ${client.guilds.cache.size}\n\n`;
-    status += `${icon("MEMBERS")} **ᴜsᴇʀs:** ${client.users.cache.size}\n\n`;
-    status += `${icon("CHANNELS")} **ᴄʜᴀɴɴᴇʟs:** ${client.channels.cache.size}\n\n`;
-
-    const voiceStatus = voiceManager.getStatus(guild.id);
-    if (voiceStatus.connected) {
-      const channel = guild.channels.cache.get(voiceStatus.channelId);
-      status += `${icon("VOICE")} **ᴠᴏɪᴄᴇ:** ᴄᴏɴɴᴇᴄᴛᴇᴅ ᴛᴏ **${channel?.name || "ᴜɴᴋɴᴏᴡɴ"}**\n\n`;
-
-      if (voiceStatus.currentSound) {
-        status += `${icon("MUSIC")} **ᴘʟᴀʏɪɴɢ:** ${voiceStatus.currentSound.soundName}\n\n`;
-        status += `${icon("TIMER")} **ᴘʀᴏɢʀᴇss:** ${Math.floor(voiceStatus.progress)}s\n\n`;
-      }
-
-      if (voiceStatus.queueLength > 0) {
-        status += `${icon("CLIPBOARD")} **ǫᴜᴇᴜᴇ:** ${voiceStatus.queueLength} sᴏᴜɴᴅ(s)\n\n`;
-      }
-    } else {
-      status += `${icon("OFFLINE")} **ᴠᴏɪᴄᴇ:** ɴᴏᴛ ᴄᴏɴɴᴇᴄᴛᴇᴅ\n\n`;
-    }
-
-    try {
-      const verificationPath = join(
-        __dirname,
-        "..",
-        "..",
-        "data",
-        "verification.json",
-      );
-      const verificationData = JSON.parse(
-        readFileSync(verificationPath, "utf8"),
-      );
-
-      if (verificationData[guild.id]) {
-        const config = verificationData[guild.id];
-        status += `\n${icon("SAVED")} **ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ:** ᴀᴄᴛɪᴠᴇ`;
-        if (config.verificationChannelId) {
-          status += ` (<#${config.verificationChannelId}>)`;
-        }
-      }
-    } catch (error) {
-      // Ignore if verification not configured
-    }
-
-    await interaction.reply(eReply(`${i("BOT")} ʙᴏᴛ sᴛᴀᴛᴜs`, status));
+    await interaction.reply(
+      await buildStatusPayload(interaction.client, interaction.guild),
+    );
   },
 };
+
+export async function buildStatusPayload(client, guild) {
+  let status = `\u200b\n${icon("UPTIME")} **ᴜᴘᴛɪᴍᴇ :** ${formatUptime(client.uptime)}\n\n`;
+  status += `${icon("STATS")} **ɢᴜɪʟᴅs :** ${client.guilds.cache.size}\n\n`;
+  status += `${icon("MEMBERS")} **ᴜsᴇʀs :** ${client.users.cache.size}\n\n`;
+  status += `${icon("CHANNELS")} **ᴄʜᴀɴɴᴇʟs :** ${client.channels.cache.size}\n\n`;
+
+  const voiceStatus = voiceManager.getStatus(guild.id);
+  if (voiceStatus.connected) {
+    const channel = guild.channels.cache.get(voiceStatus.channelId);
+    status += `${icon("VOICE")} **ᴠᴏɪᴄᴇ :** ᴄᴏɴɴᴇᴄᴛᴇᴅ ᴛᴏ **${channel?.name || "ᴜɴᴋɴᴏᴡɴ"}**\n\n`;
+
+    if (voiceStatus.currentSound) {
+      status += `${icon("MUSIC")} **ᴘʟᴀʏɪɴɢ :** ${voiceStatus.currentSound.soundName}\n\n`;
+      status += `${icon("TIMER")} **ᴘʀᴏɢʀᴇss :** ${Math.floor(voiceStatus.progress)}s\n\n`;
+    }
+
+    if (voiceStatus.queueLength > 0) {
+      status += `${icon("CLIPBOARD")} **ǫᴜᴇᴜᴇ :** ${voiceStatus.queueLength} sᴏᴜɴᴅ(s)\n\n`;
+    }
+  } else {
+    status += `${icon("OFFLINE")} **ᴠᴏɪᴄᴇ :** ɴᴏᴛ ᴄᴏɴɴᴇᴄᴛᴇᴅ\n\n`;
+  }
+
+  try {
+    const verificationPath = join(
+      __dirname,
+      "..",
+      "..",
+      "data",
+      "verification.json",
+    );
+    const verificationData = JSON.parse(readFileSync(verificationPath, "utf8"));
+    if (verificationData[guild.id]) {
+      const cfg = verificationData[guild.id];
+      status += `\n${icon("SAVED")} **ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ:** ᴀᴄᴛɪᴠᴇ`;
+      if (cfg.verificationChannelId)
+        status += ` (<#${cfg.verificationChannelId}>)`;
+    }
+  } catch {
+    // not configured
+  }
+
+  const refreshRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("refresh_bot_status")
+      .setLabel("ʀᴇғʀᴇsʜ")
+      .setStyle(ButtonStyle.Secondary),
+  );
+
+  return {
+    ...eReply(`${i("BOT")} ʙᴏᴛ sᴛᴀᴛᴜs`, status),
+    components: [refreshRow],
+  };
+}
 
 function formatUptime(ms) {
   const seconds = Math.floor(ms / 1000);
