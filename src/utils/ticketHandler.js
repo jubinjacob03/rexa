@@ -281,7 +281,7 @@ export async function handleTicketInteraction(interaction) {
       const embed = new EmbedBuilder()
         .setColor(session.color)
         .setTitle(session.title)
-        .setDescription(`\u200b\n${session.description}\n\u200b`)
+        .setDescription(session.description)
         .setTimestamp();
 
       const row = new ActionRowBuilder();
@@ -461,7 +461,7 @@ export async function handleTicketInteraction(interaction) {
       // Fallback: look it up in Supabase if the bot restarted
       const { data } = await supabase
         .from("ticket_actions")
-        .select("type, content")
+        .select("type, content, paymentEmoji")
         .eq("action_id", key)
         .single();
       if (data) {
@@ -478,9 +478,10 @@ export async function handleTicketInteraction(interaction) {
           eReply(`${i("CLIPBOARD")} ɪɴғᴏ`, actionData.content),
         );
       } else if (actionData.type === "image") {
-        await interaction.reply(
-          eReply(`${i("IMAGE")} ɪɴғᴏ`, actionData.content),
-        );
+        const imgEmbed = new EmbedBuilder()
+          .setColor(EMBED_COLOR)
+          .setImage(actionData.content);
+        await interaction.reply({ embeds: [imgEmbed], flags: 64 });
       }
     } else {
       await interaction.reply(
