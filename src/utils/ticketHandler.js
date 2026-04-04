@@ -160,16 +160,14 @@ export async function handleTicketInteraction(interaction) {
       session.ticketMods = ids;
       if (supabase) {
         try {
-          await supabase
-            .from("ticket_actions")
-            .upsert(
-              {
-                action_id: "ticket_mods_config",
-                type: "config",
-                content: JSON.stringify(ids),
-              },
-              { onConflict: "action_id" },
-            );
+          await supabase.from("ticket_actions").upsert(
+            {
+              action_id: "ticket_mods_config",
+              type: "config",
+              content: JSON.stringify(ids),
+            },
+            { onConflict: "action_id" },
+          );
         } catch (err) {
           console.error("[SUPABASE] Error saving ticket mods:", err);
         }
@@ -236,7 +234,7 @@ export async function handleTicketInteraction(interaction) {
             new ButtonBuilder()
               .setCustomId(`tkt_action|${actionKey}`)
               .setLabel(btn.label)
-              .setStyle(ButtonStyle.Success),
+              .setStyle(ButtonStyle.Secondary),
           );
         }
       }
