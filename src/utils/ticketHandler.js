@@ -196,7 +196,7 @@ export async function handleTicketInteraction(interaction) {
       const embed = new EmbedBuilder()
         .setColor(session.color)
         .setTitle(session.title)
-        .setDescription(session.description)
+        .setDescription(`\u200b\n${session.description}\n\u200b`)
         .setTimestamp();
 
       const row = new ActionRowBuilder();
@@ -211,6 +211,7 @@ export async function handleTicketInteraction(interaction) {
           row.addComponents(
             new ButtonBuilder()
               .setCustomId(statelessCustomId)
+              .setEmoji(icon("TICKET"))
               .setLabel(btn.label)
               .setStyle(ButtonStyle.Secondary),
           );
@@ -238,6 +239,7 @@ export async function handleTicketInteraction(interaction) {
           row.addComponents(
             new ButtonBuilder()
               .setCustomId(`tkt_action|${actionKey}`)
+              .setEmoji(icon("TYPE"))
               .setLabel(btn.label)
               .setStyle(ButtonStyle.Success),
           );
@@ -559,11 +561,13 @@ async function createTicketInstance(interaction) {
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("ticket_escalate")
-        .setLabel(`${icon("BELL")} ᴇsᴄᴀʟᴀᴛᴇ ᴛᴏ sᴛᴀғғ`)
+        .setEmoji(icon("BELL"))
+        .setLabel("ᴇsᴄᴀʟᴀᴛᴇ ᴛᴏ sᴛᴀғғ")
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId("ticket_close")
-        .setLabel(`${icon("LOCK")} ᴄʟᴏsᴇ ᴛɪᴄᴋᴇᴛ`)
+        .setEmoji(icon("LOCK"))
+        .setLabel("ᴄʟᴏsᴇ ᴛɪᴄᴋᴇᴛ")
         .setStyle(ButtonStyle.Danger),
     );
 

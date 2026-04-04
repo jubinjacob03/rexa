@@ -5,7 +5,7 @@
 
   "SUCCESS": {
     "description": "Pure green light — check passed, test passed, connection established, it works. e.g. Device Check, Joined, Authentication Complete, Refreshed.",
-    "serverEmojiName": "Check",
+    "serverEmojiName": "Success",
     "fallback": "✅",
     "usedIn": [
       "index.js:dev_check",
@@ -17,7 +17,7 @@
   },
   "SAVED": {
     "description": "Something was configured or stored — setting applied, setup saved, update committed. e.g. Updated, Setup Complete, Set Ticket Moderators context.",
-    "serverEmojiName": "Verified_Icon",
+    "serverEmojiName": "Updated",
     "fallback": "✅",
     "usedIn": [
       "commands/setup-verification.js:updated",
@@ -27,7 +27,7 @@
   },
   "DONE": {
     "description": "An action was executed and enacted — something was created, removed, approved, submitted. e.g. Ticket Created, Approved, Member Removed, Request Submitted, Purge Complete.",
-    "serverEmojiName": "lastmeadowbadge",
+    "serverEmojiName": "action",
     "fallback": "✅",
     "usedIn": [
       "utils/ticketHandler.js:ticket_created",
@@ -47,7 +47,7 @@
   },
   "WARNING": {
     "description": "Caution state — automod trigger, already verified, pending request, system error notice, media-only channel.",
-    "serverEmojiName": "Warning_Shadow",
+    "serverEmojiName": "Warning",
     "fallback": "⚠️",
     "usedIn": [
       "utils/automodRunner.js",
@@ -58,7 +58,7 @@
   },
   "PENDING": {
     "description": "Waiting / in progress — waiting for image upload, pending interrogation, fetching messages.",
-    "serverEmojiName": "discordhalloween",
+    "serverEmojiName": "loading",
     "fallback": "⏳",
     "usedIn": [
       "utils/ticketHandler.js:waiting_for_image",
@@ -68,13 +68,13 @@
   },
   "TIMER": {
     "description": "Time / duration / progress value display (not a state — inline in status text).",
-    "serverEmojiName": "60timer",
+    "serverEmojiName": "timer",
     "fallback": "⏱️",
     "usedIn": ["commands/status.js:progress_line"]
   },
   "BOT": {
     "description": "Bot / AI identity marker — Shantha speaking, AI analyzing, bot status header.",
-    "serverEmojiName": "BMODancing",
+    "serverEmojiName": "BOT",
     "fallback": "🤖",
     "usedIn": [
       "events/messageCreate.js:mention_reply",
@@ -85,7 +85,7 @@
   },
   "UPTIME": {
     "description": "Uptime / connectivity — inline label in /status output.",
-    "serverEmojiName": "MochaClock",
+    "serverEmojiName": "UpTime",
     "fallback": "📡",
     "usedIn": ["commands/status.js"]
   },
@@ -103,19 +103,19 @@
   },
   "CHANNELS": {
     "description": "Channel count label.",
-    "serverEmojiName": "DiscordStageChannel",
+    "serverEmojiName": "Channel",
     "fallback": "💬",
     "usedIn": ["commands/status.js"]
   },
   "OFFLINE": {
     "description": "Inactive / not connected indicator (voice offline in /status).",
-    "serverEmojiName": "discord_offline",
+    "serverEmojiName": "offline",
     "fallback": "⚫",
     "usedIn": ["commands/status.js:voice_not_connected"]
   },
   "LOCK": {
     "description": "Lock / close — close ticket button, ticket closed log, permission denied message.",
-    "serverEmojiName": "Padlock_Crown",
+    "serverEmojiName": "Padlock",
     "fallback": "🔒",
     "usedIn": [
       "utils/ticketHandler.js:close_button",
@@ -135,7 +135,7 @@
   },
   "SHIELD": {
     "description": "Moderator / protection — set ticket mods title, ticket-setup mods field, server verification title.",
-    "serverEmojiName": "admin_white",
+    "serverEmojiName": "admin",
     "fallback": "🛡️",
     "usedIn": [
       "utils/ticketHandler.js:set_mods_title",
@@ -145,7 +145,7 @@
   },
   "KEYLOCK": {
     "description": "Secure gate — role verification embed title (the gate users must pass).",
-    "serverEmojiName": "lockedmastery6",
+    "serverEmojiName": "locked",
     "fallback": "🔐",
     "usedIn": [
       "commands/setup-verification.js",
@@ -155,7 +155,7 @@
   },
   "TICKET": {
     "description": "Ticket identity — open ticket modal value, ticket welcome embed title.",
-    "serverEmojiName": "si_ticket",
+    "serverEmojiName": "ticket",
     "fallback": "🎫",
     "usedIn": [
       "utils/ticketHandler.js:modal_value",
@@ -182,7 +182,7 @@
   },
   "TYPE": {
     "description": "Ticket type prefix — text/vc ticket modal titles and setup button labels.",
-    "serverEmojiName": "rank",
+    "serverEmojiName": "points",
     "fallback": "💠",
     "usedIn": [
       "utils/ticketHandler.js:ticket_type_modal",
@@ -191,7 +191,7 @@
   },
   "LABEL": {
     "description": "Button label / title field — modal input placeholder for button name.",
-    "serverEmojiName": "si_label",
+    "serverEmojiName": "PaperPlane",
     "fallback": "📕",
     "usedIn": ["utils/ticketHandler.js:text_reply_modal_placeholder"]
   },
@@ -203,7 +203,7 @@
   },
   "PURGE": {
     "description": "Delete / purge — purge complete embed title.",
-    "serverEmojiName": "TrashyAxolotl",
+    "serverEmojiName": "Trash",
     "fallback": "🗑️",
     "usedIn": ["commands/purge.js:complete_title"]
   },
@@ -230,13 +230,13 @@
   },
   "VOICE": {
     "description": "Voice channel active / volume — inline label in /status.",
-    "serverEmojiName": "Soundcloud ",
+    "serverEmojiName": "Sound",
     "fallback": "🔊",
     "usedIn": ["commands/status.js:voice_connected"]
   },
   "MAILBOX": {
     "description": "Auto-DM setting — inline in setup-verification reply description.",
-    "serverEmojiName": "lovemail",
+    "serverEmojiName": "mail",
     "fallback": "📬",
     "usedIn": ["commands/setup-verification.js:auto_dm_line"]
   },

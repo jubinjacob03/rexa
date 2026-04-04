@@ -9,7 +9,7 @@ import {
 } from "discord.js";
 import supabase from "../utils/supabaseClient.js";
 import { EMBED_COLOR } from "../utils/embed.js";
-import { i, icon } from "../utils/icons.js";
+import { icon } from "../utils/icons.js";
 
 // Stateless in-memory store for admin setup sessions (only lasts during mapping)
 export const setupSessions = new Map();
@@ -79,7 +79,7 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
     .setColor(EMBED_COLOR)
     .setTitle(`${icon("PANEL")} sᴜᴘᴘᴏʀᴛ ᴛɪᴄᴋᴇᴛs`)
     .setDescription(
-      `ᴄᴜsᴛᴏᴍɪᴢᴇ ʜᴏᴡ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ ᴍᴇɴᴜ ʟᴏᴏᴋs ᴀɴᴅ ʙᴇʜᴀᴠᴇs ʙᴇғᴏʀᴇ ᴘᴜʙʟɪsʜɪɴɢ ɪᴛ ᴛᴏ <#${config.targetChannelId}>.`,
+      `\u200b\nᴄᴜsᴛᴏᴍɪᴢᴇ ʜᴏᴡ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ ᴍᴇɴᴜ ʟᴏᴏᴋs ᴀɴᴅ ʙᴇʜᴀᴠᴇs ʙᴇғᴏʀᴇ ᴘᴜʙʟɪsʜɪɴɢ ɪᴛ ᴛᴏ <#${config.targetChannelId}>.\n\u200b`,
     )
     .addFields(
       { name: "ᴘʀᴇᴠɪᴇᴡ ᴛɪᴛʟᴇ", value: config.title, inline: false },
@@ -98,39 +98,46 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
   const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("tsetup_edit_embed")
-      .setLabel(`${icon("EDIT")} ᴇᴅɪᴛ ᴇᴍʙᴇᴅ ᴛᴇxᴛ`)
+      .setEmoji(icon("EDIT"))
+      .setLabel("ᴇᴅɪᴛ ᴇᴍʙᴇᴅ ᴛᴇxᴛ")
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("tsetup_add_text_tkt")
-      .setLabel(`${icon("TYPE")}ᴛᴇxᴛ ᴛɪᴄᴋᴇᴛ`)
-      .setStyle(ButtonStyle.Primary)
+      .setEmoji(icon("TYPE"))
+      .setLabel("ᴛᴇxᴛ ᴛɪᴄᴋᴇᴛ")
+      .setStyle(ButtonStyle.Secondary)
       .setDisabled(config.buttons.length >= 3),
     new ButtonBuilder()
       .setCustomId("tsetup_add_vc_tkt")
-      .setLabel(`${icon("TYPE")}ᴠᴄ ᴛɪᴄᴋᴇᴛ`)
-      .setStyle(ButtonStyle.Primary)
+      .setEmoji(icon("TYPE"))
+      .setLabel("ᴠᴄ ᴛɪᴄᴋᴇᴛ")
+      .setStyle(ButtonStyle.Secondary)
       .setDisabled(config.buttons.length >= 3),
     new ButtonBuilder()
       .setCustomId("tsetup_add_text")
-      .setLabel(`${icon("TYPE")}ᴛᴇxᴛ ʀᴇᴘʟʏ`)
-      .setStyle(ButtonStyle.Primary)
+      .setEmoji(icon("TYPE"))
+      .setLabel("ᴛᴇxᴛ ʀᴇᴘʟʏ")
+      .setStyle(ButtonStyle.Secondary)
       .setDisabled(config.buttons.length >= 3),
   );
 
   const row2 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("tsetup_add_image")
-      .setLabel(`${icon("TYPE")}ɪᴍᴀɢᴇ ʀᴇᴘʟʏ`)
-      .setStyle(ButtonStyle.Primary)
+      .setEmoji(icon("TYPE"))
+      .setLabel("ɪᴍᴀɢᴇ ʀᴇᴘʟʏ")
+      .setStyle(ButtonStyle.Secondary)
       .setDisabled(config.buttons.length >= 3),
     new ButtonBuilder()
       .setCustomId("tsetup_clear_buttons")
-      .setLabel(`${icon("WARNING")}ᴄʟᴇᴀʀ ᴀʟʟ ʙᴜᴛᴛᴏɴs`)
+      .setEmoji(icon("WARNING"))
+      .setLabel("ᴄʟᴇᴀʀ ᴀʟʟ ʙᴜᴛᴛᴏɴs")
       .setStyle(ButtonStyle.Danger)
       .setDisabled(config.buttons.length === 0),
     new ButtonBuilder()
       .setCustomId("tsetup_publish")
-      .setLabel(`${i("DONE")}ᴘᴜʙʟɪsʜ ᴘᴀɴᴇʟ ᴛᴏ #${config.targetChannelName}`)
+      .setEmoji(icon("DONE"))
+      .setLabel(`ᴘᴜʙʟɪsʜ ᴘᴀɴᴇʟ ᴛᴏ #${config.targetChannelName}`)
       .setStyle(ButtonStyle.Success)
       .setDisabled(config.buttons.length === 0),
   );
@@ -138,7 +145,8 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
   const row3 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("tsetup_set_mods")
-      .setLabel(`${icon("SHIELD")}ᴛɪᴄᴋᴇᴛ ᴍᴏᴅs`)
+      .setEmoji(icon("SHIELD"))
+      .setLabel("ᴛɪᴄᴋᴇᴛ ᴍᴏᴅs")
       .setStyle(ButtonStyle.Secondary),
   );
 
