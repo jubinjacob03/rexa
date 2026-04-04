@@ -1,6 +1,8 @@
 import { Events } from "discord.js";
 import config from "../../config.js";
 import { checkSpam, checkToxicity } from "../utils/automodRunner.js";
+import { eSend } from "../utils/embed.js";
+import { i } from "../utils/icons.js";
 
 const WAR_RESULTS_CHANNEL = "1473075469028167814";
 const ANNOUNCEMENTS_CHANNEL = "1473075468805738540";
@@ -176,7 +178,9 @@ export default {
             .trim();
 
           if (!question) {
-            await message.reply("Yes? How can I help you? 🤔");
+            await message.reply({
+              ...eSend(`${i("BOT")} Shantha`, "ʏᴇs? ʜᴏᴡ ᴄᴀɴ ɪ ʜᴇʟᴘ ʏᴏᴜ?"),
+            });
             return;
           }
 
@@ -216,7 +220,10 @@ export default {
             } else if (!response || response.trim() === "") {
               console.warn(`[AI] Empty response for question: "${question}"`);
               await safeReply(
-                "Sorry, I understood your question but couldn't generate a proper response. Can you try asking in a different way?",
+                eSend(
+                  `${i("BOT")} Shantha`,
+                  "sᴏʀʀʏ, ɪ ᴜɴᴅᴇʀsᴛᴏᴏᴅ ʏᴏᴜʀ ǫᴜᴇsᴛɪᴏɴ ʙᴜᴛ ᴄᴏᴜʟᴅɴ'ᴛ ɢᴇɴᴇʀᴀᴛᴇ ᴀ ᴘʀᴏᴘᴇʀ ʀᴇsᴘᴏɴsᴇ. ᴄᴀɴ ʏᴏᴜ ᴛʀʏ ᴀsᴋɪɴɢ ɪɴ ᴀ ᴅɪғғᴇʀᴇɴᴛ ᴡᴀʏ?",
+                ),
               );
               return;
             } else if (response.length <= 2000) {
@@ -232,17 +239,30 @@ export default {
             console.log(`[AI] Responded to ${message.author.tag}`);
           } else {
             await safeReply(
-              "Sorry, I encountered an error processing your request. Please try again.",
+              eSend(
+                `${i("ERROR")} ᴇʀʀᴏʀ`,
+                "sᴏʀʀʏ, ɪ ᴇɴᴄᴏᴜɴᴛᴇʀᴇᴅ ᴀɴ ᴇʀʀᴏʀ ᴘʀᴏᴄᴇssɪɴɢ ʏᴏᴜʀ ʀᴇǫᴜᴇsᴛ. ᴘʟᴇᴀsᴇ ᴛʀʏ ᴀɢᴀɪɴ.",
+              ),
             );
             console.error("[AI] Error:", result.error);
           }
         } catch (error) {
           console.error("[AI] Failed to process message:", error);
           await message
-            .reply("Sorry, something went wrong. Please try again later.")
+            .reply(
+              eSend(
+                `${i("ERROR")} ᴇʀʀᴏʀ`,
+                "sᴏʀʀʏ, sᴏᴍᴇᴛʜɪɴɢ ᴡᴇɴᴛ ᴡʀᴏɴɢ. ᴘʟᴇᴀsᴇ ᴛʀʏ ᴀɢᴀɪɴ ʟᴀᴛᴇʀ.",
+              ),
+            )
             .catch(() =>
               message.channel
-                .send("Sorry, something went wrong. Please try again later.")
+                .send(
+                  eSend(
+                    `${i("ERROR")} ᴇʀʀᴏʀ`,
+                    "sᴏʀʀʏ, sᴏᴍᴇᴛʜɪɴɢ ᴡᴇɴᴛ ᴡʀᴏɴɢ. ᴘʟᴇᴀsᴇ ᴛʀʏ ᴀɢᴀɪɴ ʟᴀᴛᴇʀ.",
+                  ),
+                )
                 .catch(() => {}),
             );
         } finally {
@@ -287,9 +307,9 @@ export default {
           ? `<@${message.author.id}> ᴘʟᴇᴀsᴇ ᴜsᴇ ɢᴇɴᴇʀᴀʟ ᴄʜᴀᴛ ғᴏʀ sᴇɴᴅɪɴɢ ᴍᴇssᴀɢᴇs. ᴏɴʟʏ ᴍᴇᴅɪᴀ ᴀᴛᴛᴀᴄʜᴍᴇɴᴛs ᴀɴᴅ ᴍᴇɴᴛɪᴏɴs ᴀʀᴇ ᴀʟʟᴏᴡᴇᴅ.`
           : `<@${message.author.id}> ᴘʟᴇᴀsᴇ ᴜsᴇ ɢᴇɴᴇʀᴀʟ ᴄʜᴀᴛ ғᴏʀ sᴇɴᴅɪɴɢ ᴍᴇssᴀɢᴇs. ᴏɴʟʏ ᴍᴇᴅɪᴀ ᴀᴛᴛᴀᴄʜᴍᴇɴᴛs ᴀʀᴇ ᴀʟʟᴏᴡᴇᴅ.`;
 
-        const reply = await message.channel.send({
-          content: notificationText,
-        });
+        const reply = await message.channel.send(
+          eSend(`${i("WARNING")} ᴍᴇᴅɪᴀ ᴏɴʟʏ`, notificationText),
+        );
 
         setTimeout(() => {
           reply.delete().catch(() => {});

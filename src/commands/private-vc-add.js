@@ -4,6 +4,8 @@ import {
   getVCData,
   addMember,
 } from "../utils/privateVCManager.js";
+import { eSend } from "../utils/embed.js";
+import { i } from "../utils/icons.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -20,31 +22,44 @@ export default {
     const invokerId = interaction.user.id;
     const channelId = getVCByMember(invokerId);
     if (!channelId) {
-      return interaction.editReply("You are not in a private VC.");
+      return interaction.editReply(
+        eSend(`${i("ERROR")} ɴᴏᴛ ғᴏᴜɴᴅ`, "ʏᴏᴜ ᴀʀᴇ ɴᴏᴛ ɪɴ ᴀ ᴘʀɪᴠᴀᴛᴇ ᴠᴄ."),
+      );
     }
 
     const invokerMember = interaction.member;
     if (invokerMember.voice?.channelId !== channelId) {
       return interaction.editReply(
-        "You must be connected to your private VC to use this command.",
+        eSend(
+          `${i("ERROR")} ɴᴏᴛ ᴄᴏɴɴᴇᴄᴛᴇᴅ`,
+          "ʏᴏᴜ ᴍᴜsᴛ ʙᴇ ᴄᴏɴɴᴇᴄᴛᴇᴅ ᴛᴏ ʏᴏᴜʀ ᴘʀɪᴠᴀᴛᴇ ᴠᴄ ᴛᴏ ᴜsᴇ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ.",
+        ),
       );
     }
 
     const targetUser = interaction.options.getUser("member");
     if (targetUser.bot) {
-      return interaction.editReply("You cannot add bots.");
+      return interaction.editReply(
+        eSend(`${i("ERROR")} ɪɴᴠᴀʟɪᴅ`, "ʏᴏᴜ ᴄᴀɴɴᴏᴛ ᴀᴅᴅ ʙᴏᴛs."),
+      );
     }
 
     const data = getVCData(channelId);
     if (data.members.has(targetUser.id)) {
       return interaction.editReply(
-        `<@${targetUser.id}> is already in this VC.`,
+        eSend(
+          `${i("ERROR")} ᴀʟʀᴇᴀᴅʏ ᴀᴅᴅᴇᴅ`,
+          `<@${targetUser.id}> ɪs ᴀʟʀᴇᴀᴅʏ ɪɴ ᴛʜɪs ᴠᴄ.`,
+        ),
       );
     }
 
     if (getVCByMember(targetUser.id)) {
       return interaction.editReply(
-        `<@${targetUser.id}> is already in another private VC and cannot be added.`,
+        eSend(
+          `${i("ERROR")} ᴜɴᴀᴠᴀɪʟᴀʙʟᴇ`,
+          `<@${targetUser.id}> ɪs ᴀʟʀᴇᴀᴅʏ ɪɴ ᴀɴᴏᴛʜᴇʀ ᴘʀɪᴠᴀᴛᴇ ᴠᴄ ᴀɴᴅ ᴄᴀɴɴᴏᴛ ʙᴇ ᴀᴅᴅᴇᴅ.`,
+        ),
       );
     }
 
@@ -52,20 +67,27 @@ export default {
       .fetch(targetUser.id)
       .catch(() => null);
     if (!targetMember) {
-      return interaction.editReply("Could not find that member.");
+      return interaction.editReply(
+        eSend(`${i("ERROR")} ɴᴏᴛ ғᴏᴜɴᴅ`, "ᴄᴏᴜʟᴅ ɴᴏᴛ ғɪɴᴅ ᴛʜᴀᴛ ᴍᴇᴍʙᴇʀ."),
+      );
     }
 
     const ok = await addMember(channelId, targetMember, guild);
     if (!ok) {
-      return interaction.editReply("Failed to add member.");
+      return interaction.editReply(
+        eSend(`${i("ERROR")} ғᴀɪʟᴇᴅ`, "ғᴀɪʟᴇᴅ ᴛᴏ ᴀᴅᴅ ᴍᴇᴍʙᴇʀ."),
+      );
     }
 
     await interaction.editReply(
-      `✅ <@${targetUser.id}> has been added to the private VC.${
-        targetMember.voice?.channel
-          ? ""
-          : " They are not in voice — they can now join manually."
-      }`,
+      eSend(
+        `${i("DONE")} ᴍᴇᴍʙᴇʀ ᴀᴅᴅᴇᴅ`,
+        `<@${targetUser.id}> ʜᴀs ʙᴇᴇɴ ᴀᴅᴅᴇᴅ ᴛᴏ ᴛʜᴇ ᴘʀɪᴠᴀᴛᴇ ᴠᴄ.${
+          targetMember.voice?.channel
+            ? ""
+            : " ᴛʜᴇʏ ᴀʀᴇ ɴᴏᴛ ɪɴ ᴠᴏɪᴄᴇ — ᴛʜᴇʏ ᴄᴀɴ ɴᴏᴡ ᴊᴏɪɴ ᴍᴀɴᴜᴀʟʟʏ."
+        }`,
+      ),
     );
   },
 };

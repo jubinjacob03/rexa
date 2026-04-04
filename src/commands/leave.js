@@ -1,5 +1,7 @@
 import { SlashCommandBuilder, MessageFlags } from "discord.js";
 import voiceManager from "../voice/VoiceManager.js";
+import { eReply } from "../utils/embed.js";
+import { i } from "../utils/icons.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -11,18 +13,19 @@ export default {
     const connection = voiceManager.getConnection(guildId);
 
     if (!connection) {
-      return interaction.reply({
-        content: "\u274c Not connected to any voice channel",
-        flags: MessageFlags.Ephemeral,
-      });
+      return interaction.reply(
+        eReply(
+          `${i("ERROR")} ɴᴏᴛ ᴄᴏɴɴᴇᴄᴛᴇᴅ`,
+          "ɴᴏᴛ ᴄᴏɴɴᴇᴄᴛᴇᴅ ᴛᴏ ᴀɴʏ ᴠᴏɪᴄᴇ ᴄʜᴀɴɴᴇʟ.",
+        ),
+      );
     }
 
     voiceManager.stop(guildId);
     voiceManager.leaveChannel(guildId);
 
-    await interaction.reply({
-      content: "\u23f9\ufe0f Stopped and left voice channel",
-      flags: MessageFlags.Ephemeral,
-    });
+    await interaction.reply(
+      eReply(`${i("SUCCESS")} sᴛᴏᴘᴘᴇᴅ`, "ʟᴇғᴛ ᴛʜᴇ ᴠᴏɪᴄᴇ ᴄʜᴀɴɴᴇʟ."),
+    );
   },
 };

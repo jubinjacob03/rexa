@@ -3,6 +3,8 @@ import voiceManager from "../voice/VoiceManager.js";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
+import { eReply } from "../utils/embed.js";
+import { i, icon } from "../utils/icons.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -16,27 +18,27 @@ export default {
     const client = interaction.client;
     const guild = interaction.guild;
 
-    let status = `🤖 **Bot Status**\n\n`;
-    status += `📡 **Uptime:** ${formatUptime(client.uptime)}\n`;
-    status += `📊 **Guilds:** ${client.guilds.cache.size}\n`;
-    status += `👥 **Users:** ${client.users.cache.size}\n`;
-    status += `💬 **Channels:** ${client.channels.cache.size}\n\n`;
+    let status = `${icon("BOT")} **ʙᴏᴛ sᴛᴀᴛᴜs**\n\n\n`;
+    status += `${icon("UPTIME")} **ᴜᴘᴛɪᴍᴇ:** ${formatUptime(client.uptime)}\n\n`;
+    status += `${icon("STATS")} **ɢᴜɪʟᴅs:** ${client.guilds.cache.size}\n\n`;
+    status += `${icon("MEMBERS")} **ᴜsᴇʀs:** ${client.users.cache.size}\n\n`;
+    status += `${icon("CHANNELS")} **ᴄʜᴀɴɴᴇʟs:** ${client.channels.cache.size}\n\n`;
 
     const voiceStatus = voiceManager.getStatus(guild.id);
     if (voiceStatus.connected) {
       const channel = guild.channels.cache.get(voiceStatus.channelId);
-      status += `🔊 **Voice:** Connected to **${channel?.name || "Unknown"}**\n`;
+      status += `${icon("VOICE")} **ᴠᴏɪᴄᴇ:** ᴄᴏɴɴᴇᴄᴛᴇᴅ ᴛᴏ **${channel?.name || "ᴜɴᴋɴᴏᴡɴ"}**\n\n`;
 
       if (voiceStatus.currentSound) {
-        status += `🎵 **Playing:** ${voiceStatus.currentSound.soundName}\n`;
-        status += `⏱️ **Progress:** ${Math.floor(voiceStatus.progress)}s\n`;
+        status += `${icon("MUSIC")} **ᴘʟᴀʏɪɴɢ:** ${voiceStatus.currentSound.soundName}\n\n`;
+        status += `${icon("TIMER")} **ᴘʀᴏɢʀᴇss:** ${Math.floor(voiceStatus.progress)}s\n\n`;
       }
 
       if (voiceStatus.queueLength > 0) {
-        status += `📋 **Queue:** ${voiceStatus.queueLength} sound(s)\n`;
+        status += `${icon("CLIPBOARD")} **ǫᴜᴇᴜᴇ:** ${voiceStatus.queueLength} sᴏᴜɴᴅ(s)\n\n`;
       }
     } else {
-      status += `⚫ **Voice:** Not connected\n`;
+      status += `${icon("OFFLINE")} **ᴠᴏɪᴄᴇ:** ɴᴏᴛ ᴄᴏɴɴᴇᴄᴛᴇᴅ\n\n`;
     }
 
     try {
@@ -53,7 +55,7 @@ export default {
 
       if (verificationData[guild.id]) {
         const config = verificationData[guild.id];
-        status += `\n✅ **Verification:** Active`;
+        status += `\n${icon("SAVED")} **ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ:** ᴀᴄᴛɪᴠᴇ`;
         if (config.verificationChannelId) {
           status += ` (<#${config.verificationChannelId}>)`;
         }
@@ -62,10 +64,7 @@ export default {
       // Ignore if verification not configured
     }
 
-    await interaction.reply({
-      content: status,
-      flags: MessageFlags.Ephemeral,
-    });
+    await interaction.reply(eReply(`${i("BOT")} ʙᴏᴛ sᴛᴀᴛᴜs`, status));
   },
 };
 

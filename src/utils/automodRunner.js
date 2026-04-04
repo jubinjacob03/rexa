@@ -3,6 +3,8 @@ import { z } from "zod";
 import config, { getLanguageModel } from "../agents/config.js";
 import * as modTools from "./moderation.js";
 import { loadConfig } from "./automodManager.js";
+import { eSend } from "./embed.js";
+import { i } from "./icons.js";
 
 // In-memory rate trackers
 const userTrackers = new Map();
@@ -106,17 +108,23 @@ async function triggerWarningOrAction(
     // Attempt warning
     try {
       if (message) {
-        const warningMsg = await message.channel.send({
-          content: `<@${userId}> ⚠️ **WARNING**: ${warningText} Repeating this within 20 minutes will result in severe server punishment.`,
-        });
+        const warningMsg = await message.channel.send(
+          eSend(
+            `${i("WARNING")} ᴀᴜᴛᴏᴍᴏᴅ ᴡᴀʀɴɪɴɢ`,
+            `<@${userId}> ${warningText}\n\n ʀᴇᴘᴇᴀᴛɪɴɢ ᴛʜɪs ᴡɪᴛʜɪɴ 20 ᴍɪɴᴜᴛᴇs ᴡɪʟʟ ʀᴇsᴜʟᴛ ɪɴ ᴀ sᴇʀᴠᴇʀ ᴘᴜɴɪsʜᴍᴇɴᴛ.`,
+          ),
+        );
         // Auto-delete warning after 10s to avoid clutter
         setTimeout(() => warningMsg.delete().catch(() => {}), 10000);
       } else {
         const member = await guild.members.fetch(userId).catch(() => null);
         if (member)
-          await member.send({
-            content: `⚠️ **SERVER WARNING**: ${warningText} Repeating this within 20 minutes will result in severe punishment.`,
-          });
+          await member.send(
+            eSend(
+              `${i("WARNING")} ᴡᴀʀɴɪɴɢ`,
+              `${warningText}\n\n ʀᴇᴘᴇᴀᴛɪɴɢ ᴛʜɪs ᴡɪᴛʜɪɴ 20 ᴍɪɴᴜᴛᴇs ᴡɪʟʟ ʀᴇsᴜʟᴛ ɪɴ ᴀ sᴇʀᴠᴇʀ ᴘᴜɴɪsʜᴍᴇɴᴛ.`,
+            ),
+          );
       }
     } catch (err) {
       console.error("[AutoMod] Failed sending warning", err);

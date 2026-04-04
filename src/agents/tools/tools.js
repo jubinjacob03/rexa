@@ -6,6 +6,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { EmbedBuilder } from "discord.js";
+import { icon } from "../../utils/icons.js";
 import config from "../config.js";
 import {
   createPrivateVC,
@@ -706,8 +707,7 @@ The tool enforces role-based permissions internally. Always pass userId (invoker
         if (!allowed)
           return {
             success: false,
-            error:
-              "🔒 Permission denied. Only the server Owner can perform kick/ban actions.",
+            error: `${icon("LOCK")} ᴘᴇʀᴍɪssɪᴏɴ ᴅᴇɴɪᴇᴅ. ᴏɴʟʏ ᴛʜᴇ sᴇʀᴠᴇʀ ᴏᴡɴᴇʀ ᴄᴀɴ ᴘᴇʀғᴏʀᴍ ᴋɪᴄᴋ/ʙᴀɴ ᴀᴄᴛɪᴏɴs.`,
           };
       } else if (modActions.has(action)) {
         const allowed = await modTools.checkModerationPermission(
@@ -718,8 +718,7 @@ The tool enforces role-based permissions internally. Always pass userId (invoker
         if (!allowed)
           return {
             success: false,
-            error:
-              "🔒 Permission denied. You need a Moderator or higher role to perform this action.",
+            error: `${icon("LOCK")} ᴘᴇʀᴍɪssɪᴏɴ ᴅᴇɴɪᴇᴅ. ʏᴏᴜ ɴᴇᴇᴅ ᴀ ᴍᴏᴅᴇʀᴀᴛᴏʀ ᴏʀ ʜɪɢʜᴇʀ ʀᴏʟᴇ ᴛᴏ ᴘᴇʀғᴏʀᴍ ᴛʜɪs ᴀᴄᴛɪᴏɴ.`,
           };
       }
 

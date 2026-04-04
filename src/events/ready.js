@@ -1,6 +1,7 @@
 import { Events } from "discord.js";
 import { startStatusUpdater } from "../utils/statusUpdater.js";
 import { startApiServer } from "../api/server.js";
+import { initIcons } from "../utils/icons.js";
 
 const WAR_RESULTS_CHANNEL = "1473075469028167814";
 const GUARANTEED_EMOJIS = ["🔥", "❤️", "💪", "👏", "⚡", "✨"];
@@ -120,6 +121,8 @@ export default {
   async execute(client) {
     console.log(`[SUCCESS] Shantha logged in as ${client.user.tag}`);
     console.log(`[INFO] Serving ${client.guilds.cache.size} guild(s)`);
+
+    initIcons(client);
 
     try {
       console.log("[INFO] Initializing AI Agent and tools...");

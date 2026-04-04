@@ -4,6 +4,8 @@ import {
   getVCData,
   removeMember,
 } from "../utils/privateVCManager.js";
+import { eSend } from "../utils/embed.js";
+import { i } from "../utils/icons.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -21,13 +23,18 @@ export default {
 
     const channelId = getVCByMember(invokerId);
     if (!channelId) {
-      return interaction.editReply("You are not in a private VC.");
+      return interaction.editReply(
+        eSend(`${i("ERROR")} ɴᴏᴛ ғᴏᴜɴᴅ`, "ʏᴏᴜ ᴀʀᴇ ɴᴏᴛ ɪɴ ᴀ ᴘʀɪᴠᴀᴛᴇ ᴠᴄ."),
+      );
     }
 
     const invokerMember = interaction.member;
     if (invokerMember.voice?.channelId !== channelId) {
       return interaction.editReply(
-        "You must be connected to your private VC to use this command.",
+        eSend(
+          `${i("ERROR")} ɴᴏᴛ ᴄᴏɴɴᴇᴄᴛᴇᴅ`,
+          "ʏᴏᴜ ᴍᴜsᴛ ʙᴇ ᴄᴏɴɴᴇᴄᴛᴇᴅ ᴛᴏ ʏᴏᴜʀ ᴘʀɪᴠᴀᴛᴇ ᴠᴄ ᴛᴏ ᴜsᴇ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ.",
+        ),
       );
     }
 
@@ -36,13 +43,19 @@ export default {
     const data = getVCData(channelId);
     if (!data.members.has(targetUser.id)) {
       return interaction.editReply(
-        `<@${targetUser.id}> is not in this private VC.`,
+        eSend(
+          `${i("ERROR")} ɴᴏᴛ ɪɴ ᴠᴄ`,
+          `<@${targetUser.id}> ɪs ɴᴏᴛ ɪɴ ᴛʜɪs ᴘʀɪᴠᴀᴛᴇ ᴠᴄ.`,
+        ),
       );
     }
 
     if (targetUser.id === invokerId) {
       return interaction.editReply(
-        "You cannot remove yourself. Leave the VC instead.",
+        eSend(
+          `${i("ERROR")} ɪɴᴠᴀʟɪᴅ`,
+          "ʏᴏᴜ ᴄᴀɴɴᴏᴛ ʀᴇᴍᴏᴠᴇ ʏᴏᴜʀsᴇʟғ. ʟᴇᴀᴠᴇ ᴛʜᴇ ᴠᴄ ɪɴsᴛᴇᴀᴅ.",
+        ),
       );
     }
 
@@ -50,13 +63,18 @@ export default {
       .fetch(targetUser.id)
       .catch(() => null);
     if (!targetMember) {
-      return interaction.editReply("Could not find that member.");
+      return interaction.editReply(
+        eSend(`${i("ERROR")} ɴᴏᴛ ғᴏᴜɴᴅ`, "ᴄᴏᴜʟᴅ ɴᴏᴛ ғɪɴᴅ ᴛʜᴀᴛ ᴍᴇᴍʙᴇʀ."),
+      );
     }
 
     await removeMember(channelId, targetMember, guild);
 
     await interaction.editReply(
-      `✅ <@${targetUser.id}> has been removed from the private VC.`,
+      eSend(
+        `${i("DONE")} ᴍᴇᴍʙᴇʀ ʀᴇᴍᴏᴠᴇᴅ`,
+        `<@${targetUser.id}> ʜᴀs ʙᴇᴇɴ ʀᴇᴍᴏᴠᴇᴅ ғʀᴏᴍ ᴛʜᴇ ᴘʀɪᴠᴀᴛᴇ ᴠᴄ.`,
+      ),
     );
   },
 };

@@ -11,6 +11,8 @@ import {
 import { createClient } from "@supabase/supabase-js";
 import config from "../../config.js";
 import { generateText } from "ai";
+import { eReply, eSend, EMBED_COLOR } from "./embed.js";
+import { i, icon } from "./icons.js";
 import { getLanguageModel } from "../agents/config.js";
 
 const supabase = createClient(config.supabase.url, config.supabase.serviceKey, {
@@ -194,11 +196,12 @@ export async function handleVerificationApply(interaction) {
       (guildMember.roles.cache.has(config.friendsRoleId) ||
         guildMember.roles.cache.has(config.memberRoleId))
     ) {
-      return interaction.reply({
-        content:
-          "⚠️ ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀɴ ᴀᴄᴛɪᴠᴇ ʀᴏʟᴇ. ᴘʟᴇᴀsᴇ ᴀsᴋ ᴀ ᴍᴏᴅᴇʀᴀᴛᴏʀ ғᴏʀ ᴀɴʏ ᴄʜʜᴀɴɢᴇs.",
-        flags: MessageFlags.Ephemeral,
-      });
+      return interaction.reply(
+        eReply(
+          `${i("WARNING")} ᴀʟʀᴇᴀᴅʏ ᴠᴇʀɪғɪᴇᴅ`,
+          "ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀɴ ᴀᴄᴛɪᴠᴇ ʀᴏʟᴇ. ᴘʟᴇᴀsᴇ ᴀsᴋ ᴀ ᴍᴏᴅᴇʀᴀᴛᴏʀ ғᴏʀ ᴀɴʏ ᴄʜᴀɴɢᴇs.",
+        ),
+      );
     }
 
     const isFriends = interaction.customId === "verify_friends";
@@ -211,11 +214,12 @@ export async function handleVerificationApply(interaction) {
     const autoApproveEnabled = await getAutoApprove();
     if (autoApproveEnabled) {
       if (pendingInterrogations.has(userId)) {
-        return interaction.reply({
-          content:
-            "⏳ ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀ ᴘᴇɴᴅɪɴɢ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ. ᴘʟᴇᴀsᴇ ᴄʜᴇᴄᴋ ʏᴏᴜʀ ᴅᴍs!",
-          flags: MessageFlags.Ephemeral,
-        });
+        return interaction.reply(
+          eReply(
+            `${i("PENDING")} ᴘᴇɴᴅɪɴɢ ɪɴᴛᴇʀʀᴏɢᴀᴛɪᴏɴ`,
+            "ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀ ᴘᴇɴᴅɪɴɢ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ. ᴘʟᴇᴀsᴇ ᴄʜᴇᴄᴋ ʏᴏᴜʀ ᴅᴍs!",
+          ),
+        );
       }
 
       const question =
@@ -231,35 +235,43 @@ export async function handleVerificationApply(interaction) {
 
       try {
         await interaction.user.send(
-          `**🛡️ sᴇʀᴠᴇʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜɪʀᴇᴅ!**\n\nᴛᴏ ᴇɴsᴜʀᴇ ʏᴏᴜ'ʀᴇ ᴀ ʜᴜᴍᴀɴ, ᴘʟᴇᴀsᴇ ʀᴇᴘʟʏ ʜᴇʀᴇ ʙʏ ᴀɴsᴡᴇʀɪɴɢ ᴛʜɪs ǫᴜᴇsᴛɪᴏɴ ᴏʀɢᴀɴɪᴄᴀʟʟʏ:\n> *${question}*`,
+          eSend(
+            `${i("SHIELD")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ`,
+            `ᴛᴏ ᴇɴsᴜʀᴇ ʏᴏᴜ'ʀᴇ ᴀ ʜᴜᴍᴀɴ, ᴘʟᴇᴀsᴇ ʀᴇᴘʟʏ ʜᴇʀᴇ ʙʏ ᴀɴsᴡᴇʀɪɴɢ ᴛʜɪs ǫᴜᴇsᴛɪᴏɴ ᴏʀɢᴀɴɪᴄᴀʟʟʏ:\n> *${question}*`,
+          ),
         );
-        return interaction.reply({
-          content:
-            "✅ **ᴄʜᴇᴄᴋ ʏᴏᴜʀ ᴅᴍs!** ɪ'ᴠᴇ sᴇɴᴛ ʏᴏᴜ ᴀ ǫᴜɪᴄᴋ ǫᴜᴇsᴛɪᴏɴ ᴛᴏ ᴠᴇʀɪғʏ ʏᴏᴜ'ʀᴇ ʜᴜᴍᴀɴ. ᴀɴsᴡᴇʀ ɪᴛ ᴛʜᴇʀᴇ ᴛᴏ ʀᴇᴄᴇɪᴠᴇ ʏᴏᴜʀ ʀᴏʟᴇ.",
-          flags: MessageFlags.Ephemeral,
-        });
+        return interaction.reply(
+          eReply(
+            `${i("SUCCESS")} ᴄʜᴇᴄᴋ ʏᴏᴜʀ ᴅᴍs`,
+            "ɪ'ᴠᴇ sᴇɴᴛ ʏᴏᴜ ᴀ ǫᴜɪᴄᴋ ǫᴜᴇsᴛɪᴏɴ ᴛᴏ ᴠᴇʀɪғʏ ʏᴏᴜ'ʀᴇ ᴀ ʜᴜᴍᴀɴ. ᴀɴsᴡᴇʀ ɪᴛ ᴛʜᴇʀᴇ ᴛᴏ ʀᴇᴄᴇɪᴠᴇ ʏᴏᴜʀ ʀᴏʟᴇ.",
+          ),
+        );
       } catch (e) {
         pendingInterrogations.delete(userId);
-        return interaction.reply({
-          content:
-            "❌ **ɪ ᴄᴏᴜʟᴅɴ'ᴛ ᴅᴍ ʏᴏᴜ!** ᴘʟᴇᴀsᴇ ᴇɴᴀʙʟᴇ ᴅᴍs ғʀᴏᴍ sᴇʀᴠᴇʀ ᴍᴇᴍʙᴇʀs sᴏ ᴡᴇ ᴄᴀɴ ᴠᴇʀɪғʏ ʏᴏᴜ.",
-          flags: MessageFlags.Ephemeral,
-        });
+        return interaction.reply(
+          eReply(
+            `${i("ERROR")} ᴅᴍs ᴅɪsᴀʙʟᴇᴅ`,
+            "ɪ ᴄᴏᴜʟᴅɴ'ᴛ ᴅᴍ ʏᴏᴜ. ᴘʟᴇᴀsᴇ ᴇɴᴀʙʟᴇ ᴅᴍs ғʀᴏᴍ sᴇʀᴠᴇʀ ᴍᴇᴍʙᴇʀs sᴏ ᴡᴇ ᴄᴀɴ ᴠᴇʀɪғʏ ʏᴏᴜ.",
+          ),
+        );
       }
     }
 
     // --- MANUAL APPROVAL PATH (original flow) ---
     if (await hasPendingRequest(userId)) {
-      return interaction.reply({
-        content:
-          "⚠️ ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀ ᴘᴇɴᴅɪɴɢ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ. ᴘʟᴇᴀsᴇ ᴡᴀɪᴛ ғᴏʀ ᴀᴘᴘʀᴏᴠᴀʟ.",
-        flags: MessageFlags.Ephemeral,
-      });
+      return interaction.reply(
+        eReply(
+          `${i("WARNING")} ᴘᴇɴᴅɪɴɢ ʀᴇǫᴜᴇsᴛ`,
+          "ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀ ᴘᴇɴᴅɪɴɢ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ. ᴘʟᴇᴀsᴇ ᴡᴀɪᴛ ғᴏʀ ᴀᴘᴘʀᴏᴠᴀʟ.",
+        ),
+      );
     }
 
     const approvalEmbed = new EmbedBuilder()
-      .setColor(isFriends ? "#0099FF" : "#00FF00")
-      .setTitle(`${isFriends ? "🌟" : "👑"} ɴᴇᴡ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ`)
+      .setColor(EMBED_COLOR)
+      .setTitle(
+        `${isFriends ? icon("FRIENDS_ROLE") : icon("MEMBER_ROLE")} ɴᴇᴡ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ`,
+      )
       .setDescription(
         `<@${userId}> ʜᴀs ʀᴇǫᴜᴇsᴛᴇᴅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ғᴏʀ **${requestedRole}** ʀᴏʟᴇ.`,
       )
@@ -276,12 +288,12 @@ export async function handleVerificationApply(interaction) {
         .setCustomId(`approve_${userId}_${requestedRoleId}`)
         .setLabel("ᴀᴘᴘʀᴏᴠᴇ")
         .setStyle(ButtonStyle.Success)
-        .setEmoji("✅"),
+        .setEmoji(icon("SUCCESS")),
       new ButtonBuilder()
         .setCustomId(`reject_${userId}_${requestedRoleId}`)
         .setLabel("ʀᴇᴊᴇᴄᴛ")
         .setStyle(ButtonStyle.Danger)
-        .setEmoji("❌"),
+        .setEmoji(icon("ERROR")),
     );
 
     const approvalsChannel = await interaction.guild.channels.fetch(
@@ -301,17 +313,18 @@ export async function handleVerificationApply(interaction) {
       approvalMessage.id,
     );
 
-    await interaction.reply({
-      content: `✅ ʏᴏᴜʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ ғᴏʀ **${requestedRole}** ʜᴀs ʙᴇᴇɴ sᴜʙᴍɪᴛᴛᴇᴅ. ᴘʟᴇᴀsᴇ ᴡᴀɪᴛ ғᴏʀ ᴀᴘᴘʀᴏᴠᴀʟ.`,
-      flags: MessageFlags.Ephemeral,
-    });
+    await interaction.reply(
+      eReply(
+        `${i("DONE")} ʀᴇǫᴜᴇsᴛ sᴜʙᴍɪᴛᴛᴇᴅ`,
+        `ʏᴏᴜʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ ғᴏʀ **${requestedRole}** ʜᴀs ʙᴇᴇɴ sᴜʙᴍɪᴛᴛᴇᴅ. ᴘʟᴇᴀsᴇ ᴡᴀɪᴛ ғᴏʀ ᴀᴘᴘʀᴏᴠᴀʟ.`,
+      ),
+    );
   } catch (error) {
     console.error("[ERROR] Error handling verification apply:", error);
     if (!interaction.replied)
-      await interaction.reply({
-        content: "❌ ғᴀɪʟᴇᴅ ᴛᴏ sᴜʙᴍɪᴛ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ.",
-        flags: MessageFlags.Ephemeral,
-      });
+      await interaction.reply(
+        eReply(`${i("ERROR")}ᴇʀʀᴏʀ`, "ғᴀɪʟᴇᴅ ᴛᴏ sᴜʙᴍɪᴛ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ."),
+      );
   }
 }
 
@@ -325,7 +338,10 @@ export async function handleVerificationDM(message) {
     pendingInterrogations.delete(message.author.id);
     await message.author
       .send(
-        "⏳ ʏᴏᴜʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴛɪᴍᴇᴅ ᴏᴜᴛ. ᴘʟᴇᴀsᴇ ᴄʟɪᴄᴋ ᴛʜᴇ ᴠᴇʀɪғʏ ʙᴜᴛᴛᴏɴ ɪɴ ᴛʜᴇ sᴇʀᴠᴇʀ ᴀɢᴀɪɴ.",
+        eSend(
+          `${i("PENDING")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴛɪᴍᴇᴅ ᴏᴜᴛ`,
+          "ʏᴏᴜʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴛɪᴍᴇᴅ ᴏᴜᴛ. ᴘʟᴇᴀsᴇ ᴄʟɪᴄᴋ ᴛʜᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʙᴜᴛᴛᴏɴ ɪɴ ᴛʜᴇ sᴇʀᴠᴇʀ ᴀɢᴀɪɴ.",
+        ),
       )
       .catch(() => null);
     return true;
@@ -333,7 +349,7 @@ export async function handleVerificationDM(message) {
 
   try {
     const analyzingMsg = await message.author
-      .send("🤖 ᴀɴᴀʟʏᴢɪɴɢ ʏᴏᴜʀ ʀᴇsᴘᴏɴsᴇ...")
+      .send(eSend(`${i("BOT")} ᴀɴᴀʟʏᴢɪɴɢ`, "ᴀɴᴀʟʏᴢɪɴɢ ʏᴏᴜʀ ʀᴇsᴘᴏɴsᴇ..."))
       .catch(() => null);
 
     const prompt =
@@ -369,9 +385,10 @@ export async function handleVerificationDM(message) {
       if (analyzingMsg) await analyzingMsg.delete().catch(() => null);
       await message.author
         .send(
-          "✅ **ᴀᴜᴛʜᴇɴᴛɪᴄᴀᴛɪᴏɴ ᴄᴏᴍᴘʟᴇᴛᴇ.** ʏᴏᴜ'ᴠᴇ ʙᴇᴇɴ ɢʀᴀɴᴛᴇᴅ ᴛʜᴇ **" +
-            pending.requestedRole +
-            "** ʀᴏʟᴇ. ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ ᴛʜᴇ sᴇʀᴠᴇʀ!",
+          eSend(
+            `${i("SUCCESS")} ᴀᴜᴛʜᴇɴᴛɪᴄᴀᴛɪᴏɴ ᴄᴏᴍᴘʟᴇᴛᴇ`,
+            `ʏᴏᴜ'ᴠᴇ ʙᴇᴇɴ ɢʀᴀɴᴛᴇᴅ ᴛʜᴇ **${pending.requestedRole}** ʀᴏʟᴇ. ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ ᴛʜᴇ sᴇʀᴠᴇʀ!`,
+          ),
         )
         .catch(() => null);
     } else {
@@ -379,7 +396,10 @@ export async function handleVerificationDM(message) {
       if (analyzingMsg) await analyzingMsg.delete().catch(() => null);
       await message.author
         .send(
-          "❌ **ᴀᴜᴛʜᴇɴᴛɪᴄᴀᴛɪᴏɴ ғᴀɪʟᴇᴅ.** ʏᴏᴜʀ ʀᴇsᴘᴏɴsᴇ ᴅɪᴅ ɴᴏᴛ ᴘᴀss ᴏᴜʀ ᴄʜᴇᴄᴋs. ɪғ ʏᴏᴜ ᴛʜɪɴᴋ ᴛʜɪs ᴡᴀs ᴀ ᴍɪsᴛᴀᴋᴇ, ʏᴏᴜ ᴄᴀɴ ᴛʀʏ ᴀɢᴀɪɴ ʙʏ ᴄʟɪᴄᴋɪɴɢ ᴛʜᴇ ᴠᴇʀɪғʏ ʙᴜᴛᴛᴏɴ ɪɴ ᴛʜᴇ sᴇʀᴠᴇʀ.",
+          eSend(
+            `${i("ERROR")} ᴀᴜᴛʜᴇɴᴛɪᴄᴀᴛɪᴏɴ ғᴀɪʟᴇᴅ`,
+            "ʏᴏᴜʀ ʀᴇsᴘᴏɴsᴇ ᴅɪᴅ ɴᴏᴛ ᴘᴀss ᴏᴜʀ ᴄʜᴇᴄᴋs. ɪғ ʏᴏᴜ ᴛʜɪɴᴋ ᴛʜɪs ᴡᴀs ᴀ ᴍɪsᴛᴀᴋᴇ, ʏᴏᴜ ᴄᴀɴ ᴛʀʏ ᴀɢᴀɪɴ ʙʏ ᴄʟɪᴄᴋɪɴɢ ᴛʜᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʙᴜᴛᴛᴏɴ ɪɴ ᴛʜᴇ sᴇʀᴠᴇʀ.",
+          ),
         )
         .catch(() => null);
     }
@@ -387,7 +407,10 @@ export async function handleVerificationDM(message) {
     console.error("[ERROR] Verification AI Error:", e);
     await message.author
       .send(
-        "⚠️ sᴏʀʀʏ, ᴏᴜʀ ᴀɪ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ sʏsᴛᴇᴍ ᴇɴᴄᴏᴜɴᴛᴇʀᴇᴅ ᴀɴ ᴇʀʀᴏʀ. ᴘʟᴇᴀsᴇ ᴛʀʏ ᴀɢᴀɪɴ ʟᴀᴛᴇʀ.",
+        eSend(
+          `${i("WARNING")} sʏsᴛᴇᴍ ᴇʀʀᴏʀ`,
+          "ᴏᴜʀ ᴀɪ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ sʏsᴛᴇᴍ ᴇɴᴄᴏᴜɴᴛᴇʀᴇᴅ ᴀɴ ᴇʀʀᴏʀ. ᴘʟᴇᴀsᴇ ᴛʀʏ ᴀɢᴀɪɴ ʟᴀᴛᴇʀ.",
+        ),
       )
       .catch(() => null);
     pendingInterrogations.delete(message.author.id);
@@ -401,10 +424,12 @@ export async function handleApprovalAction(interaction) {
 
     const request = await getRequest(userId);
     if (!request) {
-      return interaction.reply({
-        content: "⚠️ This verification request no longer exists.",
-        flags: MessageFlags.Ephemeral,
-      });
+      return interaction.reply(
+        eReply(
+          `${i("WARNING")} ɴᴏᴛ ғᴏᴜɴᴅ`,
+          "ᴛʜɪs ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ ɴᴏ ʟᴏɴɢᴇʀ ᴇxɪsᴛs.",
+        ),
+      );
     }
 
     const user = await interaction.client.users.fetch(userId);
@@ -414,10 +439,9 @@ export async function handleApprovalAction(interaction) {
 
     if (!member) {
       await removeRequest(userId);
-      return interaction.reply({
-        content: "❌ User is no longer in the server.",
-        flags: MessageFlags.Ephemeral,
-      });
+      return interaction.reply(
+        eReply(`${i("ERROR")} ɴᴏᴛ ғᴏᴜɴᴅ`, "ᴜsᴇʀ ɪs ɴᴏ ʟᴏɴɢᴇʀ ɪɴ ᴛʜᴇ sᴇʀᴠᴇʀ."),
+      );
     }
 
     if (action === "approve") {
@@ -446,8 +470,8 @@ export async function handleApprovalAction(interaction) {
       await interaction.showModal(modal);
     } else if (action === "reject") {
       const originalEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-        .setColor("#FF0000")
-        .setTitle("❌ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇᴊᴇᴄᴛᴇᴅ")
+        .setColor(EMBED_COLOR)
+        .setTitle(`${icon("ERROR")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇᴊᴇᴄᴛᴇᴅ`)
         .addFields({
           name: "ʀᴇᴊᴇᴄᴛᴇᴅ ʙʏ",
           value: `<@${interaction.user.id}>`,
@@ -472,31 +496,24 @@ export async function handleApprovalAction(interaction) {
       await removeRequest(userId);
 
       await user
-        .send({
-          embeds: [
-            new EmbedBuilder()
-              .setColor("#FF0000")
-              .setTitle("❌ sᴀɪʏᴀɴ ɢᴏᴅs - ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ғᴀɪʟᴇᴅ")
-              .setDescription(
-                `sᴏʀʀʏ ᴛᴏ ɪɴғᴏʀᴍ ʏᴏᴜʀ ʀᴇǫᴜᴇsᴛ ғᴏʀ **${request.requestedRole}** ʀᴏʟᴇ ʜᴀs ʙᴇᴇɴ ʀᴇᴊᴇᴄᴛᴇᴅ.`,
-              )
-              .setTimestamp(),
-          ],
-        })
+        .send(
+          eSend(
+            `${i("ERROR")}sᴀɪʏᴀɴ ɢᴏᴅs — ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴅᴇᴄʟɪɴᴇᴅ`,
+            `sᴏʀʀʏ, ʏᴏᴜʀ ʀᴇǫᴜᴇsᴛ ғᴏʀ **${request.requestedRole}** ʀᴏʟᴇ ʜᴀs ʙᴇᴇɴ ʀᴇᴊᴇᴄᴛᴇᴅ.`,
+          ),
+        )
         .catch(() => console.log(`[WARN] Could not DM user ${userId}`));
 
-      await interaction.followUp({
-        content: `✅ Verification request rejected and logged.`,
-        flags: MessageFlags.Ephemeral,
-      });
+      await interaction.followUp(
+        eReply(`${i("DONE")}ᴅᴏɴᴇ`, "ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ ʀᴇᴊᴇᴄᴛᴇᴅ ᴀɴᴅ ʟᴏɢɢᴇᴅ."),
+      );
     }
   } catch (error) {
     console.error("[ERROR] Error handling approval action:", error);
     if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({
-        content: "❌ Failed to process approval action.",
-        flags: MessageFlags.Ephemeral,
-      });
+      await interaction.reply(
+        eReply(`${i("ERROR")}ᴇʀʀᴏʀ`, "ғᴀɪʟᴇᴅ ᴛᴏ ᴘʀᴏᴄᴇss ᴀᴘᴘʀᴏᴠᴀʟ ᴀᴄᴛɪᴏɴ."),
+      );
     }
   }
 }
@@ -513,9 +530,12 @@ export async function handleNicknameModal(interaction) {
 
     const request = await getRequest(userId);
     if (!request) {
-      return interaction.editReply({
-        content: "⚠️ This verification request no longer exists.",
-      });
+      return interaction.editReply(
+        eSend(
+          `${i("WARNING")}ɴᴏᴛ ғᴏᴜɴᴅ`,
+          "ᴛʜɪs ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ ɴᴏ ʟᴏɴɢᴇʀ ᴇxɪsᴛs.",
+        ),
+      );
     }
 
     const member = await interaction.guild.members
@@ -523,15 +543,18 @@ export async function handleNicknameModal(interaction) {
       .catch(() => null);
     if (!member) {
       await removeRequest(userId);
-      return interaction.editReply({
-        content: "❌ User is no longer in the server.",
-      });
+      return interaction.editReply(
+        eSend(`${i("ERROR")}ɴᴏᴛ ғᴏᴜɴᴅ`, "ᴜsᴇʀ ɪs ɴᴏ ʟᴏɴɢᴇʀ ɪɴ ᴛʜᴇ sᴇʀᴠᴇʀ."),
+      );
     }
 
     if (member.roles.cache.has(roleId)) {
-      return interaction.editReply({
-        content: `❌ User already has the **${request.requestedRole}** role. No changes made.`,
-      });
+      return interaction.editReply(
+        eSend(
+          `${i("ERROR")}ᴀʟʀᴇᴀᴅʏ ᴀssɪɢɴᴇᴅ`,
+          `ᴜsᴇʀ ᴀʟʀᴇᴀᴅʏ ʜᴀs ᴛʜᴇ **${request.requestedRole}** ʀᴏʟᴇ. ɴᴏ ᴄʜᴀɴɢᴇs ᴍᴀᴅᴇ.`,
+        ),
+      );
     }
 
     if (member.roles.cache.has(config.unverifiedRoleId)) {
@@ -543,8 +566,8 @@ export async function handleNicknameModal(interaction) {
     await member.setNickname(finalNickname);
 
     const originalEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-      .setColor("#00FF00")
-      .setTitle("✅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ")
+      .setColor(EMBED_COLOR)
+      .setTitle(`${icon("SUCCESS")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ`)
       .addFields(
         {
           name: "ᴀᴘᴘʀᴏᴠᴇᴅ ʙʏ",
@@ -573,26 +596,24 @@ export async function handleNicknameModal(interaction) {
 
     const user = await interaction.client.users.fetch(userId);
     await user
-      .send({
-        embeds: [
-          new EmbedBuilder()
-            .setColor("#00FF00")
-            .setTitle("✅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ")
-            .setDescription(
-              `ʏᴏᴜʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ ʜᴀs ʙᴇᴇɴ ᴀᴘᴘʀᴏᴠᴇᴅ!\n\n**ʀᴏʟᴇ:** ${request.requestedRole}\n**ɴɪᴄᴋɴᴀᴍᴇ:** ${finalNickname}`,
-            )
-            .setTimestamp(),
-        ],
-      })
+      .send(
+        eSend(
+          `${i("DONE")}sᴀɪʏᴀɴ ɢᴏᴅs — ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ`,
+          `ʏᴏᴜʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ ʜᴀs ʙᴇᴇɴ ᴀᴘᴘʀᴏᴠᴇᴅ!\n\n**ʀᴏʟᴇ:** ${request.requestedRole}\n**ɴɪᴄᴋɴᴀᴍᴇ:** ${finalNickname}`,
+        ),
+      )
       .catch(() => console.log(`[WARN] Could not DM user ${userId}`));
 
-    await interaction.editReply({
-      content: `✅ Verification approved! User has been given **${request.requestedRole}** role with nickname **${finalNickname}**.`,
-    });
+    await interaction.editReply(
+      eSend(
+        `${i("DONE")}ᴀᴘᴘʀᴏᴠᴇᴅ`,
+        `ᴜsᴇʀ ʜᴀs ʙᴇᴇɴ ɢɪᴠᴇɴ **${request.requestedRole}** ʀᴏʟᴇ ᴡɪᴛʜ ɴɪᴄᴋɴᴀᴍᴇ **${finalNickname}**.`,
+      ),
+    );
   } catch (error) {
     console.error("[ERROR] Error handling nickname modal:", error);
-    await interaction.editReply({
-      content: "❌ Failed to complete verification approval.",
-    });
+    await interaction.editReply(
+      eSend(`${i("ERROR")}ᴇʀʀᴏʀ`, "ғᴀɪʟᴇᴅ ᴛᴏ ᴄᴏᴍᴘʟᴇᴛᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴀʟ."),
+    );
   }
 }

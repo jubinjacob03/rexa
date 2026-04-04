@@ -1,6 +1,8 @@
 import { SlashCommandBuilder, MessageFlags } from "discord.js";
 import voiceManager from "../voice/VoiceManager.js";
 import { ChannelType } from "discord.js";
+import { eSend } from "../utils/embed.js";
+import { i } from "../utils/icons.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -20,7 +22,12 @@ export default {
       );
 
       if (channels.size === 0) {
-        return interaction.editReply("❌ No active voice channels");
+        return interaction.editReply(
+          eSend(
+            `${i("ERROR")} ɴᴏ ᴠᴏɪᴄᴇ ᴄʜᴀɴɴᴇʟs`,
+            "ɴᴏ ᴀᴄᴛɪᴠᴇ ᴠᴏɪᴄᴇ ᴄʜᴀɴɴᴇʟs ғᴏᴜɴᴅ.",
+          ),
+        );
       }
 
       targetChannel = channels.reduce((prev, curr) =>
@@ -30,10 +37,17 @@ export default {
 
     try {
       await voiceManager.joinChannel(guild, targetChannel);
-      await interaction.editReply(`✅ Joined **${targetChannel.name}**`);
+      await interaction.editReply(
+        eSend(
+          `${i("SUCCESS")} ᴊᴏɪɴᴇᴅ`,
+          `ᴄᴏɴɴᴇᴄᴛᴇᴅ ᴛᴏ **${targetChannel.name}**.`,
+        ),
+      );
     } catch (error) {
       console.error("[ERROR] Failed to join:", error);
-      await interaction.editReply("❌ Failed to join voice channel");
+      await interaction.editReply(
+        eSend(`${i("ERROR")} ғᴀɪʟᴇᴅ`, "ғᴀɪʟᴇᴅ ᴛᴏ ᴊᴏɪɴ ᴠᴏɪᴄᴇ ᴄʜᴀɴɴᴇʟ."),
+      );
     }
   },
 };

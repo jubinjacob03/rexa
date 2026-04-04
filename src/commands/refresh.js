@@ -4,6 +4,8 @@ import {
   MessageFlags,
 } from "discord.js";
 import { updateStatusMessage } from "../utils/statusUpdater.js";
+import { eSend } from "../utils/embed.js";
+import { i } from "../utils/icons.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -15,11 +17,19 @@ export default {
 
     try {
       await updateStatusMessage(interaction.client);
-      await interaction.editReply("✅ Server information has been refreshed!");
+      await interaction.editReply(
+        eSend(
+          `${i("SUCCESS")} ʀᴇғʀᴇsʜᴇᴅ`,
+          "sᴇʀᴠᴇʀ ɪɴғᴏʀᴍᴀᴛɪᴏɴ ʜᴀs ʙᴇᴇɴ ʀᴇғʀᴇsʜᴇᴅ!",
+        ),
+      );
     } catch (error) {
       console.error("[ERROR] Failed to refresh status:", error);
       await interaction.editReply(
-        "❌ Failed to refresh server information. Check console for details.",
+        eSend(
+          `${i("ERROR")} ғᴀɪʟᴇᴅ`,
+          "ғᴀɪʟᴇᴅ ᴛᴏ ʀᴇғʀᴇsʜ sᴇʀᴠᴇʀ ɪɴғᴏʀᴍᴀᴛɪᴏɴ. ᴄʜᴇᴄᴋ ᴄᴏɴsᴏʟᴇ ғᴏʀ ᴅᴇᴛᴀɪʟs.",
+        ),
       );
     }
   },

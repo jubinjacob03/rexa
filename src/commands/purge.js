@@ -5,6 +5,8 @@ import {
   MessageFlags,
 } from "discord.js";
 import config from "../../config.js";
+import { EMBED_COLOR, eReply, eSend } from "../utils/embed.js";
+import { i } from "../utils/icons.js";
 
 const BULK_DELETE_MAX_AGE_MS = 13 * 24 * 60 * 60 * 1000;
 const BATCH_SIZE = 100;
@@ -130,10 +132,12 @@ export default {
 
   async execute(interaction) {
     if (!interaction.member.roles.cache.has(config.ownerRoleId)) {
-      return interaction.reply({
-        content: "❌ This command is restricted to server owners only.",
-        flags: MessageFlags.Ephemeral,
-      });
+      return interaction.reply(
+        eReply(
+          `${i("ERROR")} ᴀᴄᴄᴇss ᴅᴇɴɪᴇᴅ`,
+          "ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ ɪs ʀᴇsᴛʀɪᴄᴛᴇᴅ ᴛᴏ sᴇʀᴠᴇʀ ᴏᴡɴᴇʀs ᴏɴʟʏ.",
+        ),
+      );
     }
 
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -144,18 +148,29 @@ export default {
     const messageId = interaction.options.getString("message_id");
 
     if (!channel.isTextBased()) {
-      return interaction.editReply("❌ That channel doesn't support messages.");
+      return interaction.editReply(
+        eSend(
+          `${i("ERROR")} ɪɴᴠᴀʟɪᴅ ᴄʜᴀɴɴᴇʟ`,
+          "ᴛʜᴀᴛ ᴄʜᴀɴɴᴇʟ ᴅᴏᴇsɴ'ᴛ sᴜᴘᴘᴏʀᴛ ᴍᴇssᴀɢᴇs.",
+        ),
+      );
     }
 
     if ((mode === "user" || mode === "trail_user") && !targetUser) {
       return interaction.editReply(
-        "❌ You must provide a **user** for `user` and `trail_user` modes.",
+        eSend(
+          `${i("ERROR")} ᴍɪssɪɴɢ ᴜsᴇʀ`,
+          "ʏᴏᴜ ᴍᴜsᴛ ᴘʀᴏᴠɪᴅᴇ ᴀ **ᴜsᴇʀ** ғᴏʀ `user` ᴀɴᴅ `trail_user` ᴍᴏᴅᴇs.",
+        ),
       );
     }
 
     if ((mode === "trail" || mode === "trail_user") && !messageId) {
       return interaction.editReply(
-        "❌ You must provide a **message_id** for `trail` and `trail_user` modes.",
+        eSend(
+          `${i("ERROR")} ᴍɪssɪɴɢ ᴍᴇssᴀɢᴇ ɪᴅ`,
+          "ʏᴏᴜ ᴍᴜsᴛ ᴘʀᴏᴠɪᴅᴇ ᴀ **ᴍᴇssᴀɢᴇ_ɪᴅ** ғᴏʀ `trail` ᴀɴᴅ `trail_user` ᴍᴏᴅᴇs.",
+        ),
       );
     }
 
@@ -164,13 +179,19 @@ export default {
         await channel.messages.fetch(messageId);
       } catch {
         return interaction.editReply(
-          `❌ Message \`${messageId}\` not found in <#${channel.id}>.`,
+          eSend(
+            `${i("ERROR")} ɴᴏᴛ ғᴏᴜɴᴅ`,
+            `ᴍᴇssᴀɢᴇ \`${messageId}\` ɴᴏᴛ ғᴏᴜɴᴅ ɪɴ <#${channel.id}>.`,
+          ),
         );
       }
     }
 
     await interaction.editReply(
-      "⏳ Fetching messages, this may take a moment...",
+      eSend(
+        `${i("PENDING")} ᴘʀᴏᴄᴇssɪɴɢ`,
+        "ғᴇᴛᴄʜɪɴɢ ᴍᴇssᴀɢᴇs, ᴛʜɪs ᴍᴀʏ ᴛᴀᴋᴇ ᴀ ᴍᴏᴍᴇɴᴛ...",
+      ),
     );
 
     let toDelete = [];
@@ -198,46 +219,57 @@ export default {
       }
     } catch (err) {
       return interaction.editReply(
-        `❌ Failed to fetch messages: ${err.message}`,
+        eSend(
+          `${i("ERROR")} ғᴇᴛᴄʜ ғᴀɪʟᴇᴅ`,
+          `ғᴀɪʟᴇᴅ ᴛᴏ ғᴇᴛᴄʜ ᴍᴇssᴀɢᴇs: ${err.message}`,
+        ),
       );
     }
 
     if (toDelete.length === 0) {
-      return interaction.editReply("✅ No matching messages found to purge.");
+      return interaction.editReply(
+        eSend(
+          `${i("SUCCESS")} ɴᴏᴛʜɪɴɢ ᴛᴏ ᴘᴜʀɢᴇ`,
+          "ɴᴏ ᴍᴀᴛᴄʜɪɴɢ ᴍᴇssᴀɢᴇs ғᴏᴜɴᴅ.",
+        ),
+      );
     }
 
     await interaction.editReply(
-      `⏳ Purging **${toDelete.length}** message(s)...`,
+      eSend(
+        `${i("PENDING")} ᴘᴜʀɢɪɴɢ`,
+        `ᴅᴇʟᴇᴛɪɴɢ **${toDelete.length}** ᴍᴇssᴀɢᴇ(s)...`,
+      ),
     );
 
     const { deleted, failed } = await deleteMessages(channel, toDelete);
 
     const modeLabel = {
-      user: `all messages from <@${targetUser?.id}>`,
-      all: "all messages",
-      trail: `all messages from message \`${messageId}\` onward`,
-      trail_user: `all messages from <@${targetUser?.id}> from message \`${messageId}\` onward`,
+      user: `ᴀʟʟ ᴍᴇssᴀɢᴇs ғʀᴏᴍ <@${targetUser?.id}>`,
+      all: "ᴀʟʟ ᴍᴇssᴀɢᴇs",
+      trail: `ᴀʟʟ ᴍᴇssᴀɢᴇs ғʀᴏᴍ ᴍᴇssᴀɢᴇ \`${messageId}\` ᴏɴᴡᴀʀᴅ`,
+      trail_user: `ᴀʟʟ ᴍᴇssᴀɢᴇs ғʀᴏᴍ <@${targetUser?.id}> ғʀᴏᴍ ᴍᴇssᴀɢᴇ \`${messageId}\` ᴏɴᴡᴀʀᴅ`,
     }[mode];
 
     const embed = new EmbedBuilder()
-      .setColor(failed > 0 ? "#FF5722" : "#4CAF50")
-      .setTitle("🗑️ Purge Complete")
+      .setColor(EMBED_COLOR)
+      .setTitle(`${i("PURGE")} ᴘᴜʀɢᴇ ᴄᴏᴍᴘʟᴇᴛᴇ`)
       .addFields(
-        { name: "Channel", value: `<#${channel.id}>`, inline: true },
-        { name: "Mode", value: mode, inline: true },
-        { name: "Purged", value: `${deleted}`, inline: true },
+        { name: "ᴄʜᴀɴɴᴇʟ", value: `<#${channel.id}>`, inline: true },
+        { name: "ᴍᴏᴅᴇ", value: mode, inline: true },
+        { name: "ᴘᴜʀɢᴇᴅ", value: `${deleted}`, inline: true },
         ...(failed > 0
           ? [
               {
-                name: "Failed",
-                value: `${failed} (likely too old or already purged)`,
+                name: "ғᴀɪʟᴇᴅ",
+                value: `${failed} (ʟɪᴋᴇʟʏ ᴛᴏᴏ ᴏʟᴅ ᴏʀ ᴀʟʀᴇᴀᴅʏ ᴘᴜʀɢᴇᴅ)`,
                 inline: false,
               },
             ]
           : []),
-        { name: "Scope", value: modeLabel, inline: false },
+        { name: "sᴄᴏᴘᴇ", value: modeLabel, inline: false },
       )
-      .setFooter({ text: `Executed by ${interaction.user.tag}` })
+      .setFooter({ text: `ᴇxᴇᴄᴜᴛᴇᴅ ʙʏ ${interaction.user.tag}` })
       .setTimestamp();
 
     await interaction.editReply({ content: null, embeds: [embed] });

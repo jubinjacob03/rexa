@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { EmbedBuilder } from "discord.js";
 import config from "../../../config.js";
+import { EMBED_COLOR, eSend } from "../../utils/embed.js";
+import { i, icon } from "../../utils/icons.js";
 import {
   getAllPendingRequests,
   getRequest,
@@ -148,8 +150,10 @@ router.post("/apply", async (req, res) => {
     }
 
     const approvalEmbed = new EmbedBuilder()
-      .setColor(isFriends ? "#0099FF" : "#00FF00")
-      .setTitle(`${isFriends ? "🌟" : "👑"} ɴᴇᴡ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ`)
+      .setColor(EMBED_COLOR)
+      .setTitle(
+        `${isFriends ? icon("FRIENDS_ROLE") : icon("MEMBER_ROLE")} ɴᴇᴡ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ`,
+      )
       .setDescription(
         `<@${userId}> ʜᴀs ʀᴇǫᴜᴇsᴛᴇᴅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ғᴏʀ **${requestedRole}** ʀᴏʟᴇ ᴠɪᴀ ᴡᴇʙ ᴅᴀsʜʙᴏᴀʀᴅ.`,
       )
@@ -251,8 +255,8 @@ router.post("/approve", async (req, res) => {
           .catch(() => null);
         if (msg) {
           const updatedEmbed = EmbedBuilder.from(msg.embeds[0])
-            .setColor("#00FF00")
-            .setTitle("✅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ")
+            .setColor(EMBED_COLOR)
+            .setTitle(`${icon("SUCCESS")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ`)
             .addFields(
               { name: "ᴀᴘᴘʀᴏᴠᴇᴅ ʙʏ", value: `<@${requesterId}>`, inline: true },
               { name: "ɴɪᴄᴋɴᴀᴍᴇ", value: finalNickname, inline: true },
@@ -278,17 +282,12 @@ router.post("/approve", async (req, res) => {
     const user = await client.users.fetch(targetUserId).catch(() => null);
     if (user) {
       await user
-        .send({
-          embeds: [
-            new EmbedBuilder()
-              .setColor("#00FF00")
-              .setTitle("✅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ")
-              .setDescription(
-                `ʏᴏᴜʀ ʀᴇǫᴜᴇsᴛ ʜᴀs ʙᴇᴇɴ ᴀᴘᴘʀᴏᴠᴇᴅ!\n\n**ʀᴏʟᴇ:** ${request.requestedRole}\n**ɴɪᴄᴋɴᴀᴍᴇ:** ${finalNickname}`,
-              )
-              .setTimestamp(),
-          ],
-        })
+        .send(
+          eSend(
+            `${i("DONE")}sᴀɪʏᴀɴ ɢᴏᴅs — ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ`,
+            `ʏᴏᴜʀ ʀᴇǫᴜᴇsᴛ ʜᴀs ʙᴇᴇɴ ᴀᴘᴘʀᴏᴠᴇᴅ!\n\n**ʀᴏʟᴇ:** ${request.requestedRole}\n**ɴɪᴄᴋɴᴀᴍᴇ:** ${finalNickname}`,
+          ),
+        )
         .catch(() => {});
     }
 
@@ -341,8 +340,8 @@ router.post("/reject", async (req, res) => {
           .catch(() => null);
         if (msg) {
           const updatedEmbed = EmbedBuilder.from(msg.embeds[0])
-            .setColor("#FF0000")
-            .setTitle("❌ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇᴊᴇᴄᴛᴇᴅ")
+            .setColor(EMBED_COLOR)
+            .setTitle(`${icon("ERROR")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇᴊᴇᴄᴛᴇᴅ`)
             .addFields({
               name: "ʀᴇᴊᴇᴄᴛᴇᴅ ʙʏ",
               value: `<@${requesterId}>`,
@@ -369,17 +368,12 @@ router.post("/reject", async (req, res) => {
     const user = await client.users.fetch(targetUserId).catch(() => null);
     if (user) {
       await user
-        .send({
-          embeds: [
-            new EmbedBuilder()
-              .setColor("#FF0000")
-              .setTitle("❌ sᴀɪʏᴀɴ ɢᴏᴅs - ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ғᴀɪʟᴇᴅ")
-              .setDescription(
-                `sᴏʀʀʏ, ʏᴏᴜʀ ʀᴇǫᴜᴇsᴛ ғᴏʀ **${request.requestedRole}** ʀᴏʟᴇ ʜᴀs ʙᴇᴇɴ ʀᴇᴊᴇᴄᴛᴇᴅ.`,
-              )
-              .setTimestamp(),
-          ],
-        })
+        .send(
+          eSend(
+            `${i("ERROR")}sᴀɪʏᴀɴ ɢᴏᴅs — ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ғᴀɪʟᴇᴅ`,
+            `sᴏʀʀʏ, ʏᴏᴜʀ ʀᴇǫᴜᴇsᴛ ғᴏʀ **${request.requestedRole}** ʀᴏʟᴇ ʜᴀs ʙᴇᴇɴ ʀᴇᴊᴇᴄᴛᴇᴅ.`,
+          ),
+        )
         .catch(() => {});
     }
 

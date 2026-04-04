@@ -6,6 +6,7 @@ import {
 } from "discord.js";
 import config from "../../config.js";
 import supabase from "./supabaseClient.js";
+import { EMBED_COLOR } from "./embed.js";
 
 let statusMessage = null;
 let updateInterval = null;
@@ -40,7 +41,7 @@ export async function createStatusEmbed(guild, client) {
   ).size;
 
   const embed = new EmbedBuilder()
-    .setColor("#00FFFF")
+    .setColor(EMBED_COLOR)
     .setTitle("sᴇʀᴠᴇʀ sᴛᴀᴛs")
     .setDescription(
       ` • **${humanCount}** ᴍᴇᴍʙᴇʀs • **${botCount}** ʙᴏᴛs • **${guild.roles.cache.size}** ʀᴏʟᴇs\n\n• **${guild.channels.cache.size}** ᴄʜᴀɴɴᴇʟs\n\n` +

@@ -8,6 +8,8 @@ import {
   Events,
   MessageFlags,
 } from "discord.js";
+import { eReply } from "./utils/embed.js";
+import { i } from "./utils/icons.js";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { readdirSync } from "fs";
@@ -127,11 +129,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   if (interaction.isButton()) {
     if (interaction.customId === "dev_check") {
-      await interaction.reply({
-        content:
-          "✅ You're all set for your device check! Feel free to explore.",
-        flags: MessageFlags.Ephemeral,
-      });
+      await interaction.reply(
+        eReply(
+          `${i("SUCCESS")} ᴅᴇᴠɪᴄᴇ ᴄʜᴇᴄᴋ`,
+          "ʏᴏᴜ'ʀᴇ ᴀʟʟ sᴇᴛ! ғᴇᴇʟ ғʀᴇᴇ ᴛᴏ ᴇxᴘʟᴏʀᴇ.",
+        ),
+      );
       return;
     }
 
@@ -181,10 +184,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
     console.error(`Error executing ${interaction.commandName}`);
     console.error(error);
 
-    const errorMessage = {
-      content: "There was an error while executing this command!",
-      flags: MessageFlags.Ephemeral,
-    };
+    const errorMessage = eReply(
+      `${i("ERROR")} ᴇʀʀᴏʀ`,
+      "ᴛʜᴇʀᴇ ᴡᴀs ᴀɴ ᴇʀʀᴏʀ ᴡʜɪʟᴇ ᴇxᴇᴄᴜᴛɪɴɢ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ!",
+    );
 
     if (interaction.replied || interaction.deferred) {
       await interaction.followUp(errorMessage);

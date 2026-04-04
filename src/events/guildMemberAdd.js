@@ -6,6 +6,7 @@ import {
   ButtonStyle,
 } from "discord.js";
 import { updateStatusMessage } from "../utils/statusUpdater.js";
+import { icon } from "../utils/icons.js";
 import { getAutoDmEnabled } from "../utils/verificationHandler.js";
 import config from "../../config.js";
 
@@ -30,7 +31,7 @@ export default {
       try {
         const verificationEmbed = new EmbedBuilder()
           .setColor("#00ddff")
-          .setTitle("🔐 ʀᴏʟᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ")
+          .setTitle(`${icon("KEYLOCK")} ʀᴏʟᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ`)
           .setDescription(
             "**ᴄʟɪᴄᴋ ᴏɴ ᴛʜᴇ ᴀᴘᴘʀᴏᴘʀɪᴀᴛᴇ ʀᴏʟᴇ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴀᴘᴘʟʏ.** ",
           )

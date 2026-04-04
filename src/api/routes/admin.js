@@ -7,6 +7,7 @@ import {
   ButtonStyle,
 } from "discord.js";
 import config from "../../../config.js";
+import { icon } from "../../utils/icons.js";
 
 const router = Router();
 
@@ -40,7 +41,7 @@ router.post("/setup-verification", async (req, res) => {
 
     const verificationEmbed = new EmbedBuilder()
       .setColor("#00ddff")
-      .setTitle("🔐 ʀᴏʟᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ")
+      .setTitle(`${icon("KEYLOCK")} ʀᴏʟᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ`)
       .setDescription("**ᴄʟɪᴄᴋ ᴏɴ ᴛʜᴇ ᴀᴘᴘʀᴏᴘʀɪᴀᴛᴇ ʀᴏʟᴇ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴀᴘᴘʟʏ.** ")
       .setTimestamp();
 

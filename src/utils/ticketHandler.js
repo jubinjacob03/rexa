@@ -18,6 +18,8 @@ import {
   setupSessions,
   renderTicketDashboard,
 } from "../commands/ticket-setup.js";
+import { eReply, eSend, EMBED_COLOR } from "./embed.js";
+import { i, icon } from "./icons.js";
 
 // Keep a simple in-memory log of active tickets for now to prevent spam
 const activeTickets = new Set();
@@ -28,10 +30,12 @@ export async function handleTicketInteraction(interaction) {
     const session = setupSessions.get(interaction.user.id);
     if (!session) {
       if (!interaction.replied && !interaction.deferred) {
-        return interaction.reply({
-          content: "❌ ꜱᴇꜱꜱɪᴏɴ ᴇxᴘɪʀᴇᴅ. ᴘʟᴇᴀꜱᴇ ʀᴜɴ `/setup-ticket` ᴀɢᴀɪɴ.",
-          flags: MessageFlags.Ephemeral,
-        });
+        return interaction.reply(
+          eReply(
+            `${i("ERROR")} sᴇssɪᴏɴ ᴇxᴘɪʀᴇᴅ`,
+            "ᴘʟᴇᴀsᴇ ʀᴜɴ `/setup-ticket` ᴀɢᴀɪɴ.",
+          ),
+        );
       }
       return;
     }
@@ -39,7 +43,7 @@ export async function handleTicketInteraction(interaction) {
     if (interaction.customId === "tsetup_edit_embed") {
       const modal = new ModalBuilder()
         .setCustomId("tsetup_modal_embed")
-        .setTitle("🖋️ ᴇᴅɪᴛ ᴛɪᴄᴋᴇᴛ ᴇᴍʙᴇᴅ");
+        .setTitle(`${icon("EDIT")} ᴇᴅɪᴛ ᴛɪᴄᴋᴇᴛ ᴇᴍʙᴇᴅ`);
 
       const titleInput = new TextInputBuilder()
         .setCustomId("titleInput")
@@ -50,7 +54,7 @@ export async function handleTicketInteraction(interaction) {
 
       const descInput = new TextInputBuilder()
         .setCustomId("descInput")
-        .setLabel("ᴇᴍʙᴇᴅ ᴅᴇꜱᴄʀɪᴘᴛɪᴏɴ")
+        .setLabel("ᴇᴍʙᴇᴅ ᴅᴇsᴄʀɪᴘᴛɪᴏɴ")
         .setStyle(TextInputStyle.Paragraph)
         .setValue(session.description)
         .setRequired(true);
@@ -70,13 +74,13 @@ export async function handleTicketInteraction(interaction) {
       const isVc = interaction.customId === "tsetup_add_vc_tkt";
       const modal = new ModalBuilder()
         .setCustomId(isVc ? "tsetup_modal_tkt_vc" : "tsetup_modal_tkt_txt")
-        .setTitle(`💠${isVc ? "ᴠᴏɪᴄᴇ" : "ᴛᴇxᴛ"} ᴛɪᴄᴋᴇᴛ`);
+        .setTitle(`${icon("TYPE")}${isVc ? "ᴠᴏɪᴄᴇ" : "ᴛᴇxᴛ"} ᴛɪᴄᴋᴇᴛ`);
 
       const labelInput = new TextInputBuilder()
         .setCustomId("labelBtn")
         .setLabel("ʙᴜᴛᴛᴏɴ ʟᴀʙᴇʟ")
         .setStyle(TextInputStyle.Short)
-        .setValue("🎫 ᴏᴘᴇɴ ᴛɪᴄᴋᴇᴛ")
+        .setValue(`${icon("TICKET")} ᴏᴘᴇɴ ᴛɪᴄᴋᴇᴛ`)
         .setRequired(true);
 
       modal.addComponents(new ActionRowBuilder().addComponents(labelInput));
@@ -85,7 +89,7 @@ export async function handleTicketInteraction(interaction) {
       if (!isVc) {
         const aiInput = new TextInputBuilder()
           .setCustomId("aiInput")
-          .setLabel("ᴀɪ ᴀꜱꜱɪꜱᴛᴀɴᴄᴇ? (true/false)")
+          .setLabel("ᴀɪ ᴀssɪsᴛᴀɴᴄᴇ? (true/false)")
           .setStyle(TextInputStyle.Short)
           .setValue("true")
           .setRequired(true);
@@ -98,16 +102,16 @@ export async function handleTicketInteraction(interaction) {
     if (interaction.customId === "tsetup_add_text") {
       const modal = new ModalBuilder()
         .setCustomId("tsetup_modal_txt")
-        .setTitle("💠ᴛᴇxᴛ ʀᴇᴘʟʏ");
+        .setTitle(`${icon("TYPE")}ᴛᴇxᴛ ʀᴇᴘʟʏ`);
       const labelInput = new TextInputBuilder()
         .setCustomId("labelBtn")
         .setLabel("ʙᴜᴛᴛᴏɴ ʟᴀʙᴇʟ")
         .setStyle(TextInputStyle.Short)
-        .setValue("📕 ᴛɪᴛʟᴇ ᴏғ ᴛʜɪs ʙᴜᴛᴛᴏɴ")
+        .setValue(`${icon("LABEL")} ᴛɪᴛʟᴇ ᴏғ ᴛʜɪs ʙᴜᴛᴛᴏɴ`)
         .setRequired(true);
       const contentInput = new TextInputBuilder()
         .setCustomId("contentInput")
-        .setLabel("ᴡʜᴀᴛ ᴛᴇxᴛ ꜱʜᴏᴜʟᴅ ᴛʜɪꜱ ꜱʜᴏᴡ ᴡʜᴇɴ ᴄʟɪᴄᴋᴇᴅ?")
+        .setLabel("ᴡʜᴀᴛ ᴛᴇxᴛ sʜᴏᴜʟᴅ ᴛʜɪs sʜᴏᴡ ᴡʜᴇɴ ᴄʟɪᴄᴋᴇᴅ?")
         .setStyle(TextInputStyle.Paragraph)
         .setRequired(true);
       modal.addComponents(
@@ -120,12 +124,12 @@ export async function handleTicketInteraction(interaction) {
     if (interaction.customId === "tsetup_add_image") {
       const modal = new ModalBuilder()
         .setCustomId("tsetup_modal_img")
-        .setTitle("💠ɪᴍᴀɢᴇ ʀᴇᴘʟʏ");
+        .setTitle(`${icon("TYPE")}ɪᴍᴀɢᴇ ʀᴇᴘʟʏ`);
       const labelInput = new TextInputBuilder()
         .setCustomId("labelBtn")
         .setLabel("ʙᴜᴛᴛᴏɴ ʟᴀʙᴇʟ")
         .setStyle(TextInputStyle.Short)
-        .setValue("💳 ᴘᴀʏᴍᴇɴᴛ")
+        .setValue(`${icon("PAYMENT")} ᴘᴀʏᴍᴇɴᴛ`)
         .setRequired(true);
       modal.addComponents(new ActionRowBuilder().addComponents(labelInput));
       return await interaction.showModal(modal);
@@ -140,7 +144,7 @@ export async function handleTicketInteraction(interaction) {
       const currentMods = session.ticketMods || [];
       const userSelect = new UserSelectMenuBuilder()
         .setCustomId("tsetup_mods_select")
-        .setPlaceholder("ꜱᴇᴀʀᴄʜ ᴀɴᴅ ꜱᴇʟᴇᴄᴛ ᴍᴏᴅᴇʀᴀᴛᴏʀꜱ")
+        .setPlaceholder("sᴇᴀʀᴄʜ ᴀɴᴅ sᴇʟᴇᴄᴛ ᴍᴏᴅᴇʀᴀᴛᴏʀs")
         .setMinValues(0)
         .setMaxValues(10);
       const row = new ActionRowBuilder().addComponents(userSelect);
@@ -149,9 +153,11 @@ export async function handleTicketInteraction(interaction) {
           ? currentMods.map((id) => `<@${id}>`).join(", ")
           : "ɴᴏɴᴇ";
       return await interaction.reply({
-        content: `🛡️ **ꜱᴇᴛ ᴛɪᴄᴋᴇᴛ ᴍᴏᴅᴇʀᴀᴛᴏʀꜱ**\nᴄᴜʀʀᴇɴᴛ: ${currentDisplay}\n\nꜱᴇʟᴇᴄᴛ ᴜᴘ ᴛᴏ 10 ᴜꜱᴇʀꜱ ʙᴇʟᴏᴡ. ʟᴇᴀᴠᴇ ᴇᴍᴘᴛʏ ᴀɴᴅ ꜱᴜʙᴍɪᴛ ᴛᴏ ᴄʟᴇᴀʀ.`,
+        ...eReply(
+          `${i("SHIELD")} sᴇᴛ ᴛɪᴄᴋᴇᴛ ᴍᴏᴅᴇʀᴀᴛᴏʀs`,
+          `ᴄᴜʀʀᴇɴᴛ: ${currentDisplay}\n\nsᴇʟᴇᴄᴛ ᴜᴘ ᴛᴏ 10 ᴜsᴇʀs ʙᴇʟᴏᴡ. ʟᴇᴀᴠᴇ ᴇᴍᴘᴛʏ ᴀɴᴅ sᴜʙᴍɪᴛ ᴛᴏ ᴄʟᴇᴀʀ.`,
+        ),
         components: [row],
-        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -160,16 +166,14 @@ export async function handleTicketInteraction(interaction) {
       session.ticketMods = ids;
       if (supabase) {
         try {
-          await supabase
-            .from("ticket_actions")
-            .upsert(
-              {
-                action_id: "ticket_mods_config",
-                type: "config",
-                content: JSON.stringify(ids),
-              },
-              { onConflict: "action_id" },
-            );
+          await supabase.from("ticket_actions").upsert(
+            {
+              action_id: "ticket_mods_config",
+              type: "config",
+              content: JSON.stringify(ids),
+            },
+            { onConflict: "action_id" },
+          );
         } catch (err) {
           console.error("[SUPABASE] Error saving ticket mods:", err);
         }
@@ -183,8 +187,7 @@ export async function handleTicketInteraction(interaction) {
         .catch(() => null);
       if (!targetChannel) {
         return await interaction.update({
-          content:
-            "❌ **ᴇʀʀᴏʀ:** ᴛᴀʀɢᴇᴛ ᴄʜᴀɴɴᴇʟ ɴᴏ ʟᴏɴɢᴇʀ ᴇxɪꜱᴛꜱ ᴏʀ ʙᴏᴛ ʟᴀᴄᴋꜱ ᴀᴄᴄᴇꜱꜱ.",
+          content: `${icon("ERROR")} **ᴇʀʀᴏʀ:** ᴛᴀʀɢᴇᴛ ᴄʜᴀɴɴᴇʟ ɴᴏ ʟᴏɴɢᴇʀ ᴇxɪsᴛs ᴏʀ ʙᴏᴛ ʟᴀᴄᴋs ᴀᴄᴄᴇss.`,
           embeds: [],
           components: [],
         });
@@ -245,7 +248,7 @@ export async function handleTicketInteraction(interaction) {
       setupSessions.delete(interaction.user.id);
 
       return await interaction.update({
-        content: `✅ **ᴛɪᴄᴋᴇᴛ ᴘᴀɴᴇʟ ᴘᴜʙʟɪꜱʜᴇᴅ ꜱᴜᴄᴄᴇꜱꜱꜰᴜʟʟʏ ᴛᴏ <#${session.targetChannelId}>.**`,
+        content: `${i("DONE")}**ᴛɪᴄᴋᴇᴛ ᴘᴀɴᴇʟ ᴘᴜʙʟɪsʜᴇᴅ sᴜᴄᴄᴇssғᴜʟʟʏ ᴛᴏ <#${session.targetChannelId}>.**`,
         embeds: [],
         components: [],
       });
@@ -260,11 +263,12 @@ export async function handleTicketInteraction(interaction) {
     const session = setupSessions.get(interaction.user.id);
     if (!session) {
       if (!interaction.replied && !interaction.deferred) {
-        return await interaction.reply({
-          content:
-            "❌ **ꜱᴇꜱꜱɪᴏɴ ᴇxᴘɪʀᴇᴅ:** ᴛʜᴇ ʙᴏᴛ ʀᴇꜱᴛᴀʀᴛᴇᴅ. ᴘʟᴇᴀꜱᴇ ʀᴜɴ `/setup-ticket` ᴀɢᴀɪɴ.",
-          flags: MessageFlags.Ephemeral,
-        });
+        return await interaction.reply(
+          eReply(
+            `${i("ERROR")}sᴇssɪᴏɴ ᴇxᴘɪʀᴇᴅ`,
+            "ᴛʜᴇ ʙᴏᴛ ʀᴇsᴛᴀʀᴛᴇᴅ. ᴘʟᴇᴀsᴇ ʀᴜɴ `/setup-ticket` ᴀɢᴀɪɴ.",
+          ),
+        );
       }
       return;
     }
@@ -297,10 +301,12 @@ export async function handleTicketInteraction(interaction) {
 
       await interaction.deferUpdate();
 
-      const waitingMsg = await interaction.followUp({
-        content: `⏳ **ᴡᴀɪᴛɪɴɢ ꜰᴏʀ ɪᴍᴀɢᴇ:** ᴘʟᴇᴀꜱᴇ ꜱᴇɴᴅ ᴛʜᴇ ɪᴍᴀɢᴇ ꜰᴏʀ ᴛʜᴇ \`${label}\` ʙᴜᴛᴛᴏɴ ɪɴ ᴛʜɪꜱ ᴄʜᴀɴɴᴇʟ ɴᴏᴡ. (ʏᴏᴜ ʜᴀᴠᴇ 60 ꜱᴇᴄᴏɴᴅꜱ).\n*ᴛʜᴇ ʙᴏᴛ ᴡɪʟʟ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ꜱᴇᴄᴜʀᴇ ᴛʜᴇ ɪᴍᴀɢᴇ ɪɴ ᴛʜᴇ ᴄᴅɴ ʟᴏɢɢɪɴɢ ᴄʜᴀɴɴᴇʟ ᴀɴᴅ ᴅᴇʟᴇᴛᴇ ʏᴏᴜʀ ᴏʀɪɢɪɴᴀʟ ᴍᴇꜱꜱᴀɢᴇ ᴛᴏ ᴋᴇᴇᴘ ᴛʜᴇ ᴄʜᴀᴛ ᴄʟᴇᴀɴ.*`,
-        flags: MessageFlags.Ephemeral,
-      });
+      const waitingMsg = await interaction.followUp(
+        eReply(
+          `${i("PENDING")} ᴡᴀɪᴛɪɴɢ ғᴏʀ ɪᴍᴀɢᴇ`,
+          `ᴘʟᴇᴀsᴇ sᴇɴᴅ ᴛʜᴇ ɪᴍᴀɢᴇ ғᴏʀ ᴛʜᴇ \`${label}\` ʙᴜᴛᴛᴏɴ ɪɴ ᴛʜɪs ᴄʜᴀɴɴᴇʟ ɴᴏᴡ. (ʏᴏᴜ ʜᴀᴠᴇ 60 sᴇᴄᴏɴᴅs.)\n*ᴛʜᴇ ʙᴏᴛ ᴡɪʟʟ sᴇᴄᴜʀᴇ ᴛʜᴇ ɪᴍᴀɢᴇ ᴀɴᴅ ᴅᴇʟᴇᴛᴇ ʏᴏᴜʀ ᴍᴇssᴀɢᴇ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ.*`,
+        ),
+      );
 
       const filter = (m) =>
         m.author.id === interaction.user.id && m.attachments.size > 0;
@@ -345,12 +351,12 @@ export async function handleTicketInteraction(interaction) {
         await waitingMsg.delete().catch(() => null);
         return await renderTicketDashboard(interaction, true);
       } catch (err) {
-        return interaction.editReply({
-          content:
-            "❌ **ᴛɪᴍᴇ ᴇxᴘɪʀᴇᴅ:** ʏᴏᴜ ᴅɪᴅɴ'ᴛ ᴜᴘʟᴏᴀᴅ ᴀɴ ɪᴍᴀɢᴇ ɪɴ ᴛɪᴍᴇ. ʀᴜɴ `/setup-ticket` ᴛᴏ ʀᴇꜱᴜᴍᴇ ᴏʀ ᴛʀʏ ᴀɢᴀɪɴ.",
-          embeds: [],
-          components: [],
-        });
+        return interaction.editReply(
+          eSend(
+            `${i("ERROR")} ᴛɪᴍᴇ ᴇxᴘɪʀᴇᴅ`,
+            "ʏᴏᴜ ᴅɪᴅɴ'ᴛ ᴜᴘʟᴏᴀᴅ ᴀɴ ɪᴍᴀɢᴇ ɪɴ ᴛɪᴍᴇ. ʀᴜɴ `/setup-ticket` ᴛᴏ ʀᴇsᴜᴍᴇ ᴏʀ ᴛʀʏ ᴀɢᴀɪɴ.",
+          ),
+        );
       }
     }
     return await renderTicketDashboard(interaction, true);
@@ -382,22 +388,21 @@ export async function handleTicketInteraction(interaction) {
 
     if (actionData) {
       if (actionData.type === "text") {
-        await interaction.reply({
-          content: actionData.content,
-          flags: MessageFlags.Ephemeral,
-        });
+        await interaction.reply(
+          eReply(`${i("CLIPBOARD")} ɪɴғᴏ`, actionData.content),
+        );
       } else if (actionData.type === "image") {
-        await interaction.reply({
-          content: actionData.content,
-          flags: MessageFlags.Ephemeral,
-        });
+        await interaction.reply(
+          eReply(`${i("IMAGE")} ɪɴғᴏ`, actionData.content),
+        );
       }
     } else {
-      await interaction.reply({
-        content:
-          "❌ ᴛʜɪꜱ ᴄᴜꜱᴛᴏᴍ ʙᴜᴛᴛᴏɴ ʜᴀꜱ ᴇxᴘɪʀᴇᴅ ᴏʀ ɪꜱ ɪɴᴠᴀʟɪᴅ (ʙᴏᴛ ʀᴇꜱᴛᴀʀᴛᴇᴅ).",
-        flags: MessageFlags.Ephemeral,
-      });
+      await interaction.reply(
+        eReply(
+          `${i("ERROR")}ᴇxᴘɪʀᴇᴅ ᴀᴄᴛɪᴏɴ`,
+          "ᴛʜɪs ᴄᴜsᴛᴏᴍ ʙᴜᴛᴛᴏɴ ʜᴀs ᴇxᴘɪʀᴇᴅ ᴏʀ ɪs ɪɴᴠᴀʟɪᴅ (ʙᴏᴛ ʀᴇsᴛᴀʀᴛᴇᴅ).",
+        ),
+      );
     }
   } else if (interaction.customId === "ticket_close") {
     await closeTicketThread(interaction);
@@ -409,10 +414,12 @@ export async function handleTicketInteraction(interaction) {
 async function createTicketInstance(interaction) {
   // First check memory to save db calls, otherwise ping db
   if (activeTickets.has(interaction.user.id)) {
-    return interaction.reply({
-      content: "❌ ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀɴ ᴀᴄᴛɪᴠᴇ ᴛɪᴄᴋᴇᴛ.",
-      flags: MessageFlags.Ephemeral,
-    });
+    return interaction.reply(
+      eReply(
+        `${i("ERROR")} ᴀᴄᴛɪᴠᴇ ᴛɪᴄᴋᴇᴛ`,
+        "ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀɴ ᴀᴄᴛɪᴠᴇ ᴛɪᴄᴋᴇᴛ.",
+      ),
+    );
   }
 
   if (supabase) {
@@ -423,10 +430,12 @@ async function createTicketInstance(interaction) {
       .single();
     if (data) {
       activeTickets.add(interaction.user.id);
-      return interaction.reply({
-        content: "❌ ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀɴ ᴀᴄᴛɪᴠᴇ ᴛɪᴄᴋᴇᴛ.",
-        flags: MessageFlags.Ephemeral,
-      });
+      return interaction.reply(
+        eReply(
+          `${i("ERROR")} ᴀᴄᴛɪᴠᴇ ᴛɪᴄᴋᴇᴛ`,
+          "ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀɴ ᴀᴄᴛɪᴠᴇ ᴛɪᴄᴋᴇᴛ.",
+        ),
+      );
     }
   }
 
@@ -533,26 +542,28 @@ async function createTicketInstance(interaction) {
     }
 
     const descriptionText = aiEnabled
-      ? "ᴘʟᴇᴀꜱᴇ ᴅᴇꜱᴄʀɪʙᴇ ʏᴏᴜʀ ɪꜱꜱᴜᴇ ɪɴ ᴅᴇᴛᴀɪʟ. ᴏᴜʀ **ᴀɪ ꜱᴜᴘᴘᴏʀᴛ ʙᴏᴛ** ᴡɪʟʟ ᴀꜱꜱɪꜱᴛ ʏᴏᴜ ꜱʜᴏʀᴛʟʏ. ɪꜰ ɪᴛ ʀᴇQᴜɪʀᴇꜱ ʜᴜᴍᴀɴ ɪɴᴛᴇʀᴠᴇɴᴛɪᴏɴ, ᴄʟɪᴄᴋ 'ᴇꜱᴄᴀʟᴀᴛᴇ'."
-      : "ᴘʟᴇᴀꜱᴇ ᴅᴇꜱᴄʀɪʙᴇ ʏᴏᴜʀ ɪꜱꜱᴜᴇ. ᴀ **ʜᴜᴍᴀɴ ᴍᴏᴅᴇʀᴀᴛᴏʀ** ᴡɪʟʟ ʙᴇ ᴡɪᴛʜ ʏᴏᴜ ᴀꜱ ꜱᴏᴏɴ ᴀꜱ ᴘᴏꜱꜱɪʙʟᴇ. ʏᴏᴜ ᴍᴀʏ ᴘɪɴɢ ᴛʜᴇᴍ ᴠɪᴀ ᴛʜᴇ 'ᴇꜱᴄᴀʟᴀᴛᴇ' ʙᴜᴛᴛᴏɴ.";
+      ? "ᴘʟᴇᴀsᴇ ᴅᴇsᴄʀɪʙᴇ ʏᴏᴜʀ ɪssᴜᴇ ɪɴ ᴅᴇᴛᴀɪʟ. ᴏᴜʀ **ᴀɪ sᴜᴘᴘᴏʀᴛ ʙᴏᴛ** ᴡɪʟʟ ᴀssɪsᴛ ʏᴏᴜ sʜᴏʀᴛʟʏ. ɪғ ɪᴛ ʀᴇǫᴜɪʀᴇs ʜᴜᴍᴀɴ ɪɴᴛᴇʀᴠᴇɴᴛɪᴏɴ, ᴄʟɪᴄᴋ 'ᴇsᴄᴀʟᴀᴛᴇ'."
+      : "ᴘʟᴇᴀsᴇ ᴅᴇsᴄʀɪʙᴇ ʏᴏᴜʀ ɪssᴜᴇ. ᴀ **ʜᴜᴍᴀɴ ᴍᴏᴅᴇʀᴀᴛᴏʀ** ᴡɪʟʟ ʙᴇ ᴡɪᴛʜ ʏᴏᴜ ᴀs sᴏᴏɴ ᴀs ᴘᴏssɪʙʟᴇ. ʏᴏᴜ ᴍᴀʏ ᴘɪɴɢ ᴛʜᴇᴍ ᴠɪᴀ ᴛʜᴇ 'ᴇsᴄᴀʟᴀᴛᴇ' ʙᴜᴛᴛᴏɴ.";
 
     const embed = new EmbedBuilder()
-      .setColor("#00ff00")
-      .setTitle(`🎫 ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ, ${interaction.user.username}`)
+      .setColor(EMBED_COLOR)
+      .setTitle(
+        `${icon("TICKET")} ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ, ${interaction.user.username}`,
+      )
       .setDescription(descriptionText)
       .setFooter({
-        text: "ᴜꜱᴇ ᴛʜᴇ ᴄʟᴏꜱᴇ ʙᴜᴛᴛᴏɴ ᴡʜᴇɴ ʏᴏᴜʀ ɪꜱꜱᴜᴇ ɪꜱ ʀᴇꜱᴏʟᴠᴇᴅ.",
+        text: "ᴜsᴇ ᴛʜᴇ ᴄʟᴏsᴇ ʙᴜᴛᴛᴏɴ ᴡʜᴇɴ ʏᴏᴜʀ ɪssᴜᴇ ɪs ʀᴇsᴏʟᴠᴇᴅ.",
       })
       .setTimestamp();
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("ticket_escalate")
-        .setLabel("🔔 ᴇꜱᴄᴀʟᴀᴛᴇ ᴛᴏ ꜱᴛᴀꜰꜰ")
+        .setLabel(`${icon("BELL")} ᴇsᴄᴀʟᴀᴛᴇ ᴛᴏ sᴛᴀғғ`)
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId("ticket_close")
-        .setLabel("🔒 ᴄʟᴏꜱᴇ ᴛɪᴄᴋᴇᴛ")
+        .setLabel(`${icon("LOCK")} ᴄʟᴏsᴇ ᴛɪᴄᴋᴇᴛ`)
         .setStyle(ButtonStyle.Danger),
     );
 
@@ -562,13 +573,13 @@ async function createTicketInstance(interaction) {
         modRoles.length > 0
           ? modRoles.map((r) => `<@&${r}>`).join(" ")
           : `<@&${config.moderatorRoleId}>`;
-      mentionText += ` ${pingStr} **A ɴᴇᴡ ᴛɪᴄᴋᴇᴛ ʀᴇQᴜɪʀᴇꜱ ᴀᴛᴛᴇɴᴛɪᴏɴ.**`;
+      mentionText += ` ${pingStr} **ᴀ ɴᴇᴡ ᴛɪᴄᴋᴇᴛ ʀᴇǫᴜɪʀᴇs ᴀᴛᴛᴇɴᴛɪᴏɴ.**`;
     } else {
       const pingStr =
         modRoles.length > 0
           ? modRoles.map((r) => `<@&${r}>`).join(" ")
           : `<@&${config.moderatorRoleId}>`;
-      mentionText += ` ${pingStr} **A ɴᴇᴡ ᴛɪᴄᴋᴇᴛ \(ᴀɪ-ᴀꜱꜱɪꜱᴛᴇᴅ\) ʜᴀꜱ ʙᴇᴇɴ ᴄʀᴇᴀᴛᴇᴅ.**`;
+      mentionText += ` ${pingStr} **ᴀ ɴᴇᴡ ᴛɪᴄᴋᴇᴛ \(ᴀɪ-ᴀssɪsᴛᴇᴅ\) ʜᴀs ʙᴇᴇɴ ᴄʀᴇᴀᴛᴇᴅ.**`;
     }
 
     await ticketChannel.send({
@@ -577,14 +588,20 @@ async function createTicketInstance(interaction) {
       components: [row],
     });
 
-    await interaction.editReply({
-      content: `✅ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ ʜᴀꜱ ʙᴇᴇɴ ᴄʀᴇᴀᴛᴇᴅ: <#${ticketChannel.id}>`,
-    });
+    await interaction.editReply(
+      eSend(
+        `${i("DONE")}ᴛɪᴄᴋᴇᴛ ᴄʀᴇᴀᴛᴇᴅ`,
+        `ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ ʜᴀs ʙᴇᴇɴ ᴄʀᴇᴀᴛᴇᴅ: <#${ticketChannel.id}>`,
+      ),
+    );
   } catch (error) {
     console.error("[TICKETS] Error creating ticket:", error);
-    await interaction.editReply({
-      content: "❌ ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ ᴡʜɪʟᴇ ᴄʀᴇᴀᴛɪɴɢ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ.",
-    });
+    await interaction.editReply(
+      eSend(
+        `${i("ERROR")}ᴇʀʀᴏʀ`,
+        "ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ ᴡʜɪʟᴇ ᴄʀᴇᴀᴛɪɴɢ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ.",
+      ),
+    );
   }
 }
 
@@ -601,7 +618,10 @@ async function closeTicketThread(interaction) {
 
   if (!isTextCompatible) {
     return interaction.editReply(
-      "❌ ᴛʜɪꜱ ᴄᴏᴍᴍᴀɴᴅ ᴄᴀɴ ᴏɴʟʏ ʙᴇ ᴜꜱᴇᴅ ɪɴ ᴛᴇxᴛ-ʙᴀꜱᴇᴅ ᴏʀ ᴠᴏɪᴄᴇ-ʙᴀꜱᴇᴅ ᴛɪᴄᴋᴇᴛꜱ.",
+      eSend(
+        `${i("ERROR")} ɪɴᴠᴀʟɪᴅ ᴄʜᴀɴɴᴇʟ`,
+        "ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ ᴄᴀɴ ᴏɴʟʏ ʙᴇ ᴜsᴇᴅ ɪɴ ᴛᴇxᴛ-ʙᴀsᴇᴅ ᴏʀ ᴠᴏɪᴄᴇ-ʙᴀsᴇᴅ ᴛɪᴄᴋᴇᴛs.",
+      ),
     );
   }
 
@@ -617,12 +637,12 @@ async function closeTicketThread(interaction) {
     if (thread.type === ChannelType.GuildVoice) {
       if (logChannel) {
         await logChannel.send({
-          content: `🔒 **ᴠᴏɪᴄᴇ ᴛɪᴄᴋᴇᴛ ᴄʟᴏꜱᴇᴅ:** \`${thread.name}\` ᴄʟᴏꜱᴇᴅ ʙʏ <@${interaction.user.id}>. (Nᴏ ᴛʀᴀɴꜱᴄʀɪᴘᴛ ꜰᴏʀ ᴠᴏɪᴄᴇ ᴛɪᴄᴋᴇᴛꜱ)`,
+          content: `${icon("LOCK")} **ᴠᴏɪᴄᴇ ᴛɪᴄᴋᴇᴛ ᴄʟᴏsᴇᴅ:** \`${thread.name}\` ᴄʟᴏsᴇᴅ ʙʏ <@${interaction.user.id}>. (ɴᴏ ᴛʀᴀɴsᴄʀɪᴘᴛ ғᴏʀ ᴠᴏɪᴄᴇ ᴛɪᴄᴋᴇᴛs)`,
         });
       }
-      await interaction.editReply({
-        content: "🔒 **ᴠᴏɪᴄᴇ ᴛɪᴄᴋᴇᴛ ɪꜱ ᴄʟᴏꜱɪɴɢ.**",
-      });
+      await interaction.editReply(
+        eSend(`${i("LOCK")} ᴄʟᴏsɪɴɢ`, "ᴠᴏɪᴄᴇ ᴛɪᴄᴋᴇᴛ ɪs ᴄʟᴏsɪɴɢ."),
+      );
     } else {
       const messages = await thread.messages.fetch({ limit: 100 });
       let transcript = `TRANSCRIPT FOR TICKET: ${thread.name}\n`;
@@ -650,15 +670,17 @@ async function closeTicketThread(interaction) {
 
       if (logChannel) {
         await logChannel.send({
-          content: `🔒 **ᴛɪᴄᴋᴇᴛ ᴄʟᴏꜱᴇᴅ:** \`${thread.name}\` ᴄʟᴏꜱᴇᴅ ʙʏ <@${interaction.user.id}>. ᴛʀᴀɴꜱᴄʀɪᴘᴛ ᴀᴛᴛᴀᴄʜᴇᴅ.`,
+          content: `${icon("LOCK")} **ᴛɪᴄᴋᴇᴛ ᴄʟᴏsᴇᴅ:** \`${thread.name}\` ᴄʟᴏsᴇᴅ ʙʏ <@${interaction.user.id}>. ᴛʀᴀɴsᴄʀɪᴘᴛ ᴀᴛᴛᴀᴄʜᴇᴅ.`,
           files: [attachment],
         });
       }
 
-      await interaction.editReply({
-        content:
-          "🔒 **ᴛɪᴄᴋᴇᴛ ɪꜱ ᴄʟᴏꜱɪɴɢ.** ᴛʜᴇ ᴛʀᴀɴꜱᴄʀɪᴘᴛ ʜᴀꜱ ʙᴇᴇɴ ꜱᴀᴠᴇᴅ ᴛᴏ ᴛʜᴇ ʟᴏɢɢɪɴɢ ᴄʜᴀɴɴᴇʟ.",
-      });
+      await interaction.editReply(
+        eSend(
+          `${i("LOCK")} ᴄʟᴏsɪɴɢ`,
+          "ᴛɪᴄᴋᴇᴛ ɪs ᴄʟᴏsɪɴɢ. ᴛʜᴇ ᴛʀᴀɴsᴄʀɪᴘᴛ ʜᴀs ʙᴇᴇɴ sᴀᴠᴇᴅ ᴛᴏ ᴛʜᴇ ʟᴏɢɢɪɴɢ ᴄʜᴀɴɴᴇʟ.",
+        ),
+      );
     }
 
     setTimeout(async () => {
@@ -699,9 +721,12 @@ async function closeTicketThread(interaction) {
   } catch (error) {
     console.error("[TICKETS] Error closing ticket:", error);
     if (!interaction.replied) {
-      await interaction.editReply({
-        content: "❌ ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ ᴡʜɪʟᴇ ᴄʟᴏꜱɪɴɢ ᴛʜᴇ ᴛɪᴄᴋᴇᴛ.",
-      });
+      await interaction.editReply(
+        eSend(
+          `${i("ERROR")} ᴇʀʀᴏʀ`,
+          "ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ ᴡʜɪʟᴇ ᴄʟᴏsɪɴɢ ᴛʜᴇ ᴛɪᴄᴋᴇᴛ.",
+        ),
+      );
     }
   }
 }
@@ -715,11 +740,12 @@ async function escalateTicket(interaction) {
       thread.type === ChannelType.GuildVoice;
 
     if (!isTextCompatible) {
-      return interaction.reply({
-        content:
-          "❌ ᴛʜɪꜱ ᴄᴏᴍᴍᴀɴᴅ ᴄᴀɴ ᴏɴʟʏ ʙᴇ ᴜꜱᴇᴅ ɪɴ ᴛᴇxᴛ-ʙᴀꜱᴇᴅ ᴏʀ ᴠᴏɪᴄᴇ-ʙᴀꜱᴇᴅ ᴛɪᴄᴋᴇᴛꜱ.",
-        flags: MessageFlags.Ephemeral,
-      });
+      return interaction.reply(
+        eReply(
+          `${i("ERROR")} ɪɴᴠᴀʟɪᴅ ᴄʜᴀɴɴᴇʟ`,
+          "ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ ᴄᴀɴ ᴏɴʟʏ ʙᴇ ᴜsᴇᴅ ɪɴ ᴛᴇxᴛ-ʙᴀsᴇᴅ ᴏʀ ᴠᴏɪᴄᴇ-ʙᴀsᴇᴅ ᴛɪᴄᴋᴇᴛs.",
+        ),
+      );
     }
 
     // Load ticket mods from DB
@@ -745,7 +771,11 @@ async function escalateTicket(interaction) {
           : `<@&${config.moderatorRoleId}>`;
 
     await interaction.reply({
-      content: `🔔 ${pings} **A uꜱᴇʀ ʜᴀꜱ ᴇꜱᴄᴀʟᴀᴛᴇᴅ ᴛʜɪꜱ ᴛɪᴄᴋᴇᴛ ᴛᴏ ʜᴜᴍᴀɴ ꜱᴛᴀꜰꜰ!**`,
+      content: `${icon("BELL")} ${pings}`,
+      ...eSend(
+        `${i("BELL")} ᴇsᴄᴀʟᴀᴛᴇᴅ ᴛᴏ sᴛᴀғғ`,
+        "ᴀ ᴜsᴇʀ ʜᴀs ᴇsᴄᴀʟᴀᴛᴇᴅ ᴛʜɪs ᴛɪᴄᴋᴇᴛ ᴀɴᴅ ʀᴇǫᴜɪʀᴇs ʜᴜᴍᴀɴ ᴀᴛᴛᴇɴᴛɪᴏɴ.",
+      ),
     });
   } catch (error) {
     console.error("[TICKETS] Error escalating ticket:", error);

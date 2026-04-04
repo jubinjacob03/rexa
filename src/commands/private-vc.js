@@ -6,6 +6,8 @@ import {
   getVCByMember,
 } from "../utils/privateVCManager.js";
 import config from "../../config.js";
+import { eSend } from "../utils/embed.js";
+import { i } from "../utils/icons.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -47,13 +49,19 @@ export default {
 
     if (getVCByMember(invoker.id)) {
       return interaction.editReply(
-        "You are already in a private VC. Leave it before creating a new one.",
+        eSend(
+          `${i("ERROR")} ᴀʟʀᴇᴀᴅʏ ᴀᴄᴛɪᴠᴇ`,
+          "ʏᴏᴜ ᴀʀᴇ ᴀʟʀᴇᴀᴅʏ ɪɴ ᴀ ᴘʀɪᴠᴀᴛᴇ ᴠᴄ. ʟᴇᴀᴠᴇ ɪᴛ ʙᴇғᴏʀᴇ ᴄʀᴇᴀᴛɪɴɢ ᴀ ɴᴇᴡ ᴏɴᴇ.",
+        ),
       );
     }
 
     if (!canCreate()) {
       return interaction.editReply(
-        `Maximum of ${config.privateVC.maxSimultaneous} private VCs are already active. Wait for one to end.`,
+        eSend(
+          `${i("ERROR")}ʟɪᴍɪᴛ ʀᴇᴀᴄʜᴇᴅ`,
+          `ᴍᴀxɪᴍᴜᴍ ᴏғ ${config.privateVC.maxSimultaneous} ᴘʀɪᴠᴀᴛᴇ ᴠᴄs ᴀʀᴇ ᴀʟʀᴇᴀᴅʏ ᴀᴄᴛɪᴠᴇ. ᴡᴀɪᴛ ғᴏʀ ᴏɴᴇ ᴛᴏ ᴇɴᴅ.`,
+        ),
       );
     }
 
@@ -71,7 +79,10 @@ export default {
     const channel = await createPrivateVC(guild, members);
     if (!channel) {
       return interaction.editReply(
-        "Failed to create private VC. Please try again.",
+        eSend(
+          `${i("ERROR")} ғᴀɪʟᴇᴅ`,
+          "ғᴀɪʟᴇᴅ ᴛᴏ ᴄʀᴇᴀᴛᴇ ᴘʀɪᴠᴀᴛᴇ ᴠᴄ. ᴘʟᴇᴀsᴇ ᴛʀʏ ᴀɢᴀɪɴ.",
+        ),
       );
     }
 
@@ -81,7 +92,10 @@ export default {
       .join(", ");
 
     await interaction.editReply(
-      `✅ **${channel.name}** created!\nInvited: ${mentions || "no others"}\n\nMembers not in voice will need to join manually.`,
+      eSend(
+        `${i("DONE")} ᴘʀɪᴠᴀᴛᴇ ᴠᴄ ᴄʀᴇᴀᴛᴇᴅ`,
+        `**${channel.name}** ɪs ʀᴇᴀᴅʏ!\nɪɴᴠɪᴛᴇᴅ: ${mentions || "ɴᴏ ᴏᴛʜᴇʀs"}\n\nᴍᴇᴍʙᴇʀs ɴᴏᴛ ɪɴ ᴠᴏɪᴄᴇ ᴡɪʟʟ ɴᴇᴇᴅ ᴛᴏ ᴊᴏɪɴ ᴍᴀɴᴜᴀʟʟʏ.`,
+      ),
     );
   },
 };

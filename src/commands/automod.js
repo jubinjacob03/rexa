@@ -11,6 +11,8 @@ import {
   MessageFlags,
 } from "discord.js";
 import { loadConfig, updateConfig } from "../utils/automodManager.js";
+import { EMBED_COLOR, eReply } from "../utils/embed.js";
+import { i } from "../utils/icons.js";
 
 export async function generateAutomodDashboard(guild = null) {
   const config = await loadConfig();
@@ -19,9 +21,9 @@ export async function generateAutomodDashboard(guild = null) {
   const embed = new EmbedBuilder()
     .setTitle(`ᴀᴜᴛᴏᴍᴏᴅ — ${on ? "ᴀᴄᴛɪᴠᴇ" : "ɪɴᴀᴄᴛɪᴠᴇ"}`)
     .setDescription(
-      `**ʀᴀᴛᴇ ʟɪᴍɪᴛꜱ • ᴘᴇʀ 10ꜱ**\nᴍꜱɢ **${config.limits.messageSpam}** • ᴄʜ. ᴅᴇʟ **${config.limits.channelDelete}** • ɴɪᴄᴋ **${config.limits.nicknameChange}** • ᴍꜱɢ ᴅᴇʟ **${config.limits.messageDelete}**`,
+      `**ʀᴀᴛᴇ ʟɪᴍɪᴛs • ᴘᴇʀ 10s**\nᴍsɢ **${config.limits.messageSpam}** • ᴄʜ. ᴅᴇʟ **${config.limits.channelDelete}** • ɴɪᴄᴋ **${config.limits.nicknameChange}** • ᴍsɢ ᴅᴇʟ **${config.limits.messageDelete}**`,
     )
-    .setColor("#00CED1")
+    .setColor(EMBED_COLOR)
     .setTimestamp();
 
   if (guild?.iconURL()) {
@@ -32,11 +34,11 @@ export async function generateAutomodDashboard(guild = null) {
   const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("automod_toggle_master")
-      .setLabel(on ? "ᴅɪꜱᴀʙʟᴇ ᴀᴜᴛᴏᴍᴏᴅ" : "ᴇɴᴀʙʟᴇ ᴀᴜᴛᴏᴍᴏᴅ")
+      .setLabel(on ? "ᴅɪsᴀʙʟᴇ ᴀᴜᴛᴏᴍᴏᴅ" : "ᴇɴᴀʙʟᴇ ᴀᴜᴛᴏᴍᴏᴅ")
       .setStyle(on ? ButtonStyle.Danger : ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId("automod_edit_limits")
-      .setLabel("ᴇᴅɪᴛ ʟɪᴍɪᴛꜱ")
+      .setLabel("ᴇᴅɪᴛ ʟɪᴍɪᴛs")
       .setStyle(ButtonStyle.Secondary),
   );
 
@@ -44,16 +46,16 @@ export async function generateAutomodDashboard(guild = null) {
   const row2 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("automod_toggle_spam")
-      .setLabel(`ꜱᴘᴀᴍ ꜰɪʟᴛᴇʀ — ${config.spam ? "ᴏɴ" : "ᴏꜰꜰ"}`)
+      .setLabel(`sᴘᴀᴍ ғɪʟᴛᴇʀ — ${config.spam ? "ᴏɴ" : "ᴏғғ"}`)
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("automod_toggle_raid")
-      .setLabel(`ʀᴀɪᴅ ᴘʀᴏᴛᴇᴄᴛɪᴏɴ — ${config.raid ? "ᴏɴ" : "ᴏꜰꜰ"}`)
-      .setStyle(ButtonStyle.Primary),
+      .setLabel(`ʀᴀɪᴅ ᴘʀᴏᴛᴇᴄᴛɪᴏɴ — ${config.raid ? "ᴏɴ" : "ᴏғғ"}`)
+      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("automod_toggle_toxicity")
-      .setLabel(`ᴛᴏxɪᴄɪᴛʏ ꜰɪʟᴛᴇʀ — ${config.toxicity ? "ᴏɴ" : "ᴏꜰꜰ"}`)
-      .setStyle(ButtonStyle.Success),
+      .setLabel(`ᴛᴏxɪᴄɪᴛʏ ғɪʟᴛᴇʀ — ${config.toxicity ? "ᴏɴ" : "ᴏғғ"}`)
+      .setStyle(ButtonStyle.Secondary),
   );
 
   return { embeds: [embed], components: [row1, row2] };
@@ -70,10 +72,12 @@ export default {
       interaction.guild &&
       interaction.user.id !== interaction.guild.ownerId
     ) {
-      return interaction.reply({
-        content: "Only the server owner can configure Automod.",
-        flags: MessageFlags.Ephemeral,
-      });
+      return interaction.reply(
+        eReply(
+          `${i("ERROR")} ᴀᴄᴄᴇss ᴅᴇɴɪᴇᴅ`,
+          "ᴏɴʟʏ ᴛʜᴇ sᴇʀᴠᴇʀ ᴏᴡɴᴇʀ ᴄᴀɴ ᴄᴏɴғɪɢᴜʀᴇ ᴀᴜᴛᴏᴍᴏᴅ.",
+        ),
+      );
     }
 
     const dashboard = await generateAutomodDashboard(interaction.guild);
@@ -86,10 +90,12 @@ export default {
 
 export async function handleAutomodInteraction(interaction) {
   if (interaction.guild && interaction.user.id !== interaction.guild.ownerId) {
-    return interaction.reply({
-      content: "Only the server owner can modify Automod settings.",
-      flags: MessageFlags.Ephemeral,
-    });
+    return interaction.reply(
+      eReply(
+        `${i("ERROR")} ᴀᴄᴄᴇss ᴅᴇɴɪᴇᴅ`,
+        "ᴏɴʟʏ ᴛʜᴇ sᴇʀᴠᴇʀ ᴏᴡɴᴇʀ ᴄᴀɴ ᴍᴏᴅɪғʏ ᴀᴜᴛᴏᴍᴏᴅ ᴄᴏɴғɪɢᴜʀᴀᴛɪᴏɴs.",
+      ),
+    );
   }
 
   const currentConfig = await loadConfig();
@@ -106,32 +112,32 @@ export async function handleAutomodInteraction(interaction) {
   ) {
     const modal = new ModalBuilder()
       .setCustomId("automod_limits_modal")
-      .setTitle("Rate Limits (Per 10s)");
+      .setTitle("ʀᴀᴛᴇ ʟɪᴍɪᴛs (ᴘᴇʀ 10s)");
 
     const msgInput = new TextInputBuilder()
       .setCustomId("limit_msg")
-      .setLabel("Max Messages")
+      .setLabel("ᴍᴀx ᴍᴇssᴀɢᴇs")
       .setStyle(TextInputStyle.Short)
       .setValue(currentConfig.limits.messageSpam.toString())
       .setRequired(true);
 
     const chDelInput = new TextInputBuilder()
       .setCustomId("limit_chdel")
-      .setLabel("Max Channel Deletes")
+      .setLabel("ᴍᴀx ᴄʜᴀɴɴᴇʟ ᴅᴇʟᴇᴛᴇs")
       .setStyle(TextInputStyle.Short)
       .setValue(currentConfig.limits.channelDelete.toString())
       .setRequired(true);
 
     const nickInput = new TextInputBuilder()
       .setCustomId("limit_nick")
-      .setLabel("Max Nickname Changes")
+      .setLabel("ᴍᴀx ɴɪᴄᴋɴᴀᴍᴇ ᴄʜᴀɴɢᴇs")
       .setStyle(TextInputStyle.Short)
       .setValue(currentConfig.limits.nicknameChange.toString())
       .setRequired(true);
 
     const msgDelInput = new TextInputBuilder()
       .setCustomId("limit_msgdel")
-      .setLabel("Max Message Deletes")
+      .setLabel("ᴍᴀx ᴍᴇssᴀɢᴇ ᴅᴇʟᴇᴛᴇs")
       .setStyle(TextInputStyle.Short)
       .setValue(currentConfig.limits.messageDelete.toString())
       .setRequired(true);

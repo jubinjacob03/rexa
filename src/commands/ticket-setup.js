@@ -8,6 +8,8 @@ import {
   MessageFlags,
 } from "discord.js";
 import supabase from "../utils/supabaseClient.js";
+import { EMBED_COLOR } from "../utils/embed.js";
+import { i, icon } from "../utils/icons.js";
 
 // Stateless in-memory store for admin setup sessions (only lasts during mapping)
 export const setupSessions = new Map();
@@ -43,9 +45,9 @@ export default {
 
     // Initialize default ticket configuration for this admin session
     setupSessions.set(interaction.user.id, {
-      title: "🎟️ ꜱᴜᴘᴘᴏʀᴛ ᴛɪᴄᴋᴇᴛꜱ",
+      title: `${icon("PANEL")} sᴜᴘᴘᴏʀᴛ ᴛɪᴄᴋᴇᴛs`,
       description:
-        "ᴄʟɪᴄᴋ ᴛʜᴇ ʙᴜᴛᴛᴏɴ ʙᴇʟᴏᴡ ᴛᴏ ᴏᴘᴇɴ ᴀ ᴘʀɪᴠᴀᴛᴇ ᴛɪᴄᴋᴇᴛ.\nᴏᴜʀ ᴀɪ ᴀꜱꜱɪꜱᴛᴀɴᴛ ᴀɴᴅ ꜱᴛᴀꜰꜰ ᴡɪʟʟ ʙᴇ ᴡɪᴛʜ ʏᴏᴜ ꜱʜᴏʀᴛʟʏ.",
+        "ᴄʟɪᴄᴋ ᴛʜᴇ ʙᴜᴛᴛᴏɴ ʙᴇʟᴏᴡ ᴛᴏ ᴏᴘᴇɴ ᴀ ᴘʀɪᴠᴀᴛᴇ ᴛɪᴄᴋᴇᴛ.\nᴏᴜʀ ᴀɪ ᴀssɪsᴛᴀɴᴛ ᴀɴᴅ sᴛᴀғғ ᴡɪʟʟ ʙᴇ ᴡɪᴛʜ ʏᴏᴜ sʜᴏʀᴛʟʏ.",
       color: "#00FFFF",
       targetChannelId: targetChannel.id,
       targetChannelName: targetChannel.name,
@@ -66,47 +68,51 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
       ? config.buttons
           .map((b, i) => `${i + 1}. [${b.type.toUpperCase()}] **${b.label}**`)
           .join("\n")
-      : "❌ ɴᴏ ʙᴜᴛᴛᴏɴꜱ ᴀᴅᴅᴇᴅ ʏᴇᴛ.";
+      : `${icon("ERROR")} ɴᴏ ʙᴜᴛᴛᴏɴs ᴀᴅᴅᴇᴅ ʏᴇᴛ.`;
 
   const modsPreview =
     config.ticketMods && config.ticketMods.length > 0
       ? config.ticketMods.map((id) => `<@${id}>`).join(" ")
-      : "❌ ɴᴏɴᴇ ꜱᴇᴛ — ᴜꜱɪɴɢ ᴅᴇꜰᴀᴜʟᴛ ᴍᴏᴅ ʀᴏʟᴇ.";
+      : `${icon("ERROR")} ɴᴏɴᴇ sᴇᴛ — ᴜsɪɴɢ ᴅᴇғᴀᴜʟᴛ ᴍᴏᴅ ʀᴏʟᴇ.`;
 
   const dashboardEmbed = new EmbedBuilder()
-    .setColor("#00FFFF")
-    .setTitle("🎟️ ꜱᴜᴘᴘᴏʀᴛ ᴛɪᴄᴋᴇᴛꜱ")
+    .setColor(EMBED_COLOR)
+    .setTitle(`${icon("PANEL")} sᴜᴘᴘᴏʀᴛ ᴛɪᴄᴋᴇᴛs`)
     .setDescription(
-      `ᴄᴜꜱᴛᴏᴍɪᴢᴇ ʜᴏᴡ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ ᴍᴇɴᴜ ʟᴏᴏᴋꜱ ᴀɴᴅ ʙᴇʜᴀᴠᴇꜱ ʙᴇꜰᴏʀᴇ ᴘᴜʙʟɪꜱʜɪɴɢ ɪᴛ ᴛᴏ <#${config.targetChannelId}>.`,
+      `ᴄᴜsᴛᴏᴍɪᴢᴇ ʜᴏᴡ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ ᴍᴇɴᴜ ʟᴏᴏᴋs ᴀɴᴅ ʙᴇʜᴀᴠᴇs ʙᴇғᴏʀᴇ ᴘᴜʙʟɪsʜɪɴɢ ɪᴛ ᴛᴏ <#${config.targetChannelId}>.`,
     )
     .addFields(
       { name: "ᴘʀᴇᴠɪᴇᴡ ᴛɪᴛʟᴇ", value: config.title, inline: false },
-      { name: "ᴘʀᴇᴠɪᴇᴡ ᴅᴇꜱᴄʀɪᴘᴛɪᴏɴ", value: config.description, inline: false },
-      { name: "ᴀᴛᴛᴀᴄʜᴇᴅ ʙᴜᴛᴛᴏɴꜱ", value: buttonPreview, inline: false },
-      { name: "🛡️ ᴛɪᴄᴋᴇᴛ ᴍᴏᴅᴇʀᴀᴛᴏʀꜱ", value: modsPreview, inline: false },
+      { name: "ᴘʀᴇᴠɪᴇᴡ ᴅᴇsᴄʀɪᴘᴛɪᴏɴ", value: config.description, inline: false },
+      { name: "ᴀᴛᴛᴀᴄʜᴇᴅ ʙᴜᴛᴛᴏɴs", value: buttonPreview, inline: false },
+      {
+        name: `${icon("SHIELD")} ᴛɪᴄᴋᴇᴛ ᴍᴏᴅᴇʀᴀᴛᴏʀs`,
+        value: modsPreview,
+        inline: false,
+      },
     )
     .setFooter({
-      text: "ᴜꜱᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴꜱ ʙᴇʟᴏᴡ ᴛᴏ ᴄᴏɴꜰɪɢᴜʀᴇ ᴀɴᴅ ᴘᴜʙʟɪꜱʜ. (ᴍᴀx 3 ʙᴜᴛᴛᴏɴꜱ)",
+      text: "ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ᴄᴏɴғɪɢᴜʀᴇ ᴀɴᴅ ᴘᴜʙʟɪsʜ. (ᴍᴀx 3 ʙᴜᴛᴛᴏɴs)",
     });
 
   const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("tsetup_edit_embed")
-      .setLabel("🖋️ ᴇᴅɪᴛ ᴇᴍʙᴇᴅ ᴛᴇxᴛ")
+      .setLabel(`${icon("EDIT")} ᴇᴅɪᴛ ᴇᴍʙᴇᴅ ᴛᴇxᴛ`)
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("tsetup_add_text_tkt")
-      .setLabel("💠ᴛᴇxᴛ ᴛɪᴄᴋᴇᴛ")
+      .setLabel(`${icon("TYPE")}ᴛᴇxᴛ ᴛɪᴄᴋᴇᴛ`)
       .setStyle(ButtonStyle.Primary)
       .setDisabled(config.buttons.length >= 3),
     new ButtonBuilder()
       .setCustomId("tsetup_add_vc_tkt")
-      .setLabel("💠ᴠᴄ ᴛɪᴄᴋᴇᴛ")
+      .setLabel(`${icon("TYPE")}ᴠᴄ ᴛɪᴄᴋᴇᴛ`)
       .setStyle(ButtonStyle.Primary)
       .setDisabled(config.buttons.length >= 3),
     new ButtonBuilder()
       .setCustomId("tsetup_add_text")
-      .setLabel("💠ᴛᴇxᴛ ʀᴇᴘʟʏ")
+      .setLabel(`${icon("TYPE")}ᴛᴇxᴛ ʀᴇᴘʟʏ`)
       .setStyle(ButtonStyle.Primary)
       .setDisabled(config.buttons.length >= 3),
   );
@@ -114,17 +120,17 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
   const row2 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("tsetup_add_image")
-      .setLabel("💠ɪᴍᴀɢᴇ ʀᴇᴘʟʏ")
+      .setLabel(`${icon("TYPE")}ɪᴍᴀɢᴇ ʀᴇᴘʟʏ`)
       .setStyle(ButtonStyle.Primary)
       .setDisabled(config.buttons.length >= 3),
     new ButtonBuilder()
       .setCustomId("tsetup_clear_buttons")
-      .setLabel("❗ᴄʟᴇᴀʀ ᴀʟʟ ʙᴜᴛᴛᴏɴꜱ")
+      .setLabel(`${icon("WARNING")}ᴄʟᴇᴀʀ ᴀʟʟ ʙᴜᴛᴛᴏɴs`)
       .setStyle(ButtonStyle.Danger)
       .setDisabled(config.buttons.length === 0),
     new ButtonBuilder()
       .setCustomId("tsetup_publish")
-      .setLabel(`✅ ᴘᴜʙʟɪꜱʜ ᴘᴀɴᴇʟ ᴛᴏ #${config.targetChannelName}`)
+      .setLabel(`${i("DONE")}ᴘᴜʙʟɪsʜ ᴘᴀɴᴇʟ ᴛᴏ #${config.targetChannelName}`)
       .setStyle(ButtonStyle.Success)
       .setDisabled(config.buttons.length === 0),
   );
@@ -132,7 +138,7 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
   const row3 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("tsetup_set_mods")
-      .setLabel("🛡️ᴛɪᴄᴋᴇᴛ ᴍᴏᴅꜱ")
+      .setLabel(`${icon("SHIELD")}ᴛɪᴄᴋᴇᴛ ᴍᴏᴅs`)
       .setStyle(ButtonStyle.Secondary),
   );
 

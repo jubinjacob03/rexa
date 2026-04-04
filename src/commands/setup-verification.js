@@ -14,6 +14,8 @@ import {
   getAutoApprove,
   setAutoApprove,
 } from "../utils/verificationHandler.js";
+import { eReply } from "../utils/embed.js";
+import { i, icon } from "../utils/icons.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -61,15 +63,14 @@ export default {
       );
 
       if (!verificationChannel) {
-        return interaction.reply({
-          content: "❌ Verification channel not found!",
-          flags: MessageFlags.Ephemeral,
-        });
+        return interaction.reply(
+          eReply(`${i("ERROR")} ɴᴏᴛ ғᴏᴜɴᴅ`, "ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴄʜᴀɴɴᴇʟ ɴᴏᴛ ғᴏᴜɴᴅ!"),
+        );
       }
 
       const verificationEmbed = new EmbedBuilder()
         .setColor("#00ddff")
-        .setTitle("🔐 ʀᴏʟᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ")
+        .setTitle(`${icon("KEYLOCK")} ʀᴏʟᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ`)
         .setDescription("**ᴄʟɪᴄᴋ ᴏɴ ᴛʜᴇ ᴀᴘᴘʀᴏᴘʀɪᴀᴛᴇ ʀᴏʟᴇ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴀᴘᴘʟʏ.** ")
         .setTimestamp();
 
@@ -99,6 +100,7 @@ export default {
           const embedTitle = msg.embeds[0].title;
           if (
             embedTitle?.includes("Role Verification") ||
+            embedTitle?.includes("ʀᴏʟᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ") ||
             embedTitle?.includes("ғʀɪᴇɴᴅs ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ") ||
             embedTitle?.includes("ᴍᴇᴍʙᴇʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ")
           ) {
@@ -119,7 +121,8 @@ export default {
             msg.id !== existingMessage.id &&
             msg.author.id === interaction.client.user.id &&
             msg.embeds.length > 0 &&
-            (msg.embeds[0].title?.includes("ғʀɪᴇɴᴅs ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ") ||
+            (msg.embeds[0].title?.includes("ʀᴏʟᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ") ||
+              msg.embeds[0].title?.includes("ғʀɪᴇɴᴅs ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ") ||
               msg.embeds[0].title?.includes("ᴍᴇᴍʙᴇʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ")),
         );
 
@@ -128,27 +131,30 @@ export default {
           console.log("[INFO] Deleted old verification embed");
         }
 
-        await interaction.reply({
-          content: `✅ Verification embed updated successfully!\n📬 Auto-DM on join: **${currentAutoDm ? "on" : "off"}**\n🤖 Approve mode: **${currentAutoApprove ? "auto (AI DM)" : "manual (approvals channel)"}**`,
-          flags: MessageFlags.Ephemeral,
-        });
+        await interaction.reply(
+          eReply(
+            `${i("SAVED")} ᴜᴘᴅᴀᴛᴇᴅ`,
+            `ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴇᴍʙᴇᴅ ᴜᴘᴅᴀᴛᴇᴅ.\n${icon("MAILBOX")} ᴀᴜᴛᴏ-ᴅᴍ ᴏɴ ᴊᴏɪɴ: **${currentAutoDm ? "on" : "off"}**\n${icon("BOT")} ᴀᴘᴘʀᴏᴠᴇ ᴍᴏᴅᴇ: **${currentAutoApprove ? "auto (AI DM)" : "manual (approvals channel)"}**`,
+          ),
+        );
       } else {
         await verificationChannel.send({
           embeds: [verificationEmbed],
           components: [buttonRow],
         });
         console.log("[INFO] Created new verification embed");
-        await interaction.reply({
-          content: `✅ Verification embed set up successfully!\n📬 Auto-DM on join: **${currentAutoDm ? "on" : "off"}**\n🤖 Approve mode: **${currentAutoApprove ? "auto (AI DM)" : "manual (approvals channel)"}**`,
-          flags: MessageFlags.Ephemeral,
-        });
+        await interaction.reply(
+          eReply(
+            `${i("SAVED")} ᴄᴏᴍᴘʟᴇᴛᴇ`,
+            `ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴇᴍʙᴇᴅ ᴄʀᴇᴀᴛᴇᴅ.\n${icon("MAILBOX")} ᴀᴜᴛᴏ-ᴅᴍ ᴏɴ ᴊᴏɪɴ: **${currentAutoDm ? "on" : "off"}**\n${icon("BOT")} ᴀᴘᴘʀᴏᴠᴇ ᴍᴏᴅᴇ: **${currentAutoApprove ? "auto (AI DM)" : "manual (approvals channel)"}**`,
+          ),
+        );
       }
     } catch (error) {
       console.error("[ERROR] Error setting up verification:", error);
-      await interaction.reply({
-        content: "❌ Failed to set up verification embed.",
-        flags: MessageFlags.Ephemeral,
-      });
+      await interaction.reply(
+        eReply(`${i("ERROR")} ᴇʀʀᴏʀ`, "ғᴀɪʟᴇᴅ ᴛᴏ sᴇᴛ ᴜᴘ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴇᴍʙᴇᴅ."),
+      );
     }
   },
 };
