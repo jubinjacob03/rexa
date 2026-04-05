@@ -12,16 +12,16 @@ import {
 } from "discord.js";
 import { loadConfig, updateConfig } from "../utils/automodManager.js";
 import { EMBED_COLOR, eReply } from "../utils/embed.js";
-import { i } from "../utils/icons.js";
+import { i, icon } from "../utils/icons.js";
 
 export async function generateAutomodDashboard(guild = null) {
   const config = await loadConfig();
   const on = config.enabled;
 
   const embed = new EmbedBuilder()
-    .setTitle(`ᴀᴜᴛᴏᴍᴏᴅ — ${on ? "ᴀᴄᴛɪᴠᴇ" : "ɪɴᴀᴄᴛɪᴠᴇ"}`)
+    .setTitle(`ᴀᴜᴛᴏᴍᴏᴅ — ${on ? `${i("SUCCESS")}` : `${i("ERROR")}`}`)
     .setDescription(
-      `**ʀᴀᴛᴇ ʟɪᴍɪᴛs • ᴘᴇʀ 10s**\nᴍsɢ **${config.limits.messageSpam}** • ᴄʜ. ᴅᴇʟ **${config.limits.channelDelete}** • ɴɪᴄᴋ **${config.limits.nicknameChange}** • ᴍsɢ ᴅᴇʟ **${config.limits.messageDelete}**`,
+      `**ʀᴀᴛᴇ ʟɪᴍɪᴛs • ᴘᴇʀ 10s**\n${icon("LABEL")} ᴍsɢ **${config.limits.messageSpam}** • ${icon("CHANNELS")} ᴄʜ. ᴅᴇʟ **${config.limits.channelDelete}** • ${icon("MEMBERS")} ɴɪᴄᴋ **${config.limits.nicknameChange}** • ${icon("PURGE")} ᴍsɢ ᴅᴇʟ **${config.limits.messageDelete}**`,
     )
     .setColor(EMBED_COLOR)
     .setTimestamp();
@@ -30,20 +30,8 @@ export async function generateAutomodDashboard(guild = null) {
     embed.setThumbnail(guild.iconURL({ size: 256, dynamic: true }));
   }
 
-  // Row 1: master toggle + edit limits
+  // Row 1: feature toggle buttons
   const row1 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("automod_toggle_master")
-      .setLabel(on ? "ᴅɪsᴀʙʟᴇ ᴀᴜᴛᴏᴍᴏᴅ" : "ᴇɴᴀʙʟᴇ ᴀᴜᴛᴏᴍᴏᴅ")
-      .setStyle(on ? ButtonStyle.Danger : ButtonStyle.Success),
-    new ButtonBuilder()
-      .setCustomId("automod_edit_limits")
-      .setLabel("ᴇᴅɪᴛ ʟɪᴍɪᴛs")
-      .setStyle(ButtonStyle.Secondary),
-  );
-
-  // Row 2: fixed-color feature buttons, label reflects on/off state
-  const row2 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("automod_toggle_spam")
       .setLabel(`sᴘᴀᴍ ғɪʟᴛᴇʀ — ${config.spam ? "ᴏɴ" : "ᴏғғ"}`)
@@ -56,6 +44,18 @@ export async function generateAutomodDashboard(guild = null) {
       .setCustomId("automod_toggle_toxicity")
       .setLabel(`ᴛᴏxɪᴄɪᴛʏ ғɪʟᴛᴇʀ — ${config.toxicity ? "ᴏɴ" : "ᴏғғ"}`)
       .setStyle(ButtonStyle.Secondary),
+  );
+
+  // Row 2: master toggle + edit limits
+  const row2 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("automod_toggle_master")
+      .setLabel(on ? "ᴅɪsᴀʙʟᴇ ᴀᴜᴛᴏᴍᴏᴅ" : "ᴇɴᴀʙʟᴇ ᴀᴜᴛᴏᴍᴏᴅ")
+      .setStyle(on ? ButtonStyle.Danger : ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId("automod_edit_limits")
+      .setLabel("ᴇᴅɪᴛ ʟɪᴍɪᴛs")
+      .setStyle(ButtonStyle.Primary),
   );
 
   return { embeds: [embed], components: [row1, row2] };
