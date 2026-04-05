@@ -75,12 +75,28 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
       ? config.ticketMods.map((id) => `<@${id}>`).join(" ")
       : `${icon("ERROR")} ɴᴏɴᴇ sᴇᴛ — ᴜsɪɴɢ ᴅᴇғᴀᴜʟᴛ ᴍᴏᴅ ʀᴏʟᴇ.`;
 
-  const dashboardEmbed = new EmbedBuilder()
+  const previewEmbed = new EmbedBuilder()
     .setColor(EMBED_COLOR)
     .setTitle(config.title)
-    .setDescription(config.description)
+    .setDescription(config.description);
+
+  const previewComponents = [];
+  if (config.buttons.length > 0) {
+    const previewRow = new ActionRowBuilder().addComponents(
+      config.buttons.map((btn, idx) =>
+        new ButtonBuilder()
+          .setCustomId(`tsetup_preview_dummy_${idx}`)
+          .setLabel(btn.label)
+          .setStyle(ButtonStyle.Secondary)
+          .setDisabled(true),
+      ),
+    );
+    previewComponents.push(previewRow);
+  }
+
+  const controlsEmbed = new EmbedBuilder()
+    .setColor(EMBED_COLOR)
     .addFields(
-      { name: "\u200b", value: "\u200b", inline: false },
       { name: "ᴀᴛᴛᴀᴄʜᴇᴅ ʙᴜᴛᴛᴏɴs", value: buttonPreview, inline: false },
       { name: "ᴛɪᴄᴋᴇᴛ ᴍᴏᴅᴇʀᴀᴛᴏʀs", value: modsPreview, inline: false },
     )
@@ -91,7 +107,7 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
   const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("tsetup_edit_embed")
-      .setLabel("ᴇᴅɪᴛ ᴇᴍʙᴇᴅ")
+      .setLabel("ᴇᴅɪᴛ ᴇᴍʙᴇᴅ ᴛᴇxᴛ")
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("tsetup_add_text_tkt")
@@ -136,8 +152,9 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
   );
 
   const payload = {
-    embeds: [dashboardEmbed],
-    components: [row1, row2],
+    content: "ᴘʀᴇᴠɪᴇᴡ",
+    embeds: [previewEmbed, controlsEmbed],
+    components: [...previewComponents, row1, row2],
     flags: MessageFlags.Ephemeral,
   };
 
