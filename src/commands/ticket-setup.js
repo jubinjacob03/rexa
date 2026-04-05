@@ -65,7 +65,7 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
 
   const controlsEmbed = new EmbedBuilder()
     .setColor(EMBED_COLOR)
-    .setTitle(`ᴛɪᴄᴋᴇᴛ ᴇᴅɪᴛᴏʀ — ${icon("EDITOR")}`)
+    .setTitle(`${icon("EDITOR")} ᴛɪᴄᴋᴇᴛ ᴇᴅɪᴛᴏʀ`)
     .setDescription(
       "ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ᴄᴏɴғɪɢᴜʀᴇ ᴀɴᴅ ᴘᴜʙʟɪsʜ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ ᴛᴏ ᴛʜᴇ sᴇʟᴇᴄᴛᴇᴅ ᴄʜᴀɴɴᴇʟ.",
     )
@@ -117,7 +117,7 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
     new ButtonBuilder()
       .setCustomId("tsetup_clear_buttons")
       .setEmoji(icon("WARNING"))
-      .setLabel("ᴄʟᴇᴀʀ ʙᴜᴛᴛᴏɴꜱ")
+      .setLabel("ᴄʟᴇᴀʀ ᴀʟʟ ʙᴜᴛᴛᴏɴs")
       .setStyle(ButtonStyle.Danger)
       .setDisabled(config.buttons.length === 0),
     new ButtonBuilder()
