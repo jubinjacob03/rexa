@@ -180,6 +180,12 @@
       "commands/ticket-setup.js:edit_button"
     ]
   },
+  "EDITOR": {
+    "description": "Ticket editor dashboard title — setup-ticket controls embed header.",
+    "serverEmojiName": "Editor",
+    "fallback": "🖊️",
+    "usedIn": ["commands/ticket-setup.js:dashboard_title"]
+  },
   "TYPE": {
     "description": "Ticket type prefix — text/vc ticket modal titles and setup button labels.",
     "serverEmojiName": "points",
