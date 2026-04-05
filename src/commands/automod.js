@@ -50,6 +50,7 @@ export async function generateAutomodDashboard(guild = null) {
   const row2 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("automod_toggle_master")
+      .setEmoji(on ? icon("WARNING") : icon("DONE"))
       .setLabel(on ? "ᴅɪsᴀʙʟᴇ ᴀᴜᴛᴏᴍᴏᴅ" : "ᴇɴᴀʙʟᴇ ᴀᴜᴛᴏᴍᴏᴅ")
       .setStyle(on ? ButtonStyle.Danger : ButtonStyle.Success),
     new ButtonBuilder()
