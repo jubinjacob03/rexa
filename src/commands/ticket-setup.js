@@ -75,14 +75,9 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
       ? config.ticketMods.map((id) => `<@${id}>`).join(" ")
       : `${icon("ERROR")} ɴᴏɴᴇ sᴇᴛ — ᴜsɪɴɢ ᴅᴇғᴀᴜʟᴛ ᴍᴏᴅ ʀᴏʟᴇ.`;
 
-  const bannerURL =
-    interaction.guild.bannerURL({ size: 512 }) ??
-    interaction.guild.iconURL({ size: 512 });
-
   const controlsEmbed = new EmbedBuilder()
     .setColor(EMBED_COLOR)
     .setTitle(`ᴛɪᴄᴋᴇᴛ ᴇᴅɪᴛᴏʀ — ${icon("EDITOR")}`)
-    .setThumbnail(bannerURL)
     .addFields(
       {
         name: `${icon("TYPE")} ᴀᴛᴛᴀᴄʜᴇᴅ ʙᴜᴛᴛᴏɴs`,
@@ -90,14 +85,20 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
         inline: false,
       },
       {
-        name: `${icon("CHANNELS")} ᴛɪᴄᴋᴇᴛ ᴍᴏᴅᴇʀᴀᴛᴏʀs`,
+        name: `${icon("CHANNELS")} ᴛɪᴄᴋᴇᴛ ᴍᴏᴅᴇʀᴀᴛᴏʀs : `,
         value: modsPreview,
-        inline: false,
+        inline: true,
       },
     )
     .setFooter({
-      text: "ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ᴄᴏɴғɪɢᴜʀᴇ ᴀɴᴅ ᴘᴜʙʟɪsʜ. (ᴍᴀx 3 ʙᴜᴛᴛᴏɴs)",
+      text: "ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ᴄᴏɴғɪɢᴜʀᴇ ᴀɴᴅ ᴘᴜʙʟɪsʜ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ ᴛᴏ ᴛʜᴇ sᴇʟᴇᴄᴛᴇᴅ ᴄʜᴀɴɴᴇʟ. (ᴍᴀx 3 ʙᴜᴛᴛᴏɴs)",
     });
+
+  if (interaction.guild?.iconURL()) {
+    controlsEmbed.setThumbnail(
+      interaction.guild.iconURL({ size: 256, dynamic: true }),
+    );
+  }
 
   const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
