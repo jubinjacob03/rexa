@@ -17,7 +17,7 @@ export const setupSessions = new Map();
 export default {
   data: new SlashCommandBuilder()
     .setName("setup-ticket")
-    .setDescription("Launch the Advanced Ticket Setup Dashboard (Rich UI)")
+    .setDescription("Launch the Advanced Ticket Setup Dashboard")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addChannelOption((option) =>
       option
@@ -77,13 +77,10 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
 
   const dashboardEmbed = new EmbedBuilder()
     .setColor(EMBED_COLOR)
-    .setTitle("🎟️ sᴜᴘᴘᴏʀᴛ ᴛɪᴄᴋᴇᴛs")
-    .setDescription(
-      `\u200b\nᴄᴜsᴛᴏᴍɪᴢᴇ ʜᴏᴡ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ ᴍᴇɴᴜ ʟᴏᴏᴋs ᴀɴᴅ ʙᴇʜᴀᴠᴇs ʙᴇғᴏʀᴇ ᴘᴜʙʟɪsʜɪɴɢ ɪᴛ ᴛᴏ <#${config.targetChannelId}>.\n\u200b`,
-    )
+    .setTitle(config.title)
+    .setDescription(config.description)
     .addFields(
-      { name: "ᴘʀᴇᴠɪᴇᴡ ᴛɪᴛʟᴇ", value: config.title, inline: false },
-      { name: "ᴘʀᴇᴠɪᴇᴡ ᴅᴇsᴄʀɪᴘᴛɪᴏɴ", value: config.description, inline: false },
+      { name: "\u200b", value: "\u200b", inline: false },
       { name: "ᴀᴛᴛᴀᴄʜᴇᴅ ʙᴜᴛᴛᴏɴs", value: buttonPreview, inline: false },
       { name: "ᴛɪᴄᴋᴇᴛ ᴍᴏᴅᴇʀᴀᴛᴏʀs", value: modsPreview, inline: false },
     )
@@ -94,7 +91,7 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
   const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("tsetup_edit_embed")
-      .setLabel("ᴇᴅɪᴛ ᴇᴍʙᴇᴅ ᴛᴇxᴛ")
+      .setLabel("ᴇᴅɪᴛ ᴇᴍʙᴇᴅ")
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("tsetup_add_text_tkt")
@@ -111,29 +108,26 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
       .setLabel("ᴛᴇxᴛ ʀᴇᴘʟʏ")
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(config.buttons.length >= 3),
-  );
-
-  const row2 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("tsetup_add_image")
       .setLabel("ɪᴍᴀɢᴇ ʀᴇᴘʟʏ")
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(config.buttons.length >= 3),
+  );
+
+  const row2 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("tsetup_clear_buttons")
       .setEmoji(icon("WARNING"))
-      .setLabel("ᴄʟᴇᴀʀ ᴀʟʟ ʙᴜᴛᴛᴏɴꜱ")
+      .setLabel("ᴄʟᴇᴀʀ ʙᴜᴛᴛᴏɴꜱ")
       .setStyle(ButtonStyle.Danger)
       .setDisabled(config.buttons.length === 0),
     new ButtonBuilder()
       .setCustomId("tsetup_publish")
       .setEmoji(icon("DONE"))
-      .setLabel(`ᴘᴜʙʟɪꜱʜ ᴘᴀɴᴇʟ ᴛᴏ #${config.targetChannelName}`)
+      .setLabel(`ᴘᴜʙʟɪsʜ ᴛᴏ #${config.targetChannelName}`)
       .setStyle(ButtonStyle.Success)
       .setDisabled(config.buttons.length === 0),
-  );
-
-  const row3 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("tsetup_set_mods")
       .setEmoji(icon("TYPE"))
@@ -143,7 +137,7 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
 
   const payload = {
     embeds: [dashboardEmbed],
-    components: [row1, row2, row3],
+    components: [row1, row2],
     flags: MessageFlags.Ephemeral,
   };
 
