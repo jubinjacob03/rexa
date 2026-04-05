@@ -59,9 +59,18 @@ export async function handleTicketInteraction(interaction) {
         .setValue(session.description)
         .setRequired(true);
 
+      const currentMods = session.ticketMods || [];
+      const modsInput = new TextInputBuilder()
+        .setCustomId("modsInput")
+        .setLabel("ᴍᴏᴅᴇʀᴀᴛᴏʀ ɪsᴅs (ᴄᴏᴍᴍᴀ sᴇᴘᴀʀᴀᴛᴇᴅ, ʟᴇᴀᴡᴇ ᴇᴍᴘᴛʏ ᴛᴏ ᴄʟᴇᴀʀ)")
+        .setStyle(TextInputStyle.Paragraph)
+        .setValue(currentMods.join(", "))
+        .setRequired(false);
+
       modal.addComponents(
         new ActionRowBuilder().addComponents(titleInput),
         new ActionRowBuilder().addComponents(descInput),
+        new ActionRowBuilder().addComponents(modsInput),
       );
 
       return await interaction.showModal(modal);
@@ -140,45 +149,33 @@ export async function handleTicketInteraction(interaction) {
       return await renderTicketDashboard(interaction, true);
     }
 
-    if (interaction.customId === "tsetup_set_mods") {
-      const currentMods = session.ticketMods || [];
-      const userSelect = new UserSelectMenuBuilder()
-        .setCustomId("tsetup_mods_select")
-        .setPlaceholder("sᴇᴀʀᴄʜ ᴀɴᴅ sᴇʟᴇᴄᴛ ᴍᴏᴅᴇʀᴀᴛᴏʀs")
-        .setMinValues(0)
-        .setMaxValues(10);
-      const row = new ActionRowBuilder().addComponents(userSelect);
-      const currentDisplay =
-        currentMods.length > 0
-          ? currentMods.map((id) => `<@${id}>`).join(", ")
-          : "ɴᴏɴᴇ";
-      return await interaction.reply({
-        ...eReply(
-          `${i("TYPE")} sᴇᴛ ᴛɪᴄᴋᴇᴛ ᴍᴏᴅᴇʀᴀᴛᴏʀs`,
-          `ᴄᴜʀʀᴇɴᴛ: ${currentDisplay}\n\nsᴇʟᴇᴄᴛ ᴜᴘ ᴛᴏ 10 ᴜsᴇʀs ʙᴇʟᴏᴡ. ʟᴇᴀᴠᴇ ᴇᴍᴘᴛʏ ᴀɴᴅ sᴜʙᴍɪᴛ ᴛᴏ ᴄʟᴇᴀʀ.`,
-        ),
-        components: [row],
-      });
-    }
+    if (interaction.customId === "tsetup_preview") {
+      const previewEmbed = new EmbedBuilder()
+        .setColor(session.color)
+        .setTitle(session.title)
+        .setDescription(session.description)
+        .setTimestamp();
 
-    if (interaction.customId === "tsetup_mods_select") {
-      const ids = interaction.values;
-      session.ticketMods = ids;
-      if (supabase) {
-        try {
-          await supabase.from("ticket_actions").upsert(
-            {
-              action_id: "ticket_mods_config",
-              type: "config",
-              content: JSON.stringify(ids),
-            },
-            { onConflict: "action_id" },
-          );
-        } catch (err) {
-          console.error("[SUPABASE] Error saving ticket mods:", err);
-        }
+      const components = [];
+      if (session.buttons.length > 0) {
+        const previewRow = new ActionRowBuilder().addComponents(
+          session.buttons.map((btn) =>
+            new ButtonBuilder()
+              .setCustomId(`preview_${btn.label}`)
+              .setLabel(btn.label)
+              .setStyle(ButtonStyle.Secondary)
+              .setDisabled(true),
+          ),
+        );
+        components.push(previewRow);
       }
-      return await renderTicketDashboard(interaction, true);
+
+      return await interaction.reply({
+        content: `${icon("EDITOR")} **ᴘʀᴇᴠɪᴇᴡ** — ᴛʜɪs ɪs ʜᴏᴡ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ ᴘᴀɴᴇʟ ᴡɪʟʟ ʟᴏᴏᴋ.`,
+        embeds: [previewEmbed],
+        components,
+        flags: MessageFlags.Ephemeral,
+      });
     }
 
     if (interaction.customId === "tsetup_publish") {
@@ -276,6 +273,26 @@ export async function handleTicketInteraction(interaction) {
     if (interaction.customId === "tsetup_modal_embed") {
       session.title = interaction.fields.getTextInputValue("titleInput");
       session.description = interaction.fields.getTextInputValue("descInput");
+      const modsRaw = interaction.fields.getTextInputValue("modsInput");
+      const parsedIds = modsRaw
+        .split(/[\s,]+/)
+        .map((id) => id.replace(/[<@!>]/g, "").trim())
+        .filter((id) => /^\d+$/.test(id));
+      session.ticketMods = parsedIds;
+      if (supabase && parsedIds.length > 0) {
+        try {
+          await supabase.from("ticket_actions").upsert(
+            {
+              action_id: "ticket_mods_config",
+              type: "config",
+              content: JSON.stringify(parsedIds),
+            },
+            { onConflict: "action_id" },
+          );
+        } catch (err) {
+          console.error("[SUPABASE] Error saving ticket mods:", err);
+        }
+      }
     } else if (
       interaction.customId === "tsetup_modal_tkt_txt" ||
       interaction.customId === "tsetup_modal_tkt_vc"
