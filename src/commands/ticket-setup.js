@@ -77,10 +77,18 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
 
   const controlsEmbed = new EmbedBuilder()
     .setColor(EMBED_COLOR)
-    .setTitle(`${icon("EDITOR")} ᴛɪᴄᴋᴇᴛ ᴇᴅɪᴛᴏʀ`)
+    .setTitle(`ᴛɪᴄᴋᴇᴛ ᴇᴅɪᴛᴏʀ — ${icon("EDITOR")}`)
     .addFields(
-      { name: "ᴀᴛᴛᴀᴄʜᴇᴅ ʙᴜᴛᴛᴏɴs", value: buttonPreview, inline: false },
-      { name: "ᴛɪᴄᴋᴇᴛ ᴍᴏᴅᴇʀᴀᴛᴏʀs", value: modsPreview, inline: false },
+      {
+        name: `${icon("TYPE")} ᴀᴛᴛᴀᴄʜᴇᴅ ʙᴜᴛᴛᴏɴs`,
+        value: buttonPreview,
+        inline: false,
+      },
+      {
+        name: `${icon("CHANNELS")} ᴛɪᴄᴋᴇᴛ ᴍᴏᴅᴇʀᴀᴛᴏʀs`,
+        value: modsPreview,
+        inline: false,
+      },
     )
     .setFooter({
       text: "ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ᴄᴏɴғɪɢᴜʀᴇ ᴀɴᴅ ᴘᴜʙʟɪsʜ. (ᴍᴀx 3 ʙᴜᴛᴛᴏɴs)",
