@@ -11,7 +11,6 @@ import {
   TextInputBuilder,
   TextInputStyle,
   UserSelectMenuBuilder,
-  StringSelectMenuBuilder,
 } from "discord.js";
 import supabase from "./supabaseClient.js";
 import config from "../../config.js";
@@ -81,7 +80,7 @@ export async function handleTicketInteraction(interaction) {
         .setCustomId("labelBtn")
         .setLabel("ʙᴜᴛᴛᴏɴ ʟᴀʙᴇʟ")
         .setStyle(TextInputStyle.Short)
-        .setValue("ᴏᴘᴇɴ ᴛɪᴄᴋᴇᴛ")
+        .setValue("🎫 ᴏᴘᴇɴ ᴛɪᴄᴋᴇᴛ")
         .setRequired(true);
 
       modal.addComponents(new ActionRowBuilder().addComponents(labelInput));
@@ -123,101 +122,17 @@ export async function handleTicketInteraction(interaction) {
     }
 
     if (interaction.customId === "tsetup_add_image") {
-      const selectRow = new ActionRowBuilder().addComponents(
-        new StringSelectMenuBuilder()
-          .setCustomId("tsetup_img_type")
-          .setPlaceholder("ᴄʜᴏᴏsᴇ ɪᴍᴀɢᴇ ʀᴇᴘʟʏ ᴛʏᴘᴇ")
-          .addOptions(
-            {
-              label: "ᴘᴀʏᴍᴇɴᴛ",
-              value: "payment",
-              description: "ʜᴀʀᴅᴄᴏᴅᴇᴅ ʙᴜᴛᴛᴏɴ ᴡɪᴛʜ ᴘᴀʏᴍᴇɴᴛ ɪᴄᴏɴ",
-            },
-            {
-              label: "ᴄᴜsᴛᴏᴍ ᴛɪᴛʟᴇ",
-              value: "custom",
-              description: "ᴇɴᴛᴇʀ ʏᴏᴜʀ ᴏᴡɴ ʙᴜᴛᴛᴏɴ ʟᴀʙᴇʟ",
-            },
-          ),
-      );
-      return await interaction.update({
-        content: "-# ᴄʜᴏᴏsᴇ ɪᴍᴀɢᴇ ʀᴇᴘʟʏ ᴛʏᴘᴇ:",
-        embeds: [],
-        components: [selectRow],
-      });
-    }
-
-    if (interaction.customId === "tsetup_img_type") {
-      const value = interaction.values[0];
-      if (value === "custom") {
-        const modal = new ModalBuilder()
-          .setCustomId("tsetup_modal_img")
-          .setTitle("ɪᴍᴀɢᴇ ʀᴇᴘʟʏ");
-        const labelInput = new TextInputBuilder()
-          .setCustomId("labelBtn")
-          .setLabel("ʙᴜᴛᴛᴏɴ ʟᴀʙᴇʟ")
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true);
-        modal.addComponents(new ActionRowBuilder().addComponents(labelInput));
-        return await interaction.showModal(modal);
-      }
-
-      const label = "ᴘᴀʏᴍᴇɴᴛ";
-      await interaction.deferUpdate();
-      const waitingMsg = await interaction.followUp(
-        eReply(
-          `${i("PENDING")} ᴡᴀɪᴛɪɴɢ ғᴏʀ ɪᴍᴀɢᴇ`,
-          `ᴘʟᴇᴀsᴇ sᴇɴᴅ ᴛʜᴇ ᴘᴀʏᴍᴇɴᴛ ᴏsᴄʀᴇᴇɴsʜᴏᴛ ɪɴ ᴛʜɪs ᴄʜᴀɴɴᴇʟ ɴᴏᴡ. (ʏᴏᴜ ʜᴀᴠᴇ 60 sᴇᴄᴏɴᴅs.)\n*ᴛʜᴇ ʙᴏᴛ ᴡɪʟʟ sᴇᴄᴜʀᴇ ᴛʜᴇ ɪᴍᴀɢᴇ ᴀɴᴅ ᴅᴇʟᴇᴛᴇ ʏᴏᴜʀ ᴍᴇssᴀɢᴇ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ.*`,
-        ),
-      );
-      const filter = (m) =>
-        m.author.id === interaction.user.id && m.attachments.size > 0;
-      try {
-        const collected = await interaction.channel.awaitMessages({
-          filter,
-          max: 1,
-          time: 60000,
-          errors: ["time"],
-        });
-        const msg = collected.first();
-        const attachment = msg.attachments.first();
-        let finalImageUrl = attachment.url;
-        const logChannelId =
-          config.ticketLogsChannelId || "1489647372811243742";
-        const logChannel = await interaction.client.channels
-          .fetch(logChannelId)
-          .catch(() => null);
-        if (logChannel) {
-          const sentMsg = await logChannel.send({
-            content: `**Ticket Image Upload:** \`${label}\` (via <@${interaction.user.id}>)`,
-            files: [
-              {
-                attachment: attachment.url,
-                name: attachment.name || "image.png",
-              },
-            ],
-          });
-          if (sentMsg.attachments.size > 0) {
-            finalImageUrl = sentMsg.attachments.first().url;
-            msg.delete().catch(() => null);
-          }
-        }
-        session.buttons.push({
-          type: "image",
-          label,
-          content: finalImageUrl,
-          paymentEmoji: true,
-        });
-        await waitingMsg.delete().catch(() => null);
-        return await renderTicketDashboard(interaction, true);
-      } catch (err) {
-        return interaction.editReply(
-          eSend(
-            `${i("ERROR")} ᴛɪᴍᴇ ᴇxᴘɪʀᴇᴅ`,
-            "ʏᴏᴜ ᴅɪᴅɴ'ᴛ ᴜᴘʟᴏᴀᴅ ᴀɴ ɪᴍᴀɢᴇ ɪɴ ᴛɪᴍᴇ. ʀᴜɴ `/setup-ticket` ᴛᴏ ʀᴇsᴜᴍᴇ ᴏʀ ᴛʀʏ ᴀɢᴀɪɴ.",
-          ),
-        );
-      }
+      const modal = new ModalBuilder()
+        .setCustomId("tsetup_modal_img")
+        .setTitle("ɪᴍᴀɢᴇ ʀᴇᴘʟʏ");
+      const labelInput = new TextInputBuilder()
+        .setCustomId("labelBtn")
+        .setLabel("ʙᴜᴛᴛᴏɴ ʟᴀʙᴇʟ")
+        .setStyle(TextInputStyle.Short)
+        .setValue("💳 ᴘᴀʏᴍᴇɴᴛ")
+        .setRequired(true);
+      modal.addComponents(new ActionRowBuilder().addComponents(labelInput));
+      return await interaction.showModal(modal);
     }
 
     if (interaction.customId === "tsetup_clear_buttons") {
@@ -239,7 +154,7 @@ export async function handleTicketInteraction(interaction) {
           : "ɴᴏɴᴇ";
       return await interaction.reply({
         ...eReply(
-          `${i("SHIELD")} sᴇᴛ ᴛɪᴄᴋᴇᴛ ᴍᴏᴅᴇʀᴀᴛᴏʀs`,
+          `${i("TYPE")} sᴇᴛ ᴛɪᴄᴋᴇᴛ ᴍᴏᴅᴇʀᴀᴛᴏʀs`,
           `ᴄᴜʀʀᴇɴᴛ: ${currentDisplay}\n\nsᴇʟᴇᴄᴛ ᴜᴘ ᴛᴏ 10 ᴜsᴇʀs ʙᴇʟᴏᴡ. ʟᴇᴀᴠᴇ ᴇᴍᴘᴛʏ ᴀɴᴅ sᴜʙᴍɪᴛ ᴛᴏ ᴄʟᴇᴀʀ.`,
         ),
         components: [row],
@@ -293,12 +208,12 @@ export async function handleTicketInteraction(interaction) {
         if (btn.type === "ticket") {
           const aiFlag = btn.aiAssist ? "1" : "0";
           const statelessCustomId = `tkt_open|${btn.ticketType}|${aiFlag}`;
-          const ticketBtn = new ButtonBuilder()
-            .setCustomId(statelessCustomId)
-            .setEmoji(icon("TICKET"))
-            .setLabel(btn.label)
-            .setStyle(ButtonStyle.Secondary);
-          row.addComponents(ticketBtn);
+          row.addComponents(
+            new ButtonBuilder()
+              .setCustomId(statelessCustomId)
+              .setLabel(btn.label)
+              .setStyle(ButtonStyle.Secondary),
+          );
         } else {
           const actionKey = Math.random().toString(36).substr(2, 9);
 
@@ -320,12 +235,12 @@ export async function handleTicketInteraction(interaction) {
             }
           }
 
-          const actionBtn = new ButtonBuilder()
-            .setCustomId(`tkt_action|${actionKey}`)
-            .setLabel(btn.label)
-            .setStyle(ButtonStyle.Secondary);
-          if (btn.paymentEmoji) actionBtn.setEmoji(icon("PAYMENT"));
-          row.addComponents(actionBtn);
+          row.addComponents(
+            new ButtonBuilder()
+              .setCustomId(`tkt_action|${actionKey}`)
+              .setLabel(btn.label)
+              .setStyle(ButtonStyle.Secondary),
+          );
         }
       }
 
@@ -333,7 +248,7 @@ export async function handleTicketInteraction(interaction) {
       setupSessions.delete(interaction.user.id);
 
       return await interaction.update({
-        content: `${i("DONE")}**ᴛɪᴄᴋᴇᴛ ᴘᴀɴᴇʟ ᴘᴜʙʟɪsʜᴇᴅ sᴜᴄᴄᴇssғᴜʟʟʏ ᴛᴏ <#${session.targetChannelId}>.**`,
+        content: `${i("DONE")} **ᴛɪᴄᴋᴇᴛ ᴘᴀɴᴇʟ ᴘᴜʙʟɪsʜᴇᴅ sᴜᴄᴄᴇssғᴜʟʟʏ ᴛᴏ <#${session.targetChannelId}>.**`,
         embeds: [],
         components: [],
       });
@@ -350,7 +265,7 @@ export async function handleTicketInteraction(interaction) {
       if (!interaction.replied && !interaction.deferred) {
         return await interaction.reply(
           eReply(
-            `${i("ERROR")}sᴇssɪᴏɴ ᴇxᴘɪʀᴇᴅ`,
+            `${i("ERROR")} sᴇssɪᴏɴ ᴇxᴘɪʀᴇᴅ`,
             "ᴛʜᴇ ʙᴏᴛ ʀᴇsᴛᴀʀᴛᴇᴅ. ᴘʟᴇᴀsᴇ ʀᴜɴ `/setup-ticket` ᴀɢᴀɪɴ.",
           ),
         );
@@ -432,7 +347,6 @@ export async function handleTicketInteraction(interaction) {
           type: "image",
           label: label,
           content: finalImageUrl,
-          paymentEmoji: false,
         });
         await waitingMsg.delete().catch(() => null);
         return await renderTicketDashboard(interaction, true);
@@ -461,7 +375,7 @@ export async function handleTicketInteraction(interaction) {
       // Fallback: look it up in Supabase if the bot restarted
       const { data } = await supabase
         .from("ticket_actions")
-        .select("type, content, paymentEmoji")
+        .select("type, content")
         .eq("action_id", key)
         .single();
       if (data) {
@@ -474,19 +388,20 @@ export async function handleTicketInteraction(interaction) {
 
     if (actionData) {
       if (actionData.type === "text") {
-        await interaction.reply(
-          eReply(`${i("CLIPBOARD")} ɪɴғᴏ`, actionData.content),
-        );
+        await interaction.reply({
+          content: actionData.content,
+          flags: MessageFlags.Ephemeral,
+        });
       } else if (actionData.type === "image") {
-        const imgEmbed = new EmbedBuilder()
-          .setColor(EMBED_COLOR)
-          .setImage(actionData.content);
-        await interaction.reply({ embeds: [imgEmbed], flags: 64 });
+        await interaction.reply({
+          content: actionData.content,
+          flags: MessageFlags.Ephemeral,
+        });
       }
     } else {
       await interaction.reply(
         eReply(
-          `${i("ERROR")}ᴇxᴘɪʀᴇᴅ ᴀᴄᴛɪᴏɴ`,
+          `${i("ERROR")} ᴇxᴘɪʀᴇᴅ ᴀᴄᴛɪᴏɴ`,
           "ᴛʜɪs ᴄᴜsᴛᴏᴍ ʙᴜᴛᴛᴏɴ ʜᴀs ᴇxᴘɪʀᴇᴅ ᴏʀ ɪs ɪɴᴠᴀʟɪᴅ (ʙᴏᴛ ʀᴇsᴛᴀʀᴛᴇᴅ).",
         ),
       );
@@ -634,9 +549,7 @@ async function createTicketInstance(interaction) {
 
     const embed = new EmbedBuilder()
       .setColor(EMBED_COLOR)
-      .setTitle(
-        `${icon("TICKET")} ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ, ${interaction.user.username}`,
-      )
+      .setTitle(`🎫 ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ, ${interaction.user.username}`)
       .setDescription(descriptionText)
       .setFooter({
         text: "ᴜsᴇ ᴛʜᴇ ᴄʟᴏsᴇ ʙᴜᴛᴛᴏɴ ᴡʜᴇɴ ʏᴏᴜʀ ɪssᴜᴇ ɪs ʀᴇsᴏʟᴠᴇᴅ.",
@@ -679,7 +592,7 @@ async function createTicketInstance(interaction) {
 
     await interaction.editReply(
       eSend(
-        `${i("DONE")}ᴛɪᴄᴋᴇᴛ ᴄʀᴇᴀᴛᴇᴅ`,
+        `${i("DONE")} ᴛɪᴄᴋᴇᴛ ᴄʀᴇᴀᴛᴇᴅ`,
         `ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ ʜᴀs ʙᴇᴇɴ ᴄʀᴇᴀᴛᴇᴅ: <#${ticketChannel.id}>`,
       ),
     );
@@ -687,7 +600,7 @@ async function createTicketInstance(interaction) {
     console.error("[TICKETS] Error creating ticket:", error);
     await interaction.editReply(
       eSend(
-        `${i("ERROR")}ᴇʀʀᴏʀ`,
+        `${i("ERROR")} ᴇʀʀᴏʀ`,
         "ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ ᴡʜɪʟᴇ ᴄʀᴇᴀᴛɪɴɢ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ.",
       ),
     );

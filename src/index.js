@@ -175,10 +175,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 
   if (interaction.isStringSelectMenu()) {
-    if (interaction.customId.startsWith("tsetup_")) {
-      await handleTicketInteraction(interaction);
-      return;
-    }
   }
 
   if (!interaction.isChatInputCommand()) return;

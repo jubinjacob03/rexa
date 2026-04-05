@@ -45,10 +45,10 @@ export default {
 
     // Initialize default ticket configuration for this admin session
     setupSessions.set(interaction.user.id, {
-      title: `${icon("PANEL")} sᴜᴘᴘᴏʀᴛ ᴛɪᴄᴋᴇᴛs`,
+      title: "🎟️ sᴜᴘᴘᴏʀᴛ ᴛɪᴄᴋᴇᴛs",
       description:
         "ᴄʟɪᴄᴋ ᴛʜᴇ ʙᴜᴛᴛᴏɴ ʙᴇʟᴏᴡ ᴛᴏ ᴏᴘᴇɴ ᴀ ᴘʀɪᴠᴀᴛᴇ ᴛɪᴄᴋᴇᴛ.\nᴏᴜʀ ᴀɪ ᴀssɪsᴛᴀɴᴛ ᴀɴᴅ sᴛᴀғғ ᴡɪʟʟ ʙᴇ ᴡɪᴛʜ ʏᴏᴜ sʜᴏʀᴛʟʏ.",
-      color: "#00FFFF",
+      color: EMBED_COLOR,
       targetChannelId: targetChannel.id,
       targetChannelName: targetChannel.name,
       buttons: [],
@@ -77,7 +77,7 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
 
   const dashboardEmbed = new EmbedBuilder()
     .setColor(EMBED_COLOR)
-    .setTitle(`${icon("PANEL")} sᴜᴘᴘᴏʀᴛ ᴛɪᴄᴋᴇᴛs`)
+    .setTitle("🎟️ sᴜᴘᴘᴏʀᴛ ᴛɪᴄᴋᴇᴛs")
     .setDescription(
       `\u200b\nᴄᴜsᴛᴏᴍɪᴢᴇ ʜᴏᴡ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ ᴍᴇɴᴜ ʟᴏᴏᴋs ᴀɴᴅ ʙᴇʜᴀᴠᴇs ʙᴇғᴏʀᴇ ᴘᴜʙʟɪsʜɪɴɢ ɪᴛ ᴛᴏ <#${config.targetChannelId}>.\n\u200b`,
     )
@@ -85,11 +85,7 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
       { name: "ᴘʀᴇᴠɪᴇᴡ ᴛɪᴛʟᴇ", value: config.title, inline: false },
       { name: "ᴘʀᴇᴠɪᴇᴡ ᴅᴇsᴄʀɪᴘᴛɪᴏɴ", value: config.description, inline: false },
       { name: "ᴀᴛᴛᴀᴄʜᴇᴅ ʙᴜᴛᴛᴏɴs", value: buttonPreview, inline: false },
-      {
-        name: `${icon("SHIELD")} ᴛɪᴄᴋᴇᴛ ᴍᴏᴅᴇʀᴀᴛᴏʀs`,
-        value: modsPreview,
-        inline: false,
-      },
+      { name: "ᴛɪᴄᴋᴇᴛ ᴍᴏᴅᴇʀᴀᴛᴏʀs", value: modsPreview, inline: false },
     )
     .setFooter({
       text: "ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ᴄᴏɴғɪɢᴜʀᴇ ᴀɴᴅ ᴘᴜʙʟɪsʜ. (ᴍᴀx 3 ʙᴜᴛᴛᴏɴs)",
@@ -98,24 +94,20 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
   const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("tsetup_edit_embed")
-      .setEmoji(icon("EDIT"))
       .setLabel("ᴇᴅɪᴛ ᴇᴍʙᴇᴅ ᴛᴇxᴛ")
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("tsetup_add_text_tkt")
-      .setEmoji(icon("TYPE"))
       .setLabel("ᴛᴇxᴛ ᴛɪᴄᴋᴇᴛ")
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(config.buttons.length >= 3),
     new ButtonBuilder()
       .setCustomId("tsetup_add_vc_tkt")
-      .setEmoji(icon("TYPE"))
       .setLabel("ᴠᴄ ᴛɪᴄᴋᴇᴛ")
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(config.buttons.length >= 3),
     new ButtonBuilder()
       .setCustomId("tsetup_add_text")
-      .setEmoji(icon("TYPE"))
       .setLabel("ᴛᴇxᴛ ʀᴇᴘʟʏ")
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(config.buttons.length >= 3),
@@ -124,20 +116,19 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
   const row2 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("tsetup_add_image")
-      .setEmoji(icon("TYPE"))
       .setLabel("ɪᴍᴀɢᴇ ʀᴇᴘʟʏ")
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(config.buttons.length >= 3),
     new ButtonBuilder()
       .setCustomId("tsetup_clear_buttons")
       .setEmoji(icon("WARNING"))
-      .setLabel("ᴄʟᴇᴀʀ ᴀʟʟ ʙᴜᴛᴛᴏɴs")
+      .setLabel("ᴄʟᴇᴀʀ ᴀʟʟ ʙᴜᴛᴛᴏɴꜱ")
       .setStyle(ButtonStyle.Danger)
       .setDisabled(config.buttons.length === 0),
     new ButtonBuilder()
       .setCustomId("tsetup_publish")
       .setEmoji(icon("DONE"))
-      .setLabel(`ᴘᴜʙʟɪsʜ ᴘᴀɴᴇʟ ᴛᴏ #${config.targetChannelName}`)
+      .setLabel(`ᴘᴜʙʟɪꜱʜ ᴘᴀɴᴇʟ ᴛᴏ #${config.targetChannelName}`)
       .setStyle(ButtonStyle.Success)
       .setDisabled(config.buttons.length === 0),
   );
@@ -145,9 +136,9 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
   const row3 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("tsetup_set_mods")
-      .setEmoji(icon("SHIELD"))
-      .setLabel("ᴛɪᴄᴋᴇᴛ ᴍᴏᴅs")
-      .setStyle(ButtonStyle.Secondary),
+      .setEmoji(icon("TYPE"))
+      .setLabel("ᴛɪᴄᴋᴇᴛ ᴍᴏᴅꜱ")
+      .setStyle(ButtonStyle.Primary),
   );
 
   const payload = {
