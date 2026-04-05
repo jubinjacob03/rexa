@@ -62,7 +62,7 @@ export async function handleTicketInteraction(interaction) {
       const currentMods = session.ticketMods || [];
       const modsInput = new TextInputBuilder()
         .setCustomId("modsInput")
-        .setLabel("ᴍᴏᴅᴇʀᴀᴛᴏʀ ɪsᴅs (ᴄᴏᴍᴍᴀ sᴇᴘᴀʀᴀᴛᴇᴅ, ʟᴇᴀᴡᴇ ᴇᴍᴘᴛʏ ᴛᴏ ᴄʟᴇᴀʀ)")
+        .setLabel("ᴍᴏᴅ ɪᴅs (ᴄᴏᴍᴍᴀ sᴇᴘ.)")
         .setStyle(TextInputStyle.Paragraph)
         .setValue(currentMods.join(", "))
         .setRequired(false);
