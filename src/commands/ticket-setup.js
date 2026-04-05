@@ -75,9 +75,14 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
       ? config.ticketMods.map((id) => `<@${id}>`).join(" ")
       : `${icon("ERROR")} ɴᴏɴᴇ sᴇᴛ — ᴜsɪɴɢ ᴅᴇғᴀᴜʟᴛ ᴍᴏᴅ ʀᴏʟᴇ.`;
 
+  const bannerURL =
+    interaction.guild.bannerURL({ size: 512 }) ??
+    interaction.guild.iconURL({ size: 512 });
+
   const controlsEmbed = new EmbedBuilder()
     .setColor(EMBED_COLOR)
     .setTitle(`ᴛɪᴄᴋᴇᴛ ᴇᴅɪᴛᴏʀ — ${icon("EDITOR")}`)
+    .setThumbnail(bannerURL)
     .addFields(
       {
         name: `${icon("TYPE")} ᴀᴛᴛᴀᴄʜᴇᴅ ʙᴜᴛᴛᴏɴs`,
