@@ -106,7 +106,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.customId === "refresh_stats") {
-      await interaction.deferUpdate();
+      try {
+        await interaction.deferUpdate();
+      } catch {}
       await updateStatusMessage(interaction.client);
       return;
     }
@@ -276,6 +278,10 @@ process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("beforeExit", () => {
   console.log("[SHUTDOWN] Process before exit, forcing save...");
   contextManager.forceSaveAll().catch(console.error);
+});
+
+process.on("unhandledRejection", (err) => {
+  console.error("[ERROR] Unhandled rejection:", err?.message ?? err);
 });
 
 client.login(config.token);

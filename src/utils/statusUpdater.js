@@ -7,6 +7,7 @@ import {
 import config from "../../config.js";
 import supabase from "./supabaseClient.js";
 import { EMBED_COLOR } from "./embed.js";
+import { icon } from "./icons.js";
 
 let statusMessage = null;
 let updateInterval = null;
@@ -79,11 +80,11 @@ export async function updateStatusMessage(client) {
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("refresh_stats")
-        .setLabel("ʀᴇғʀᴇsʜ")
+        .setLabel("sʏɴᴄ")
         .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
         .setCustomId("status_roles_info")
-        .setLabel("ʀᴏʟᴇs ɪɴғᴏ")
+        .setLabel("ʀᴏʟᴇs")
         .setStyle(ButtonStyle.Success),
       new ButtonBuilder()
         .setLabel("ʀᴜʟᴇs")
@@ -96,7 +97,7 @@ export async function updateStatusMessage(client) {
     if (config.instagramUrl) {
       row.addComponents(
         new ButtonBuilder()
-          .setLabel("ɪɴsᴛᴀɢʀᴀᴍ")
+          .setEmoji(icon("INSTAGRAM"))
           .setStyle(ButtonStyle.Link)
           .setURL(config.instagramUrl),
       );
@@ -105,7 +106,7 @@ export async function updateStatusMessage(client) {
     row.addComponents(
       new ButtonBuilder()
         .setCustomId("status_whatsapp")
-        .setLabel("ᴡʜᴀᴛsᴀᴘᴘ")
+        .setEmoji(icon("WHATSAPP"))
         .setStyle(ButtonStyle.Secondary),
     );
 
