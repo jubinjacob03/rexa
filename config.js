@@ -51,4 +51,9 @@ export default {
     idleTimeoutMs: 5 * 60 * 1000,
     maxLifetimeMs: 3 * 60 * 60 * 1000,
   },
+
+  // Status embed links
+  rulesChannelId: process.env.RULES_CHANNEL_ID || "1473075468805738538",
+  instagramUrl: process.env.INSTAGRAM_URL || null,
+  whatsappUrl: process.env.WHATSAPP_URL || null,
 };

@@ -1,0 +1,70 @@
+{
+  "title": "sᴀɪʏᴀɴ ɢᴏᴅs — ʀᴏʟᴇs",
+  "roles": [
+    {
+      "emoji": "👑",
+      "name": "Owner",
+      "description": "Server owner and highest authority."
+    },
+    {
+      "emoji": "🔥",
+      "name": "Management",
+      "description": "Senior staff who oversee and manage the server."
+    },
+    {
+      "emoji": "🛡️",
+      "name": "Moderator",
+      "description": "Active moderators who enforce rules and maintain order."
+    },
+    {
+      "emoji": "✅",
+      "name": "Member",
+      "description": "Verified guild members with full access to the server."
+    },
+    {
+      "emoji": "🤝",
+      "name": "Friends",
+      "description": "Trusted friends of the community with limited server access."
+    },
+    {
+      "emoji": "💎",
+      "name": "Server Booster",
+      "description": "Members who are actively boosting the server. Thank you!"
+    },
+    {
+      "emoji": "❗",
+      "name": "!! Unverified",
+      "description": "New members who haven't completed verification yet."
+    },
+    {
+      "emoji": "🤖",
+      "name": "Bots",
+      "description": "Official bot accounts operating in the server."
+    },
+    {
+      "emoji": "🖥️",
+      "name": "PC",
+      "description": "Self-role for members who play on PC."
+    },
+    {
+      "emoji": "📱",
+      "name": "Mobile",
+      "description": "Self-role for members who play on Mobile."
+    },
+    {
+      "emoji": "🖥️📱",
+      "name": "Mobile-PC",
+      "description": "Self-role for members who play on mobile connected to keyboard and mouse peripherals."
+    },
+    {
+      "emoji": "🔞",
+      "name": "18+",
+      "description": "Self-role for members who are 18 or above."
+    },
+    {
+      "emoji": "🔰",
+      "name": "18-",
+      "description": "Self-role for members who are below 18."
+    }
+  ]
+}

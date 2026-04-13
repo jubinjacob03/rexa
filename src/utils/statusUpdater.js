@@ -76,11 +76,37 @@ export async function updateStatusMessage(client) {
 
     const embed = await createStatusEmbed(guild, client);
 
-    const refreshButton = new ActionRowBuilder().addComponents(
+    const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("refresh_stats")
         .setLabel("ʀᴇғʀᴇsʜ")
         .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId("status_roles_info")
+        .setLabel("ʀᴏʟᴇs ɪɴғᴏ")
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setLabel("ʀᴜʟᴇs")
+        .setStyle(ButtonStyle.Link)
+        .setURL(
+          `https://discord.com/channels/${config.guildId}/${config.rulesChannelId}`,
+        ),
+    );
+
+    if (config.instagramUrl) {
+      row.addComponents(
+        new ButtonBuilder()
+          .setLabel("ɪɴsᴛᴀɢʀᴀᴍ")
+          .setStyle(ButtonStyle.Link)
+          .setURL(config.instagramUrl),
+      );
+    }
+
+    row.addComponents(
+      new ButtonBuilder()
+        .setCustomId("status_whatsapp")
+        .setLabel("ᴡʜᴀᴛsᴀᴘᴘ")
+        .setStyle(ButtonStyle.Secondary),
     );
 
     if (!statusMessage) {
@@ -114,7 +140,7 @@ export async function updateStatusMessage(client) {
       try {
         await statusMessage.edit({
           embeds: [embed],
-          components: [refreshButton],
+          components: [row],
         });
         console.log(
           `[INFO] Server info updated at ${new Date().toLocaleTimeString()}`,
@@ -131,7 +157,7 @@ export async function updateStatusMessage(client) {
     if (!statusMessage) {
       statusMessage = await channel.send({
         embeds: [embed],
-        components: [refreshButton],
+        components: [row],
       });
       await statusMessage.pin();
       console.log("[INFO] New server info message created and pinned!");

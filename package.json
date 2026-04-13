@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node src/deploy-commands.js && node src/warmup.js && node src/index.js",
     "warmup": "node src/warmup.js",
-    "dev": "node --watch-path=src src/index.js",
+    "dev": "node --watch src/index.js",
     "deploy": "node src/deploy-commands.js"
   },
   "keywords": [

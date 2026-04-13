@@ -12,7 +12,7 @@ import { eReply } from "./utils/embed.js";
 import { i } from "./utils/icons.js";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
-import { readdirSync } from "fs";
+import { readdirSync, readFileSync } from "fs";
 import ffmpegPath from "ffmpeg-static";
 import config from "../config.js";
 import { updateStatusMessage } from "./utils/statusUpdater.js";
@@ -116,6 +116,55 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await buildStatusPayload(interaction.client, interaction.guild),
       );
       return;
+    }
+
+    if (interaction.customId === "status_roles_info") {
+      const rolesPath = join(__dirname, "..", "data", "roles-info.json");
+      let rolesData;
+      try {
+        rolesData = JSON.parse(readFileSync(rolesPath, "utf8"));
+      } catch {
+        return await interaction.reply(
+          eReply(`${i("ERROR")} ᴇʀʀᴏʀ`, "ʀᴏʟᴇs ɪɴғᴏ ɴᴏᴛ ᴄᴏɴғɪɢᴜʀᴇᴅ."),
+        );
+      }
+      const description = rolesData.roles
+        .map((r) => `${r.emoji} **${r.name}**\n${r.description}`)
+        .join("\n\n");
+      return await interaction.reply(
+        eReply(rolesData.title || "ʀᴏʟᴇs", description),
+      );
+    }
+
+    if (interaction.customId === "status_whatsapp") {
+      const memberRoles = [
+        config.memberRoleId,
+        config.moderatorRoleId,
+        config.managerRoleId,
+        config.ownerRoleId,
+      ].filter(Boolean);
+      const hasAccess = interaction.member.roles.cache.some((r) =>
+        memberRoles.includes(r.id),
+      );
+      if (!hasAccess) {
+        return await interaction.reply(
+          eReply(
+            `${i("LOCK")} ᴀᴄᴄᴇss ᴅᴇɴɪᴇᴅ`,
+            "ᴛʜɪs ʟɪɴᴋ ɪs ᴏɴʟʏ ᴀᴠᴀɪʟᴀʙʟᴇ ᴛᴏ **ᴍᴇᴍʙᴇʀs** ᴀɴᴅ ᴀʙᴏᴠᴇ.",
+          ),
+        );
+      }
+      if (!config.whatsappUrl) {
+        return await interaction.reply(
+          eReply(
+            `${i("ERROR")} ɴᴏᴛ sᴇᴛ`,
+            "ᴡʜᴀᴛsᴀᴘᴘ ʟɪɴᴋ ʜᴀs ɴᴏᴛ ʙᴇᴇɴ ᴄᴏɴғɪɢᴜʀᴇᴅ.",
+          ),
+        );
+      }
+      return await interaction.reply(
+        eReply("ᴡʜᴀᴛsᴀᴘᴘ", `[ᴊᴏɪɴ ᴏᴜʀ ᴡʜᴀᴛsᴀᴘᴘ ɢʀᴏᴜᴘ](${config.whatsappUrl})`),
+      );
     }
 
     if (
