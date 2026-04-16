@@ -7,8 +7,9 @@ import {
   Collection,
   Events,
   MessageFlags,
+  EmbedBuilder,
 } from "discord.js";
-import { eReply } from "./utils/embed.js";
+import { eReply, EMBED_COLOR } from "./utils/embed.js";
 import { i } from "./utils/icons.js";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
@@ -130,12 +131,65 @@ client.on(Events.InteractionCreate, async (interaction) => {
           eReply(`${i("ERROR")} ᴇʀʀᴏʀ`, "ʀᴏʟᴇs ɪɴғᴏ ɴᴏᴛ ᴄᴏɴғɪɢᴜʀᴇᴅ."),
         );
       }
-      const description = rolesData.roles
-        .map((r) => `${r.emoji} **${r.name}**\n${r.description}`)
-        .join("\n\n");
-      return await interaction.reply(
-        eReply(rolesData.title || "ʀᴏʟᴇs", description),
-      );
+
+      const buildEmbed = (sections) => {
+        const fields = [];
+        for (let i = 0; i < sections.length; i++) {
+          if (i > 0)
+            fields.push({
+              name: sections[i].name,
+              value:
+                "`──────────────────────────────────────────────────────────────────`",
+              inline: false,
+            });
+          for (const role of sections[i].roles) {
+            fields.push({
+              name: `${role.emoji} ${role.name}`,
+              value: role.description,
+              inline: true,
+            });
+          }
+        }
+        return fields;
+      };
+
+      const buildDesc = (sections) =>
+        sections
+          .map(
+            (s) =>
+              `**${s.name}**\n\`──────────────────────────────────────────────────────────────────\``,
+          )
+          .join("\n");
+
+      const guildIcon = interaction.guild.iconURL({ dynamic: true, size: 256 });
+      const staffSections = rolesData.sections.slice(0, 1);
+      const memberSections = rolesData.sections.slice(1, 2);
+      const selfSections = rolesData.sections.slice(2);
+
+      const staffEmbed = new EmbedBuilder()
+        .setColor(EMBED_COLOR)
+        .setTitle(`${rolesData.title || "sᴀɪʏᴀɴ ɢᴏᴅs"} — sᴛᴀFF`)
+        .setDescription(buildDesc(staffSections))
+        .setFields(buildEmbed(staffSections));
+
+      const memberEmbed = new EmbedBuilder()
+        .setColor(EMBED_COLOR)
+        .setTitle(`${rolesData.title || "sᴀɪʏᴀɴ ɢᴏᴅs"} — ᴍᴇᴍʙᴇʀs`)
+        .setDescription(buildDesc(memberSections))
+        .setFields(buildEmbed(memberSections));
+
+      const selfEmbed = new EmbedBuilder()
+        .setColor(EMBED_COLOR)
+        .setTitle(`${rolesData.title || "sᴀɪʏᴀɴ ɢᴏᴅs"} — sᴇʟF ʀᴏʟᴇs`)
+        .setDescription(buildDesc(selfSections.slice(0, 1)))
+        .setFields(buildEmbed(selfSections))
+        .setFooter({ text: "sᴀɪʏᴀɴ ɢᴏᴅs • ʀᴏʟᴇs ɪɴғᴏ" })
+        .setTimestamp();
+
+      return await interaction.reply({
+        embeds: [staffEmbed, memberEmbed, selfEmbed],
+        flags: MessageFlags.Ephemeral,
+      });
     }
 
     if (interaction.customId === "status_whatsapp") {
