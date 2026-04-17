@@ -6,6 +6,29 @@ import { loadConfig } from "./automodManager.js";
 import { eSend } from "./embed.js";
 import { i } from "./icons.js";
 
+async function sendActionEmbed(
+  channel,
+  userId,
+  action,
+  reason,
+  durationMinutes,
+) {
+  if (!channel) return;
+  const actionLabels = {
+    timeout: `${i("TIMER")} ᴛɪᴍᴇᴅ ᴏᴜᴛ`,
+    kick: `${i("WARNING")} ᴋɪᴄᴋᴇᴅ`,
+    ban: `${i("LOCK")} ʙᴀɴɴᴇᴅ`,
+    "ban-wipe": `${i("PURGE")} ʙᴀɴɴᴇᴅ & ᴡɪᴘᴇᴅ`,
+  };
+  const label = actionLabels[action] || action;
+  const desc = durationMinutes
+    ? `<@${userId}> ʜᴀs ʙᴇᴇɴ **${action}** ғᴏʀ **${durationMinutes}ᴍ**.\n\n${i("LABEL")} ${reason}`
+    : `<@${userId}> ʜᴀs ʙᴇᴇɴ **${action}**.\n\n${i("LABEL")} ${reason}`;
+  await channel
+    .send(eSend(`ᴀᴜᴛᴏᴍᴏᴅ — ${label}`, desc, { timestamp: true }))
+    .catch(() => {});
+}
+
 // In-memory rate trackers
 const userTrackers = new Map();
 // Stores who has been warned already (Key: userId, Value: timestamp)
@@ -79,6 +102,7 @@ export async function checkSpam(message) {
           message.author.id,
           "Spam Filter Anomaly",
           `User sent ${tracker.messageCount} messages in a few seconds. Messages: ${JSON.stringify(tracker.recentMessages)}`,
+          message.channel,
         );
       },
     );
@@ -99,32 +123,39 @@ async function triggerWarningOrAction(
   const hasBeenWarned = UserWarnings.has(userId);
 
   if (hasBeenWarned) {
-    // Escalate to action because they violated it twice in 20 minutes
+    // Second offense within 20 minutes — escalate to server action
     await actionCallback();
   } else {
-    // First offense: Send Ephemeral warning (or DM if not a message context)
+    // First offense: timeout + warning embed
     UserWarnings.set(userId, Date.now());
 
-    // Attempt warning
+    const member = await guild.members.fetch(userId).catch(() => null);
+    const channel = message?.channel ?? null;
+
+    if (member && member.id !== guild.ownerId && !member.user.bot) {
+      await modTools
+        .timeout(member, 10, `[AutoMod] ${warningText}`)
+        .catch(() => {});
+      await sendActionEmbed(channel, userId, "timeout", warningText, 10);
+    }
+
     try {
-      if (message) {
-        const warningMsg = await message.channel.send(
+      if (channel) {
+        await channel.send(
           eSend(
             `${i("WARNING")} ᴀᴜᴛᴏᴍᴏᴅ ᴡᴀʀɴɪɴɢ`,
-            `<@${userId}> ${warningText}\n\n ʀᴇᴘᴇᴀᴛɪɴɢ ᴛʜɪs ᴡɪᴛʜɪɴ 20 ᴍɪɴᴜᴛᴇs ᴡɪʟʟ ʀᴇsᴜʟᴛ ɪɴ ᴀ sᴇʀᴠᴇʀ ᴘᴜɴɪsʜᴍᴇɴᴛ.`,
+            `<@${userId}> ${warningText}\n\n ᴄᴏɴᴛɪɴᴜɪɴɢ ᴛʜɪs ʙᴇʜᴀᴠɪᴏᴜʀ ᴡɪᴛʜɪɴ 20 ᴍɪɴᴜᴛᴇs ᴡɪʟʟ ʀᴇsᴜʟᴛ ɪɴ ᴀ sᴇʀᴠᴇʀ ᴀᴄᴛɪᴏɴ.`,
           ),
         );
-        // Auto-delete warning after 10s to avoid clutter
-        setTimeout(() => warningMsg.delete().catch(() => {}), 10000);
-      } else {
-        const member = await guild.members.fetch(userId).catch(() => null);
-        if (member)
-          await member.send(
+      } else if (member) {
+        await member
+          .send(
             eSend(
               `${i("WARNING")} ᴡᴀʀɴɪɴɢ`,
-              `${warningText}\n\n ʀᴇᴘᴇᴀᴛɪɴɢ ᴛʜɪs ᴡɪᴛʜɪɴ 20 ᴍɪɴᴜᴛᴇs ᴡɪʟʟ ʀᴇsᴜʟᴛ ɪɴ ᴀ sᴇʀᴠᴇʀ ᴘᴜɴɪsʜᴍᴇɴᴛ.`,
+              `${warningText}\n\n ᴄᴏɴᴛɪɴᴜɪɴɢ ᴛʜɪs ʙᴇʜᴀᴠɪᴏᴜʀ ᴡɪᴛʜɪɴ 20 ᴍɪɴᴜᴛᴇs ᴡɪʟʟ ʀᴇsᴜʟᴛ ɪɴ ᴀ sᴇʀᴠᴇʀ ᴀᴄᴛɪᴏɴ.`,
             ),
-          );
+          )
+          .catch(() => {});
       }
     } catch (err) {
       console.error("[AutoMod] Failed sending warning", err);
@@ -132,7 +163,13 @@ async function triggerWarningOrAction(
   }
 }
 
-async function instantAntiNuke(guild, userId, reason, actionType = "ban") {
+async function instantAntiNuke(
+  guild,
+  userId,
+  reason,
+  actionType = "ban",
+  channel = null,
+) {
   try {
     const member = await guild.members.fetch(userId).catch(() => null);
     if (!member) return;
@@ -148,8 +185,10 @@ async function instantAntiNuke(guild, userId, reason, actionType = "ban") {
         actionType === "ban-wipe" ? 1 : 0,
         `[ANTI-NUKE] ${reason}`,
       );
+      await sendActionEmbed(channel, member.id, actionType, reason);
     } else if (actionType === "timeout") {
-      await modTools.timeout(member, 60, `[ANTI-NUKE] ${reason}`); // 1 hour timeout
+      await modTools.timeout(member, 60, `[ANTI-NUKE] ${reason}`);
+      await sendActionEmbed(channel, member.id, "timeout", reason, 60);
     }
   } catch (err) {
     console.error(`[ANTI-NUKE] Failed to execute lockdown:`, err.message);
@@ -179,6 +218,7 @@ export async function checkChannelDelete(channel, executor) {
           executor.id,
           `Rapid Channel Deletion detected.`,
           "ban",
+          channel.guild.systemChannel,
         );
       },
     );
@@ -208,7 +248,8 @@ export async function checkMemberUpdate(oldMember, newMember) {
             newMember.guild,
             newMember.id,
             `Rapid Nickname Changes detected.`,
-            "timeout", // Punish with timeout instead of Ban for this
+            "timeout",
+            newMember.guild.systemChannel,
           );
         },
       );
@@ -240,6 +281,7 @@ export async function checkMessageDelete(message, executor) {
           executor.id,
           `Rapid Message Deletion (Wipe) detected.`,
           "ban",
+          message.channel,
         );
       },
     );
@@ -279,6 +321,7 @@ export async function checkToxicity(message) {
           message.author.id,
           "Toxicity Filter Anomaly",
           `User sent potentially highly toxic message: "${message.content}"`,
+          message.channel,
         );
       },
     );
@@ -288,7 +331,13 @@ export async function checkToxicity(message) {
 // Ensure we don't trigger multiple LLM calls for the same user concurrently
 const activeModerationLocks = new Set();
 
-async function triggerAIModeration(guild, userId, anomalyType, contextData) {
+async function triggerAIModeration(
+  guild,
+  userId,
+  anomalyType,
+  contextData,
+  channel = null,
+) {
   if (activeModerationLocks.has(userId)) return;
   activeModerationLocks.add(userId);
 
@@ -341,15 +390,25 @@ async function triggerAIModeration(guild, userId, anomalyType, contextData) {
       switch (action) {
         case "timeout":
           await modTools.timeout(member, durationMinutes || 10, finalReason);
+          await sendActionEmbed(
+            channel,
+            member.id,
+            "timeout",
+            reason,
+            durationMinutes || 10,
+          );
           break;
         case "kick":
           await modTools.kick(member, finalReason);
+          await sendActionEmbed(channel, member.id, "kick", reason);
           break;
         case "ban":
           await modTools.ban(member, 0, finalReason);
+          await sendActionEmbed(channel, member.id, "ban", reason);
           break;
         case "ban-wipe":
           await modTools.ban(member, 1, finalReason);
+          await sendActionEmbed(channel, member.id, "ban-wipe", reason);
           break;
       }
     } catch (execErr) {
