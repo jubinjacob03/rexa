@@ -98,6 +98,7 @@ export async function updateStatusMessage(client) {
       row.addComponents(
         new ButtonBuilder()
           .setEmoji(icon("INSTAGRAM"))
+          .setLabel(" ")
           .setStyle(ButtonStyle.Link)
           .setURL(config.instagramUrl),
       );
