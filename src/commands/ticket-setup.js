@@ -107,8 +107,7 @@ async function publishSimpleTicketPanel(interaction, targetChannel) {
         new ButtonBuilder()
           .setCustomId("tkt_open_simple")
           .setLabel("ᴄʀᴇᴀᴛᴇ ᴛɪᴄᴋᴇᴛ")
-          .setEmoji("🎫")
-          .setStyle(ButtonStyle.Secondary),
+          .setStyle(ButtonStyle.Success),
       ),
     );
 
