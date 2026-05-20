@@ -1,6 +1,11 @@
 version: '3.8'
 services:
-  shantha-bot:
+  rexa-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      tags:
+        - rexa-bot:latest
     image: rexa-bot:latest
     env_file: .env
     restart: unless-stopped
