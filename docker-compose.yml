@@ -1,6 +1,6 @@
 version: '3.8'
 services:
   shantha-bot:
-    build: .
+    image: rexa-bot:latest
     env_file: .env
     restart: unless-stopped
