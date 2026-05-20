@@ -1,4 +1,5 @@
 FROM node:20-slim
+# Install necessary dependencies for building native modules and handling media
 
 RUN apt-get update && apt-get install -y \
     python3 \
