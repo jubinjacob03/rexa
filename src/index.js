@@ -21,11 +21,12 @@ import {
   handleVerificationApply,
   handleApprovalAction,
   handleNicknameModal,
+  handleSelfRoleToggle,
 } from "./utils/verificationHandler.js";
 import { handleAutomodInteraction } from "./commands/automod.js";
 import { handleTicketInteraction } from "./utils/ticketHandler.js";
 import { buildStatusPayload } from "./commands/status.js";
-import { postDashboard, handleDashboardInteraction, handleDashboardModal, showPrivateVCModal } from "./dashboard/dashboard.js";
+import { postDashboard, handleDashboardInteraction, handleDashboardModal } from "./dashboard/dashboard.js";
 
 if (ffmpegPath) {
   process.env.FFMPEG_PATH = ffmpegPath;
@@ -51,10 +52,10 @@ const client = new Client({
 
 client.commands = new Collection();
 
-const commandsPath = join(__dirname, "commands");
-
 import { loadCommands } from "./utils/commandLoader.js";
-const loadedCommands = await loadCommands();
+const loadedCommands = await loadCommands(undefined, {
+  allowlist: ["setup-verification", "setup-ticket"],
+});
 
 for (const command of loadedCommands) {
   client.commands.set(command.data.name, command);
@@ -93,10 +94,6 @@ client.once(Events.ClientReady, async () => {
 
 client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.isButton() && interaction.customId.startsWith("shantha_")) {
-    if (interaction.customId === "shantha_private_vc") {
-      await showPrivateVCModal(interaction);
-      return;
-    }
     await handleDashboardInteraction(interaction);
     return;
   }
@@ -109,6 +106,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
     interaction.isModalSubmit() &&
     interaction.customId.startsWith("tsetup_modal_")
   ) {
+    await handleTicketInteraction(interaction);
+    return;
+  }
+
+  if (interaction.isModalSubmit() && interaction.customId.startsWith("tkt_")) {
     await handleTicketInteraction(interaction);
     return;
   }
@@ -275,6 +277,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
       interaction.customId === "verify_member"
     ) {
       await handleVerificationApply(interaction);
+      return;
+    }
+
+    if (interaction.customId.startsWith("selfrole_")) {
+      await handleSelfRoleToggle(interaction);
       return;
     }
 

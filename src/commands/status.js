@@ -3,12 +3,16 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  ContainerBuilder,
+  TextDisplayBuilder,
+  SeparatorBuilder,
+  SeparatorSpacingSize,
+  MessageFlags,
 } from "discord.js";
 import voiceManager from "../voice/VoiceManager.js";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
-import { eReply } from "../utils/embed.js";
 import { i, icon } from "../utils/icons.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -27,26 +31,26 @@ export default {
 };
 
 export async function buildStatusPayload(client, guild) {
-  let status = `\u200b\n${icon("UPTIME")} **ᴜᴘᴛɪᴍᴇ :** ${formatUptime(client.uptime)}\n\n`;
-  status += `${icon("STATS")} **ɢᴜɪʟᴅs :** ${client.guilds.cache.size}\n\n`;
-  status += `${icon("MEMBERS")} **ᴜsᴇʀs :** ${client.users.cache.size}\n\n`;
-  status += `${icon("CHANNELS")} **ᴄʜᴀɴɴᴇʟs :** ${client.channels.cache.size}\n\n`;
+  let status = `${icon("UPTIME")} **ᴜᴘᴛɪᴍᴇ:** ${formatUptime(client.uptime)}\n`;
+  status += `${icon("STATS")} **ɢᴜɪʟᴅs:** ${client.guilds.cache.size}\n`;
+  status += `${icon("MEMBERS")} **ᴜsᴇʀs:** ${client.users.cache.size}\n`;
+  status += `${icon("CHANNELS")} **ᴄʜᴀɴɴᴇʟs:** ${client.channels.cache.size}\n`;
 
   const voiceStatus = voiceManager.getStatus(guild.id);
   if (voiceStatus.connected) {
     const channel = guild.channels.cache.get(voiceStatus.channelId);
-    status += `${icon("VOICE")} **ᴠᴏɪᴄᴇ :** ᴄᴏɴɴᴇᴄᴛᴇᴅ ᴛᴏ **${channel?.name || "ᴜɴᴋɴᴏᴡɴ"}**\n\n`;
+    status += `${icon("VOICE")} **ᴠᴏɪᴄᴇ:** ᴄᴏɴɴᴇᴄᴛᴇᴅ ᴛᴏ **${channel?.name || "ᴜɴᴋɴᴏᴡɴ"}**\n`;
 
     if (voiceStatus.currentSound) {
-      status += `${icon("MUSIC")} **ᴘʟᴀʏɪɴɢ :** ${voiceStatus.currentSound.soundName}\n\n`;
-      status += `${icon("TIMER")} **ᴘʀᴏɢʀᴇss :** ${Math.floor(voiceStatus.progress)}s\n\n`;
+      status += `${icon("MUSIC")} **ᴘʟᴀʏɪɴɢ:** ${voiceStatus.currentSound.soundName}\n`;
+      status += `${icon("TIMER")} **ᴘʀᴏɢʀᴇss:** ${Math.floor(voiceStatus.progress)}s\n`;
     }
 
     if (voiceStatus.queueLength > 0) {
-      status += `${icon("CLIPBOARD")} **ǫᴜᴇᴜᴇ :** ${voiceStatus.queueLength} sᴏᴜɴᴅ(s)\n\n`;
+      status += `${icon("CLIPBOARD")} **ǫᴜᴇᴜᴇ:** ${voiceStatus.queueLength} sᴏᴜɴᴅ(s)\n`;
     }
   } else {
-    status += `${icon("OFFLINE")} **ᴠᴏɪᴄᴇ :** ɴᴏᴛ ᴄᴏɴɴᴇᴄᴛᴇᴅ\n\n`;
+    status += `${icon("OFFLINE")} **ᴠᴏɪᴄᴇ:** ɴᴏᴛ ᴄᴏɴɴᴇᴄᴛᴇᴅ\n`;
   }
 
   try {
@@ -65,7 +69,6 @@ export async function buildStatusPayload(client, guild) {
         status += ` (<#${cfg.verificationChannelId}>)`;
     }
   } catch {
-    // not configured
   }
 
   const refreshRow = new ActionRowBuilder().addComponents(
@@ -75,9 +78,23 @@ export async function buildStatusPayload(client, guild) {
       .setStyle(ButtonStyle.Secondary),
   );
 
+  const container = new ContainerBuilder()
+    .setAccentColor(0x00ddff)
+    .addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(
+        `## ${i("BOT")} ʙᴏᴛ sᴛᴀᴛᴜs\n${status}`,
+      ),
+    )
+    .addSeparatorComponents(
+      new SeparatorBuilder()
+        .setDivider(true)
+        .setSpacing(SeparatorSpacingSize.Small),
+    )
+    .addActionRowComponents(refreshRow);
+
   return {
-    ...eReply(`${i("BOT")} ʙᴏᴛ sᴛᴀᴛᴜs`, status),
-    components: [refreshRow],
+    components: [container],
+    flags: MessageFlags.IsComponentsV2,
   };
 }
 

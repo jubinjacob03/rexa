@@ -1,17 +1,20 @@
 import { Router } from "express";
 import { updateStatusMessage } from "../../utils/statusUpdater.js";
 import {
-  EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  ContainerBuilder,
+  TextDisplayBuilder,
+  SeparatorBuilder,
+  SeparatorSpacingSize,
+  MessageFlags,
 } from "discord.js";
 import config from "../../../config.js";
 import { icon } from "../../utils/icons.js";
 
 const router = Router();
 
-// POST /api/admin/refresh — refresh server status message
 router.post("/refresh", async (req, res) => {
   try {
     const client = req.app.get("discordClient");
@@ -22,7 +25,6 @@ router.post("/refresh", async (req, res) => {
   }
 });
 
-// POST /api/admin/setup-verification — re-post verification embed
 router.post("/setup-verification", async (req, res) => {
   try {
     const client = req.app.get("discordClient");
@@ -39,12 +41,6 @@ router.post("/setup-verification", async (req, res) => {
         .json({ success: false, error: "Verification channel not found." });
     }
 
-    const verificationEmbed = new EmbedBuilder()
-      .setColor("#00ddff")
-      .setTitle(`${icon("KEYLOCK")} ʀᴏʟᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ`)
-      .setDescription("**ᴄʟɪᴄᴋ ᴏɴ ᴛʜᴇ ᴀᴘᴘʀᴏᴘʀɪᴀᴛᴇ ʀᴏʟᴇ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴀᴘᴘʟʏ.** ")
-      .setTimestamp();
-
     const buttonRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("dev_check")
@@ -60,9 +56,63 @@ router.post("/setup-verification", async (req, res) => {
         .setStyle(ButtonStyle.Success),
     );
 
+    const selfRoleRow1 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("selfrole_pc")
+        .setLabel("PC")
+        .setEmoji("💻")
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId("selfrole_mobile")
+        .setLabel("Mobile")
+        .setEmoji("📱")
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId("selfrole_mobile_pc")
+        .setLabel("Mobile-PC")
+        .setEmoji("📲")
+        .setStyle(ButtonStyle.Secondary),
+    );
+
+    const selfRoleRow2 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("selfrole_18_plus")
+        .setLabel("18+")
+        .setEmoji("🔞")
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId("selfrole_18_minus")
+        .setLabel("18-")
+        .setEmoji("🧒")
+        .setStyle(ButtonStyle.Secondary),
+    );
+
+    const verificationContainer = new ContainerBuilder()
+      .setAccentColor(0x00ddff)
+      .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(
+          `## ${icon("KEYLOCK")} ʀᴏʟᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ\nᴄʟɪᴄᴋ ᴛʜᴇ ʀᴏʟᴇ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴀᴘᴘʟʏ.`,
+        ),
+      )
+      .addSeparatorComponents(
+        new SeparatorBuilder()
+          .setDivider(true)
+          .setSpacing(SeparatorSpacingSize.Small),
+      )
+      .addActionRowComponents(buttonRow)
+      .addSeparatorComponents(
+        new SeparatorBuilder()
+          .setDivider(true)
+          .setSpacing(SeparatorSpacingSize.Small),
+      )
+      .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent("### sᴇʟғ-ʀᴏʟᴇs"),
+      )
+      .addActionRowComponents(selfRoleRow1, selfRoleRow2);
+
     await verificationChannel.send({
-      embeds: [verificationEmbed],
-      components: [buttonRow],
+      components: [verificationContainer],
+      flags: MessageFlags.IsComponentsV2,
     });
 
     res.json({

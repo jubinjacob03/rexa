@@ -1,5 +1,4 @@
 import {
-  EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
@@ -7,6 +6,10 @@ import {
   TextInputBuilder,
   TextInputStyle,
   MessageFlags,
+  ContainerBuilder,
+  TextDisplayBuilder,
+  SeparatorBuilder,
+  SeparatorSpacingSize,
 } from "discord.js";
 import { createClient } from "@supabase/supabase-js";
 import config from "../../config.js";
@@ -19,7 +22,14 @@ const supabase = createClient(config.supabase.url, config.supabase.serviceKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-/* THE AI DM INTERROGATOR */
+const SELF_ROLE_MAP = {
+  selfrole_pc: { id: "1484879284265943120", label: "PC" },
+  selfrole_mobile: { id: "1484879494731923496", label: "Mobile" },
+  selfrole_mobile_pc: { id: "1484879567280672778", label: "Mobile-PC" },
+  selfrole_18_plus: { id: "1484879828871286995", label: "18+" },
+  selfrole_18_minus: { id: "1484879875947888670", label: "18-" },
+};
+
 export const pendingInterrogations = new Map();
 const VERIFICATION_QUESTIONS = [
   "What brings you to our community today?",
@@ -38,7 +48,6 @@ const defaultData = {
   autoApprove: false,
 };
 
-// 5s in-memory cache
 let _cache = null;
 let _cacheTTL = 0;
 const CACHE_MS = 5_000;
@@ -210,7 +219,6 @@ export async function handleVerificationApply(interaction) {
       ? config.friendsRoleId
       : config.memberRoleId;
 
-    // --- AUTO-APPROVE PATH ---
     const autoApproveEnabled = await getAutoApprove();
     if (autoApproveEnabled) {
       if (pendingInterrogations.has(userId)) {
@@ -257,7 +265,6 @@ export async function handleVerificationApply(interaction) {
       }
     }
 
-    // --- MANUAL APPROVAL PATH (original flow) ---
     if (await hasPendingRequest(userId)) {
       return interaction.reply(
         eReply(
@@ -267,21 +274,23 @@ export async function handleVerificationApply(interaction) {
       );
     }
 
-    const approvalEmbed = new EmbedBuilder()
-      .setColor(EMBED_COLOR)
-      .setTitle(
-        `${isFriends ? icon("FRIENDS_ROLE") : icon("MEMBER_ROLE")} ɴᴇᴡ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ`,
+    const approvalContainer = new ContainerBuilder()
+      .setAccentColor(EMBED_COLOR)
+      .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(
+          `## ${isFriends ? icon("FRIENDS_ROLE") : icon("MEMBER_ROLE")} ɴᴇᴡ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ\n<@${userId}> ʜᴀs ʀᴇǫᴜᴇsᴛᴇᴅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ғᴏʀ **${requestedRole}** ʀᴏʟᴇ.`,
+        ),
       )
-      .setDescription(
-        `<@${userId}> ʜᴀs ʀᴇǫᴜᴇsᴛᴇᴅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ғᴏʀ **${requestedRole}** ʀᴏʟᴇ.`,
+      .addSeparatorComponents(
+        new SeparatorBuilder()
+          .setDivider(true)
+          .setSpacing(SeparatorSpacingSize.Small),
       )
-      .addFields(
-        { name: "ᴜsᴇʀ", value: `<@${userId}>`, inline: true },
-        { name: "ᴜsᴇʀɴᴀᴍᴇ", value: username, inline: true },
-        { name: "ʀᴇǫᴜᴇsᴛᴇᴅ ʀᴏʟᴇ", value: requestedRole, inline: true },
-      )
-      .setTimestamp()
-      .setFooter({ text: `ᴜsᴇʀ ɪᴅ: ${userId}` });
+      .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(
+          `**ᴜsᴇʀ:** <@${userId}>\n**ᴜsᴇʀɴᴀᴍᴇ:** ${username}\n**ʀᴇǫᴜᴇsᴛᴇᴅ ʀᴏʟᴇ:** ${requestedRole}\n**ᴜsᴇʀ ɪᴅ:** ${userId}`,
+        ),
+      );
 
     const approvalButtons = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -296,13 +305,15 @@ export async function handleVerificationApply(interaction) {
         .setEmoji(icon("ERROR")),
     );
 
+    approvalContainer.addActionRowComponents(approvalButtons);
+
     const approvalsChannel = await interaction.guild.channels.fetch(
       config.approvalsChannelId,
     );
     const approvalMessage = await approvalsChannel.send({
       content: `<@&${config.ownerRoleId}> <@&${config.managerRoleId}> <@&${config.moderatorRoleId}>`,
-      embeds: [approvalEmbed],
-      components: [approvalButtons],
+      components: [approvalContainer],
+      flags: MessageFlags.IsComponentsV2,
     });
 
     await createRequest(
@@ -328,12 +339,64 @@ export async function handleVerificationApply(interaction) {
   }
 }
 
+export async function handleSelfRoleToggle(interaction) {
+  const roleInfo = SELF_ROLE_MAP[interaction.customId];
+  if (!roleInfo) return;
+
+  const guild =
+    interaction.guild ||
+    (await interaction.client.guilds.fetch(GUILD_ID).catch(() => null));
+  if (!guild) {
+    return interaction.reply(
+      eReply(`${i("ERROR")} ɴᴏᴛ ғᴏᴜɴᴅ`, "sᴇʀᴠᴇʀ ɴᴏᴛ ғᴏᴜɴᴅ."),
+    );
+  }
+
+  const member = await guild.members
+    .fetch(interaction.user.id)
+    .catch(() => null);
+  if (!member) {
+    return interaction.reply(
+      eReply(`${i("ERROR")} ɴᴏᴛ ғᴏᴜɴᴅ`, "ᴜsᴇʀ ɴᴏᴛ ғᴏᴜɴᴅ."),
+    );
+  }
+
+  const hasRole = member.roles.cache.has(roleInfo.id);
+
+  try {
+    if (hasRole) {
+      await member.roles.remove(roleInfo.id);
+      return interaction.reply(
+        eReply(
+          `${i("DONE")} ʀᴏʟᴇ ʀᴇᴍᴏᴠᴇᴅ`,
+          `ʀᴇᴍᴏᴠᴇᴅ **${roleInfo.label}** ғʀᴏᴍ ʏᴏᴜʀ ʀᴏʟᴇs.`,
+        ),
+      );
+    }
+
+    await member.roles.add(roleInfo.id);
+    return interaction.reply(
+      eReply(
+        `${i("DONE")} ʀᴏʟᴇ ᴀᴅᴅᴇᴅ`,
+        `ᴀssɪɢɴᴇᴅ **${roleInfo.label}** ᴛᴏ ʏᴏᴜʀ ʀᴏʟᴇs.`,
+      ),
+    );
+  } catch (error) {
+    console.error("[ERROR] Failed to toggle self role:", error);
+    return interaction.reply(
+      eReply(
+        `${i("ERROR")} ᴇʀʀᴏʀ`,
+        "ғᴀɪʟᴇᴅ ᴛᴏ ᴜᴘᴅᴀᴛᴇ ʏᴏᴜʀ ʀᴏʟᴇ.",
+      ),
+    );
+  }
+}
+
 export async function handleVerificationDM(message) {
   if (message.author.bot) return false;
   const pending = pendingInterrogations.get(message.author.id);
   if (!pending) return false;
 
-  // Timeout (10 minutes)
   if (Date.now() - pending.timestamp > 10 * 60 * 1000) {
     pendingInterrogations.delete(message.author.id);
     await message.author
@@ -469,18 +532,27 @@ export async function handleApprovalAction(interaction) {
 
       await interaction.showModal(modal);
     } else if (action === "reject") {
-      const originalEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-        .setColor(EMBED_COLOR)
-        .setTitle(`${icon("ERROR")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇᴊᴇᴄᴛᴇᴅ`)
-        .addFields({
-          name: "ʀᴇᴊᴇᴄᴛᴇᴅ ʙʏ",
-          value: `<@${interaction.user.id}>`,
-          inline: true,
-        });
+      const rejectedContainer = new ContainerBuilder()
+        .setAccentColor(EMBED_COLOR)
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(
+            `## ${icon("ERROR")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇᴊᴇᴄᴛᴇᴅ`,
+          ),
+        )
+        .addSeparatorComponents(
+          new SeparatorBuilder()
+            .setDivider(true)
+            .setSpacing(SeparatorSpacingSize.Small),
+        )
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(
+            `**ᴜsᴇʀ:** <@${userId}>\n**ᴜsᴇʀɴᴀᴍᴇ:** ${request.username}\n**ʀᴇǫᴜᴇsᴛᴇᴅ ʀᴏʟᴇ:** ${request.requestedRole}\n**ʀᴇᴊᴇᴄᴛᴇᴅ ʙʏ:** <@${interaction.user.id}>`,
+          ),
+        );
 
       await interaction.update({
-        embeds: [originalEmbed],
-        components: [],
+        components: [rejectedContainer],
+        flags: MessageFlags.IsComponentsV2,
       });
 
       await logApproval(
@@ -565,21 +637,27 @@ export async function handleNicknameModal(interaction) {
 
     await member.setNickname(finalNickname);
 
-    const originalEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-      .setColor(EMBED_COLOR)
-      .setTitle(`${icon("SUCCESS")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ`)
-      .addFields(
-        {
-          name: "ᴀᴘᴘʀᴏᴠᴇᴅ ʙʏ",
-          value: `<@${interaction.user.id}>`,
-          inline: true,
-        },
-        { name: "ɴɪᴄᴋɴᴀᴍᴇ", value: finalNickname, inline: true },
+    const approvedContainer = new ContainerBuilder()
+      .setAccentColor(EMBED_COLOR)
+      .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(
+          `## ${icon("SUCCESS")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ`,
+        ),
+      )
+      .addSeparatorComponents(
+        new SeparatorBuilder()
+          .setDivider(true)
+          .setSpacing(SeparatorSpacingSize.Small),
+      )
+      .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(
+          `**ᴜsᴇʀ:** <@${userId}>\n**ᴜsᴇʀɴᴀᴍᴇ:** ${request.username}\n**ʀᴇǫᴜᴇsᴛᴇᴅ ʀᴏʟᴇ:** ${request.requestedRole}\n**ᴀᴘᴘʀᴏᴠᴇᴅ ʙʏ:** <@${interaction.user.id}>\n**ɴɪᴄᴋɴᴀᴍᴇ:** ${finalNickname}`,
+        ),
       );
 
     await interaction.message.edit({
-      embeds: [originalEmbed],
-      components: [],
+      components: [approvedContainer],
+      flags: MessageFlags.IsComponentsV2,
     });
 
     await logApproval(

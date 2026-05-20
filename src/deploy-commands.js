@@ -1,15 +1,10 @@
 import { REST, Routes } from "discord.js";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
-import { readdirSync } from "fs";
 import config from "../config.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
 import { loadCommands } from "./utils/commandLoader.js";
 
-const loadedCommands = await loadCommands();
+const loadedCommands = await loadCommands(undefined, {
+  allowlist: ["setup-verification", "setup-ticket"],
+});
 const commands = loadedCommands.map(cmd => {
   console.log(`[INFO] Processed command for deployment: ${cmd.data.name}`);
   return cmd.data.toJSON();

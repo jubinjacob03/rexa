@@ -1,8 +1,14 @@
 import {
-  EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  ContainerBuilder,
+  TextDisplayBuilder,
+  SectionBuilder,
+  ThumbnailBuilder,
+  SeparatorBuilder,
+  SeparatorSpacingSize,
+  MessageFlags,
 } from "discord.js";
 import config from "../../config.js";
 import supabase from "./supabaseClient.js";
@@ -12,10 +18,7 @@ import { icon } from "./icons.js";
 let statusMessage = null;
 let updateInterval = null;
 
-/**
- * Creates the server information embed
- */
-export async function createStatusEmbed(guild, client) {
+export async function createStatusContainer(guild) {
   try {
     await guild.members.fetch();
   } catch (error) {
@@ -41,26 +44,32 @@ export async function createStatusEmbed(guild, client) {
       member.presence?.status === "dnd",
   ).size;
 
-  const embed = new EmbedBuilder()
-    .setColor(EMBED_COLOR)
-    .setTitle("sᴇʀᴠᴇʀ sᴛᴀᴛs")
-    .setDescription(
-      ` • **${humanCount}** ᴍᴇᴍʙᴇʀs • **${botCount}** ʙᴏᴛs • **${guild.roles.cache.size}** ʀᴏʟᴇs\n\n• **${guild.channels.cache.size}** ᴄʜᴀɴɴᴇʟs\n\n` +
-        `\`\`\`ansi\n\u001b[1;32m ${onlineMembers} ᴏɴʟɪɴᴇ \u001b[0m\`\`\` \`\`\`ansi\n\u001b[1;31m ${totalMembers - onlineMembers} ᴏғғʟɪɴᴇ \u001b[0m\`\`\`\u200b`,
-    )
-    .setThumbnail(guild.iconURL({ dynamic: true, size: 256 }))
-    .setFooter({
-      text: `ʟᴀsᴛ ᴜᴘᴅᴀᴛᴇᴅ`,
-      iconURL: client.user.displayAvatarURL(),
-    })
-    .setTimestamp();
+  const container = new ContainerBuilder().setAccentColor(EMBED_COLOR);
+  const updatedAt = Math.floor(Date.now() / 1000);
 
-  return embed;
+  const content = `## sᴇʀᴠᴇʀ sᴛᴀᴛs\n • **${humanCount}** ᴍᴇᴍʙᴇʀs • **${botCount}** ʙᴏᴛs • **${guild.roles.cache.size}** ʀᴏʟᴇs\n\n• **${guild.channels.cache.size}** ᴄʜᴀɴɴᴇʟs\n\n\`\`\`ansi\n\u001b[1;32m ${onlineMembers} ᴏɴʟɪɴᴇ \u001b[0m\`\`\` \`\`\`ansi\n\u001b[1;31m ${totalMembers - onlineMembers} ᴏғғʟɪɴᴇ \u001b[0m\`\`\`\nLast updated <t:${updatedAt}:R>`;
+  const iconUrl = guild.iconURL({ dynamic: true, size: 256 });
+
+  if (iconUrl) {
+    const section = new SectionBuilder()
+      .addTextDisplayComponents(new TextDisplayBuilder().setContent(content))
+      .setThumbnailAccessory(new ThumbnailBuilder().setURL(iconUrl));
+    container.addSectionComponents(section);
+  } else {
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(content),
+    );
+  }
+
+  container.addSeparatorComponents(
+    new SeparatorBuilder()
+      .setDivider(true)
+      .setSpacing(SeparatorSpacingSize.Small),
+  );
+
+  return container;
 }
 
-/**
- * Updates the server information message
- */
 export async function updateStatusMessage(client) {
   try {
     const guild = client.guilds.cache.get(config.guildId);
@@ -75,7 +84,7 @@ export async function updateStatusMessage(client) {
       return;
     }
 
-    const embed = await createStatusEmbed(guild, client);
+    const container = await createStatusContainer(guild);
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -138,15 +147,23 @@ export async function updateStatusMessage(client) {
       }
     }
 
+    container.addActionRowComponents(row);
+
     if (statusMessage) {
       try {
-        await statusMessage.edit({
-          embeds: [embed],
-          components: [row],
-        });
-        console.log(
-          `[INFO] Server info updated at ${new Date().toLocaleTimeString()}`,
-        );
+        const isLegacy = statusMessage.embeds?.length > 0;
+        if (isLegacy) {
+          await statusMessage.delete().catch(() => {});
+          statusMessage = null;
+        } else {
+          await statusMessage.edit({
+            components: [container],
+            flags: MessageFlags.IsComponentsV2,
+          });
+          console.log(
+            `[INFO] Server info updated at ${new Date().toLocaleTimeString()}`,
+          );
+        }
       } catch (error) {
         console.error(
           "[ERROR] Could not edit message, creating new one:",
@@ -158,8 +175,8 @@ export async function updateStatusMessage(client) {
 
     if (!statusMessage) {
       statusMessage = await channel.send({
-        embeds: [embed],
-        components: [row],
+        components: [container],
+        flags: MessageFlags.IsComponentsV2,
       });
       await statusMessage.pin();
       console.log("[INFO] New server info message created and pinned!");
@@ -179,9 +196,6 @@ export async function updateStatusMessage(client) {
   }
 }
 
-/**
- * Starts server monitoring
- */
 export function startStatusUpdater(client) {
   console.log(
     `[INFO] Shantha starting server monitoring (interval: ${config.updateInterval} minutes)`,
@@ -197,9 +211,6 @@ export function startStatusUpdater(client) {
   );
 }
 
-/**
- * Stops the server monitoring
- */
 export function stopStatusUpdater() {
   if (updateInterval) {
     clearInterval(updateInterval);
@@ -208,16 +219,10 @@ export function stopStatusUpdater() {
   }
 }
 
-/**
- * Gets the current status message
- */
 export function getStatusMessage() {
   return statusMessage;
 }
 
-/**
- * Sets the status message reference
- */
 export function setStatusMessage(message) {
   statusMessage = message;
 }

@@ -1,5 +1,12 @@
 import { Router } from "express";
-import { EmbedBuilder } from "discord.js";
+import {
+  EmbedBuilder,
+  ContainerBuilder,
+  TextDisplayBuilder,
+  SeparatorBuilder,
+  SeparatorSpacingSize,
+  MessageFlags,
+} from "discord.js";
 import config from "../../../config.js";
 import { EMBED_COLOR, eSend } from "../../utils/embed.js";
 import { i, icon } from "../../utils/icons.js";
@@ -38,7 +45,6 @@ async function broadcastVerification(guild) {
   broadcastWs({ type: "verification_update", data: list });
 }
 
-// GET /api/verification/pending
 router.get("/pending", async (req, res) => {
   try {
     const client = req.app.get("discordClient");
@@ -62,7 +68,6 @@ router.get("/pending", async (req, res) => {
   }
 });
 
-// GET /api/verification/user-status?userId=X
 router.get("/user-status", async (req, res) => {
   try {
     const client = req.app.get("discordClient");
@@ -100,7 +105,6 @@ router.get("/user-status", async (req, res) => {
   }
 });
 
-// POST /api/verification/apply — { userId, type: 'friends' | 'member' }
 router.post("/apply", async (req, res) => {
   try {
     const client = req.app.get("discordClient");
@@ -196,7 +200,6 @@ router.post("/apply", async (req, res) => {
   }
 });
 
-// POST /api/verification/approve — { requesterId, targetUserId, nickname }
 router.post("/approve", async (req, res) => {
   try {
     const client = req.app.get("discordClient");
@@ -281,13 +284,24 @@ router.post("/approve", async (req, res) => {
 
     const user = await client.users.fetch(targetUserId).catch(() => null);
     if (user) {
-      await user
-        .send(
-          eSend(
-            `${i("DONE")}sᴀɪʏᴀɴ ɢᴏᴅs — ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ`,
-            `ʏᴏᴜʀ ʀᴇǫᴜᴇsᴛ ʜᴀs ʙᴇᴇɴ ᴀᴘᴘʀᴏᴠᴇᴅ!\n\n**ʀᴏʟᴇ:** ${request.requestedRole}\n**ɴɪᴄᴋɴᴀᴍᴇ:** ${finalNickname}`,
+      const approvalContainer = new ContainerBuilder()
+        .setAccentColor(EMBED_COLOR)
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(
+            `## ${i("DONE")} sᴀɪʏᴀɴ ɢᴏᴅs — ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ\nʏᴏᴜʀ ʀᴇǫᴜᴇsᴛ ʜᴀs ʙᴇᴇɴ ᴀᴘᴘʀᴏᴠᴇᴅ!\n\n**ʀᴏʟᴇ:** ${request.requestedRole}\n**ɴɪᴄᴋɴᴀᴍᴇ:** ${finalNickname}`,
           ),
         )
+        .addSeparatorComponents(
+          new SeparatorBuilder()
+            .setDivider(true)
+            .setSpacing(SeparatorSpacingSize.Small),
+        );
+
+      await user
+        .send({
+          components: [approvalContainer],
+          flags: MessageFlags.IsComponentsV2,
+        })
         .catch(() => {});
     }
 
@@ -367,13 +381,24 @@ router.post("/reject", async (req, res) => {
 
     const user = await client.users.fetch(targetUserId).catch(() => null);
     if (user) {
-      await user
-        .send(
-          eSend(
-            `${i("ERROR")}sᴀɪʏᴀɴ ɢᴏᴅs — ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ғᴀɪʟᴇᴅ`,
-            `sᴏʀʀʏ, ʏᴏᴜʀ ʀᴇǫᴜᴇsᴛ ғᴏʀ **${request.requestedRole}** ʀᴏʟᴇ ʜᴀs ʙᴇᴇɴ ʀᴇᴊᴇᴄᴛᴇᴅ.`,
+      const rejectContainer = new ContainerBuilder()
+        .setAccentColor(EMBED_COLOR)
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(
+            `## ${i("ERROR")} sᴀɪʏᴀɴ ɢᴏᴅs — ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ғᴀɪʟᴇᴅ\nsᴏʀʀʏ, ʏᴏᴜʀ ʀᴇǫᴜᴇsᴛ ғᴏʀ **${request.requestedRole}** ʀᴏʟᴇ ʜᴀs ʙᴇᴇɴ ʀᴇᴊᴇᴄᴛᴇᴅ.`,
           ),
         )
+        .addSeparatorComponents(
+          new SeparatorBuilder()
+            .setDivider(true)
+            .setSpacing(SeparatorSpacingSize.Small),
+        );
+
+      await user
+        .send({
+          components: [rejectContainer],
+          flags: MessageFlags.IsComponentsV2,
+        })
         .catch(() => {});
     }
 

@@ -1,5 +1,4 @@
 import {
-  EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
@@ -10,7 +9,10 @@ import {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
-  UserSelectMenuBuilder,
+  ContainerBuilder,
+  TextDisplayBuilder,
+  SeparatorBuilder,
+  SeparatorSpacingSize,
 } from "discord.js";
 import supabase from "./supabaseClient.js";
 import config from "../../config.js";
@@ -21,11 +23,40 @@ import {
 import { eReply, eSend, EMBED_COLOR } from "./embed.js";
 import { i, icon } from "./icons.js";
 
-// Keep a simple in-memory log of active tickets for now to prevent spam
 const activeTickets = new Set();
 
 export async function handleTicketInteraction(interaction) {
-  // --------- ADMIN SETUP ROUTING --------- //
+  if (
+    interaction.isModalSubmit() &&
+    interaction.customId.startsWith("tkt_modal_reason")
+  ) {
+    const reason = interaction.fields.getTextInputValue("reasonInput");
+    await createTicketInstance(interaction, {
+      ticketType: "text",
+      aiEnabled: true,
+      reason,
+    });
+    return;
+  }
+
+  if (interaction.customId === "tkt_open_simple") {
+    const modal = new ModalBuilder()
+      .setCustomId("tkt_modal_reason")
+      .setTitle("Create Ticket");
+
+    const reasonInput = new TextInputBuilder()
+      .setCustomId("reasonInput")
+      .setLabel("Type A Valid Reason")
+      .setStyle(TextInputStyle.Paragraph)
+      .setPlaceholder("Reason")
+      .setRequired(true);
+
+    modal.addComponents(new ActionRowBuilder().addComponents(reasonInput));
+
+    await interaction.showModal(modal);
+    return;
+  }
+
   if (interaction.customId.startsWith("tsetup_")) {
     const session = setupSessions.get(interaction.user.id);
     if (!session) {
@@ -94,7 +125,6 @@ export async function handleTicketInteraction(interaction) {
 
       modal.addComponents(new ActionRowBuilder().addComponents(labelInput));
 
-      // AI Assistance is NOT added for VC tickets
       if (!isVc) {
         const aiInput = new TextInputBuilder()
           .setCustomId("aiInput")
@@ -150,13 +180,24 @@ export async function handleTicketInteraction(interaction) {
     }
 
     if (interaction.customId === "tsetup_preview") {
-      const previewEmbed = new EmbedBuilder()
-        .setColor(session.color)
-        .setTitle(session.title)
-        .setDescription(session.description)
-        .setTimestamp();
+      const previewContainer = new ContainerBuilder()
+        .setAccentColor(session.color)
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(
+            `${icon("EDITOR")} **ᴘʀᴇᴠɪᴇᴡ** — ᴛʜɪs ɪs ʜᴏᴡ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ ᴘᴀɴᴇʟ ᴡɪʟʟ ʟᴏᴏᴋ.`,
+          ),
+        )
+        .addSeparatorComponents(
+          new SeparatorBuilder()
+            .setDivider(true)
+            .setSpacing(SeparatorSpacingSize.Small),
+        )
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(
+            `## ${session.title}\n${session.description}`,
+          ),
+        );
 
-      const components = [];
       if (session.buttons.length > 0) {
         const previewRow = new ActionRowBuilder().addComponents(
           session.buttons.map((btn) =>
@@ -167,14 +208,12 @@ export async function handleTicketInteraction(interaction) {
               .setDisabled(true),
           ),
         );
-        components.push(previewRow);
+        previewContainer.addActionRowComponents(previewRow);
       }
 
       return await interaction.reply({
-        content: `${icon("EDITOR")} **ᴘʀᴇᴠɪᴇᴡ** — ᴛʜɪs ɪs ʜᴏᴡ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ ᴘᴀɴᴇʟ ᴡɪʟʟ ʟᴏᴏᴋ.`,
-        embeds: [previewEmbed],
-        components,
-        flags: MessageFlags.Ephemeral,
+        components: [previewContainer],
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
       });
     }
 
@@ -190,14 +229,7 @@ export async function handleTicketInteraction(interaction) {
         });
       }
 
-      const embed = new EmbedBuilder()
-        .setColor(session.color)
-        .setTitle(session.title)
-        .setDescription(session.description)
-        .setTimestamp();
-
       const row = new ActionRowBuilder();
-      const dbConfigStore = {}; // Memory/Supabase JSON fallback trick
 
       global.customActions = global.customActions || new Map();
 
@@ -219,7 +251,6 @@ export async function handleTicketInteraction(interaction) {
             content: btn.content,
           });
 
-          // Persistent Save via Supabase
           if (supabase) {
             try {
               await supabase.from("ticket_actions").insert({
@@ -241,7 +272,24 @@ export async function handleTicketInteraction(interaction) {
         }
       }
 
-      await targetChannel.send({ embeds: [embed], components: [row] });
+      const panelContainer = new ContainerBuilder()
+        .setAccentColor(session.color)
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(
+            `## ${session.title}\n${session.description}`,
+          ),
+        )
+        .addSeparatorComponents(
+          new SeparatorBuilder()
+            .setDivider(true)
+            .setSpacing(SeparatorSpacingSize.Small),
+        )
+        .addActionRowComponents(row);
+
+      await targetChannel.send({
+        components: [panelContainer],
+        flags: MessageFlags.IsComponentsV2,
+      });
       setupSessions.delete(interaction.user.id);
 
       return await interaction.update({
@@ -252,7 +300,6 @@ export async function handleTicketInteraction(interaction) {
     }
   }
 
-  // Handle Modal Submits
   if (
     interaction.isModalSubmit() &&
     interaction.customId.startsWith("tsetup_modal_")
@@ -379,7 +426,6 @@ export async function handleTicketInteraction(interaction) {
     return await renderTicketDashboard(interaction, true);
   }
 
-  // --------- NORMAL USER ROUTING --------- //
   if (interaction.customId.startsWith("tkt_open|")) {
     await createTicketInstance(interaction);
   } else if (interaction.customId.startsWith("tkt_action|")) {
@@ -389,7 +435,6 @@ export async function handleTicketInteraction(interaction) {
     if (global.customActions && global.customActions.has(key)) {
       actionData = global.customActions.get(key);
     } else if (supabase) {
-      // Fallback: look it up in Supabase if the bot restarted
       const { data } = await supabase
         .from("ticket_actions")
         .select("type, content")
@@ -397,7 +442,6 @@ export async function handleTicketInteraction(interaction) {
         .single();
       if (data) {
         actionData = data;
-        // Re-cache it locally
         global.customActions = global.customActions || new Map();
         global.customActions.set(key, actionData);
       }
@@ -430,8 +474,7 @@ export async function handleTicketInteraction(interaction) {
   }
 }
 
-async function createTicketInstance(interaction) {
-  // First check memory to save db calls, otherwise ping db
+async function createTicketInstance(interaction, options = {}) {
   if (activeTickets.has(interaction.user.id)) {
     return interaction.reply(
       eReply(
@@ -461,8 +504,12 @@ async function createTicketInstance(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const customIdParts = interaction.customId.split("|");
-  const ticketType = customIdParts[1]; // 'thread', 'text', or 'vc'
-  const aiEnabled = customIdParts[2] === "1";
+  const ticketType = options.ticketType || customIdParts[1] || "text";
+  const aiEnabled =
+    typeof options.aiEnabled === "boolean"
+      ? options.aiEnabled
+      : customIdParts[2] === "1";
+  const ticketReason = options.reason?.trim();
 
   const guild = interaction.guild;
   const channel = interaction.channel;
@@ -471,15 +518,14 @@ async function createTicketInstance(interaction) {
     let ticketChannel;
     const ticketName = `ticket-${interaction.user.username.toLowerCase()}`;
 
-    // Modifiers array mapping from config
     const modRoles = config.ticketModeratorRoles || [];
     const permissionOverwrites = [
       {
-        id: guild.id, // @everyone
+        id: guild.id,
         deny: [PermissionsBitField.Flags.ViewChannel],
       },
       {
-        id: interaction.user.id, // Ticket owner
+        id: interaction.user.id,
         allow: [
           PermissionsBitField.Flags.ViewChannel,
           PermissionsBitField.Flags.SendMessages,
@@ -489,7 +535,7 @@ async function createTicketInstance(interaction) {
         ],
       },
       {
-        id: interaction.client.user.id, // The Bot
+        id: interaction.client.user.id,
         allow: [
           PermissionsBitField.Flags.ViewChannel,
           PermissionsBitField.Flags.SendMessages,
@@ -500,7 +546,6 @@ async function createTicketInstance(interaction) {
       },
     ];
 
-    // Give mods visibility but hide alerts initially
     for (const roleId of modRoles) {
       permissionOverwrites.push({
         id: roleId,
@@ -514,7 +559,6 @@ async function createTicketInstance(interaction) {
       });
     }
 
-    // Add owner role natively
     if (config.ownerRoleId) {
       permissionOverwrites.push({
         id: config.ownerRoleId,
@@ -528,19 +572,18 @@ async function createTicketInstance(interaction) {
       });
     }
 
-    // Branch logic based on Admin's preferred Creation Type
     if (ticketType === "vc") {
       ticketChannel = await guild.channels.create({
         name: `${interaction.user.username}'s ᴛɪᴄᴋᴇᴛ`,
         type: ChannelType.GuildVoice,
-        parent: channel.parentId, // Create in same category as ticket panel
+        parent: channel.parentId,
         permissionOverwrites: permissionOverwrites,
       });
     } else {
       ticketChannel = await guild.channels.create({
         name: ticketName,
         type: ChannelType.GuildText,
-        parent: channel.parentId, // Create in same category as ticket panel
+        parent: channel.parentId,
         permissionOverwrites: permissionOverwrites,
       });
     }
@@ -563,15 +606,6 @@ async function createTicketInstance(interaction) {
     const descriptionText = aiEnabled
       ? "ᴘʟᴇᴀsᴇ ᴅᴇsᴄʀɪʙᴇ ʏᴏᴜʀ ɪssᴜᴇ ɪɴ ᴅᴇᴛᴀɪʟ. ᴏᴜʀ **ᴀɪ sᴜᴘᴘᴏʀᴛ ʙᴏᴛ** ᴡɪʟʟ ᴀssɪsᴛ ʏᴏᴜ sʜᴏʀᴛʟʏ. ɪғ ɪᴛ ʀᴇǫᴜɪʀᴇs ʜᴜᴍᴀɴ ɪɴᴛᴇʀᴠᴇɴᴛɪᴏɴ, ᴄʟɪᴄᴋ 'ᴇsᴄᴀʟᴀᴛᴇ'."
       : "ᴘʟᴇᴀsᴇ ᴅᴇsᴄʀɪʙᴇ ʏᴏᴜʀ ɪssᴜᴇ. ᴀ **ʜᴜᴍᴀɴ ᴍᴏᴅᴇʀᴀᴛᴏʀ** ᴡɪʟʟ ʙᴇ ᴡɪᴛʜ ʏᴏᴜ ᴀs sᴏᴏɴ ᴀs ᴘᴏssɪʙʟᴇ. ʏᴏᴜ ᴍᴀʏ ᴘɪɴɢ ᴛʜᴇᴍ ᴠɪᴀ ᴛʜᴇ 'ᴇsᴄᴀʟᴀᴛᴇ' ʙᴜᴛᴛᴏɴ.";
-
-    const embed = new EmbedBuilder()
-      .setColor(EMBED_COLOR)
-      .setTitle(`🎫 ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ, ${interaction.user.username}`)
-      .setDescription(descriptionText)
-      .setFooter({
-        text: "ᴜsᴇ ᴛʜᴇ ᴄʟᴏsᴇ ʙᴜᴛᴛᴏɴ ᴡʜᴇɴ ʏᴏᴜʀ ɪssᴜᴇ ɪs ʀᴇsᴏʟᴠᴇᴅ.",
-      })
-      .setTimestamp();
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -601,10 +635,33 @@ async function createTicketInstance(interaction) {
       mentionText += ` ${pingStr} **ᴀ ɴᴇᴡ ᴛɪᴄᴋᴇᴛ \(ᴀɪ-ᴀssɪsᴛᴇᴅ\) ʜᴀs ʙᴇᴇɴ ᴄʀᴇᴀᴛᴇᴅ.**`;
     }
 
+    const reasonLine = ticketReason ? `\n\n**ʀᴇᴀsᴏɴ:** ${ticketReason}` : "";
+
+    const ticketContainer = new ContainerBuilder()
+      .setAccentColor(EMBED_COLOR)
+      .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(mentionText),
+      )
+      .addSeparatorComponents(
+        new SeparatorBuilder()
+          .setDivider(true)
+          .setSpacing(SeparatorSpacingSize.Small),
+      )
+      .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(
+          `## 🎫 ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ, ${interaction.user.username}\n${descriptionText}${reasonLine}\n\n_ᴜsᴇ ᴛʜᴇ ᴄʟᴏsᴇ ʙᴜᴛᴛᴏɴ ᴡʜᴇɴ ʏᴏᴜʀ ɪssᴜᴇ ɪs ʀᴇsᴏʟᴠᴇᴅ._`,
+        ),
+      )
+      .addSeparatorComponents(
+        new SeparatorBuilder()
+          .setDivider(true)
+          .setSpacing(SeparatorSpacingSize.Small),
+      )
+      .addActionRowComponents(row);
+
     await ticketChannel.send({
-      content: mentionText,
-      embeds: [embed],
-      components: [row],
+      components: [ticketContainer],
+      flags: MessageFlags.IsComponentsV2,
     });
 
     await interaction.editReply(
@@ -645,7 +702,7 @@ async function closeTicketThread(interaction) {
   }
 
   try {
-    const logChannelId = config.ticketLogsChannelId || "1489647372811243742"; // Hardcode fallback
+    const logChannelId = config.ticketLogsChannelId || "1489647372811243742";
     let logChannel = null;
     if (logChannelId) {
       logChannel = await interaction.guild.channels
@@ -711,7 +768,6 @@ async function closeTicketThread(interaction) {
             usersToRemove.push(member.id);
           });
         } else {
-          // Find ticket owner from channel permission overwrites (type 1 = member)
           thread.permissionOverwrites.cache.forEach((overwrite) => {
             if (
               overwrite.type === 1 &&
@@ -767,7 +823,6 @@ async function escalateTicket(interaction) {
       );
     }
 
-    // Load ticket mods from DB
     let ticketModIds = [];
     if (supabase) {
       const { data: modsData } = await supabase

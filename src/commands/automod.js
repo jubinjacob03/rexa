@@ -1,6 +1,5 @@
 import {
   SlashCommandBuilder,
-  EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
@@ -9,6 +8,12 @@ import {
   TextInputStyle,
   PermissionFlagsBits,
   MessageFlags,
+  ContainerBuilder,
+  TextDisplayBuilder,
+  SectionBuilder,
+  ThumbnailBuilder,
+  SeparatorBuilder,
+  SeparatorSpacingSize,
 } from "discord.js";
 import { loadConfig, updateConfig } from "../utils/automodManager.js";
 import { EMBED_COLOR, eReply } from "../utils/embed.js";
@@ -18,48 +23,74 @@ export async function generateAutomodDashboard(guild = null) {
   const config = await loadConfig();
   const on = config.enabled;
 
-  const embed = new EmbedBuilder()
-    .setTitle(`ᴀᴜᴛᴏᴍᴏᴅ — ${on ? `${i("SUCCESS")}` : `${i("ERROR")}`}`)
-    .setDescription(
-      `**ʀᴀᴛᴇ ʟɪᴍɪᴛs • ᴘᴇʀ 10s**\n${icon("LABEL")} ᴍsɢ **${config.limits.messageSpam}** • ${icon("CHANNELS")} ᴄʜ. ᴅᴇʟ **${config.limits.channelDelete}** • ${icon("MEMBERS")} ɴɪᴄᴋ **${config.limits.nicknameChange}** • ${icon("PURGE")} ᴍsɢ ᴅᴇʟ **${config.limits.messageDelete}**`,
-    )
-    .setColor(EMBED_COLOR)
-    .setTimestamp();
+  const headerContent =
+    `## ᴀᴜᴛᴏᴍᴏᴅ — ${on ? `${i("SUCCESS")}` : `${i("ERROR")}`}\n` +
+    `**ʀᴀᴛᴇ ʟɪᴍɪᴛs • ᴘᴇʀ 10s**\n` +
+    `${icon("LABEL")} ᴍsɢ **${config.limits.messageSpam}** • ` +
+    `${icon("CHANNELS")} ᴄʜ. ᴅᴇʟ **${config.limits.channelDelete}** • ` +
+    `${icon("MEMBERS")} ɴɪᴄᴋ **${config.limits.nicknameChange}** • ` +
+    `${icon("PURGE")} ᴍsɢ ᴅᴇʟ **${config.limits.messageDelete}**`;
 
-  if (guild?.iconURL()) {
-    embed.setThumbnail(guild.iconURL({ size: 256, dynamic: true }));
+  const container = new ContainerBuilder().setAccentColor(EMBED_COLOR);
+
+  const iconUrl = guild?.iconURL?.({ size: 256, dynamic: true });
+  if (iconUrl) {
+    const headerSection = new SectionBuilder()
+      .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(headerContent),
+      )
+      .setThumbnailAccessory(new ThumbnailBuilder().setURL(iconUrl));
+    container.addSectionComponents(headerSection);
+  } else {
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(headerContent),
+    );
   }
 
-  // Row 1: feature toggle buttons
-  const row1 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("automod_toggle_spam")
-      .setLabel(`sᴘᴀᴍ ғɪʟᴛᴇʀ — ${config.spam ? "ᴏɴ" : "ᴏғғ"}`)
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId("automod_toggle_raid")
-      .setLabel(`ʀᴀɪᴅ ᴘʀᴏᴛᴇᴄᴛɪᴏɴ — ${config.raid ? "ᴏɴ" : "ᴏғғ"}`)
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId("automod_toggle_toxicity")
-      .setLabel(`ᴛᴏxɪᴄɪᴛʏ ғɪʟᴛᴇʀ — ${config.toxicity ? "ᴏɴ" : "ᴏғғ"}`)
-      .setStyle(ButtonStyle.Secondary),
+  container.addSeparatorComponents(
+    new SeparatorBuilder()
+      .setDivider(true)
+      .setSpacing(SeparatorSpacingSize.Small),
   );
 
-  // Row 2: master toggle + edit limits
-  const row2 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("automod_toggle_master")
-      .setEmoji(on ? icon("WARNING") : icon("DONE"))
-      .setLabel(on ? "ᴅɪsᴀʙʟᴇ ᴀᴜᴛᴏᴍᴏᴅ" : "ᴇɴᴀʙʟᴇ ᴀᴜᴛᴏᴍᴏᴅ")
-      .setStyle(on ? ButtonStyle.Danger : ButtonStyle.Success),
-    new ButtonBuilder()
-      .setCustomId("automod_edit_limits")
-      .setLabel("ᴇᴅɪᴛ ʟɪᴍɪᴛs")
-      .setStyle(ButtonStyle.Primary),
+  container.addActionRowComponents(
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("automod_toggle_spam")
+        .setLabel(`sᴘᴀᴍ ғɪʟᴛᴇʀ — ${config.spam ? "ᴏɴ" : "ᴏғғ"}`)
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId("automod_toggle_raid")
+        .setLabel(`ʀᴀɪᴅ ᴘʀᴏᴛᴇᴄᴛɪᴏɴ — ${config.raid ? "ᴏɴ" : "ᴏғғ"}`)
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId("automod_toggle_toxicity")
+        .setLabel(`ᴛᴏxɪᴄɪᴛʏ ғɪʟᴛᴇʀ — ${config.toxicity ? "ᴏɴ" : "ᴏғғ"}`)
+        .setStyle(ButtonStyle.Secondary),
+    ),
   );
 
-  return { embeds: [embed], components: [row1, row2] };
+  container.addSeparatorComponents(
+    new SeparatorBuilder()
+      .setDivider(true)
+      .setSpacing(SeparatorSpacingSize.Small),
+  );
+
+  container.addActionRowComponents(
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("automod_toggle_master")
+        .setEmoji(on ? icon("WARNING") : icon("DONE"))
+        .setLabel(on ? "ᴅɪsᴀʙʟᴇ ᴀᴜᴛᴏᴍᴏᴅ" : "ᴇɴᴀʙʟᴇ ᴀᴜᴛᴏᴍᴏᴅ")
+        .setStyle(on ? ButtonStyle.Danger : ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId("automod_edit_limits")
+        .setLabel("ᴇᴅɪᴛ ʟɪᴍɪᴛs")
+        .setStyle(ButtonStyle.Primary),
+    ),
+  );
+
+  return { components: [container] };
 }
 
 export default {
@@ -84,7 +115,7 @@ export default {
     const dashboard = await generateAutomodDashboard(interaction.guild);
     await interaction.reply({
       ...dashboard,
-      flags: MessageFlags.Ephemeral,
+      flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
     });
   },
 };
@@ -192,5 +223,6 @@ export async function handleAutomodInteraction(interaction) {
   const updatedDashboard = await generateAutomodDashboard(interaction.guild);
   await interaction.update({
     ...updatedDashboard,
+    flags: MessageFlags.IsComponentsV2,
   });
 }

@@ -1,9 +1,12 @@
 import {
   SlashCommandBuilder,
-  EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  ContainerBuilder,
+  TextDisplayBuilder,
+  SeparatorBuilder,
+  SeparatorSpacingSize,
   PermissionFlagsBits,
   MessageFlags,
 } from "discord.js";
@@ -46,6 +49,10 @@ export default {
 
   async execute(interaction) {
     try {
+      if (!interaction.deferred && !interaction.replied) {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      }
+
       const autoOption = interaction.options.getString("auto");
       if (autoOption !== null) {
         const enabled = autoOption === "on";
@@ -63,16 +70,10 @@ export default {
       );
 
       if (!verificationChannel) {
-        return interaction.reply(
+        return interaction.editReply(
           eReply(`${i("ERROR")} ɴᴏᴛ ғᴏᴜɴᴅ`, "ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴄʜᴀɴɴᴇʟ ɴᴏᴛ ғᴏᴜɴᴅ!"),
         );
       }
-
-      const verificationEmbed = new EmbedBuilder()
-        .setColor("#00ddff")
-        .setTitle(`${icon("KEYLOCK")} ʀᴏʟᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ`)
-        .setDescription("**ᴄʟɪᴄᴋ ᴏɴ ᴛʜᴇ ᴀᴘᴘʀᴏᴘʀɪᴀᴛᴇ ʀᴏʟᴇ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴀᴘᴘʟʏ.** ")
-        .setTimestamp();
 
       const buttonRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -89,61 +90,140 @@ export default {
           .setStyle(ButtonStyle.Success),
       );
 
+      const selfRoleRow1 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("selfrole_pc")
+          .setLabel("PC")
+          .setEmoji("💻")
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId("selfrole_mobile")
+          .setLabel("Mobile")
+          .setEmoji("📱")
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId("selfrole_mobile_pc")
+          .setLabel("Mobile-PC")
+          .setEmoji("📲")
+          .setStyle(ButtonStyle.Secondary),
+      );
+
+      const selfRoleRow2 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("selfrole_18_plus")
+          .setLabel("18+")
+          .setEmoji("🔞")
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId("selfrole_18_minus")
+          .setLabel("18-")
+          .setEmoji("🧒")
+          .setStyle(ButtonStyle.Secondary),
+      );
+
+      const verificationContainer = new ContainerBuilder()
+        .setAccentColor(0x00ddff)
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(
+            `## ${icon("KEYLOCK")} ʀᴏʟᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ\nᴄʟɪᴄᴋ ᴛʜᴇ ʀᴏʟᴇ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴀᴘᴘʟʏ.`,
+          ),
+        )
+        .addSeparatorComponents(
+          new SeparatorBuilder()
+            .setDivider(true)
+            .setSpacing(SeparatorSpacingSize.Small),
+        )
+        .addActionRowComponents(buttonRow)
+        .addSeparatorComponents(
+          new SeparatorBuilder()
+            .setDivider(true)
+            .setSpacing(SeparatorSpacingSize.Small),
+        )
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent("### sᴇʟғ-ʀᴏʟᴇs"),
+        )
+        .addActionRowComponents(selfRoleRow1, selfRoleRow2);
+
+      const payload = {
+        components: [verificationContainer],
+        flags: MessageFlags.IsComponentsV2,
+      };
+
       const messages = await verificationChannel.messages.fetch({ limit: 10 });
       let existingMessage = null;
 
+      const VERIF_NEEDLES = [
+        "role verification",
+        "ʀᴏʟᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ",
+        "friends verification",
+        "ғʀɪᴇɴᴅs ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ",
+        "member verification",
+        "ᴍᴇᴍʙᴇʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ",
+      ];
+      const matchesVerif = (haystack) => {
+        if (!haystack) return false;
+        const lc = haystack.toLowerCase();
+        return VERIF_NEEDLES.some((n) => lc.includes(n));
+      };
+
       messages.forEach((msg) => {
+        if (msg.author.id !== interaction.client.user.id) return;
         if (
-          msg.author.id === interaction.client.user.id &&
-          msg.embeds.length > 0
+          matchesVerif(msg.embeds[0]?.title) ||
+          matchesVerif(msg.embeds[0]?.description)
         ) {
-          const embedTitle = msg.embeds[0].title;
-          if (
-            embedTitle?.includes("Role Verification") ||
-            embedTitle?.includes("ʀᴏʟᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ") ||
-            embedTitle?.includes("ғʀɪᴇɴᴅs ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ") ||
-            embedTitle?.includes("ᴍᴇᴍʙᴇʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ")
-          ) {
-            if (!existingMessage) existingMessage = msg;
-          }
+          if (!existingMessage) existingMessage = msg;
+          return;
+        }
+        const flat = JSON.stringify(msg.components ?? []);
+        if (matchesVerif(flat)) {
+          if (!existingMessage) existingMessage = msg;
+          return;
+        }
+        const ids = JSON.stringify(msg.components ?? []);
+        if (
+          ids.includes("verify_friends") ||
+          ids.includes("verify_member") ||
+          ids.includes("dev_check")
+        ) {
+          if (!existingMessage) existingMessage = msg;
         }
       });
 
       if (existingMessage) {
-        await existingMessage.edit({
-          embeds: [verificationEmbed],
-          components: [buttonRow],
-        });
-        console.log("[INFO] Updated existing verification embed");
+        const isLegacy = existingMessage.embeds?.length > 0;
+        if (isLegacy) {
+          await existingMessage.delete().catch(() => {});
+          await verificationChannel.send(payload);
+        } else {
+          await existingMessage.edit(payload);
+        }
+        console.log("[INFO] Updated existing verification message");
 
-        const oldMessages = messages.filter(
+        const stale = messages.filter(
           (msg) =>
             msg.id !== existingMessage.id &&
             msg.author.id === interaction.client.user.id &&
-            msg.embeds.length > 0 &&
-            (msg.embeds[0].title?.includes("ʀᴏʟᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ") ||
-              msg.embeds[0].title?.includes("ғʀɪᴇɴᴅs ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ") ||
-              msg.embeds[0].title?.includes("ᴍᴇᴍʙᴇʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ")),
+            (matchesVerif(msg.embeds[0]?.title) ||
+              matchesVerif(msg.embeds[0]?.description) ||
+              matchesVerif(JSON.stringify(msg.components ?? []))),
         );
 
-        for (const msg of oldMessages.values()) {
+        for (const msg of stale.values()) {
           await msg.delete().catch(() => {});
-          console.log("[INFO] Deleted old verification embed");
+          console.log("[INFO] Deleted stale verification message");
         }
 
-        await interaction.reply(
+        await interaction.editReply(
           eReply(
             `${i("SAVED")} ᴜᴘᴅᴀᴛᴇᴅ`,
             `ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴇᴍʙᴇᴅ ᴜᴘᴅᴀᴛᴇᴅ.\n${icon("MAILBOX")} ᴀᴜᴛᴏ-ᴅᴍ ᴏɴ ᴊᴏɪɴ: **${currentAutoDm ? "on" : "off"}**\n${icon("BOT")} ᴀᴘᴘʀᴏᴠᴇ ᴍᴏᴅᴇ: **${currentAutoApprove ? "auto (AI DM)" : "manual (approvals channel)"}**`,
           ),
         );
       } else {
-        await verificationChannel.send({
-          embeds: [verificationEmbed],
-          components: [buttonRow],
-        });
+        await verificationChannel.send(payload);
         console.log("[INFO] Created new verification embed");
-        await interaction.reply(
+        await interaction.editReply(
           eReply(
             `${i("SAVED")} ᴄᴏᴍᴘʟᴇᴛᴇ`,
             `ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴇᴍʙᴇᴅ ᴄʀᴇᴀᴛᴇᴅ.\n${icon("MAILBOX")} ᴀᴜᴛᴏ-ᴅᴍ ᴏɴ ᴊᴏɪɴ: **${currentAutoDm ? "on" : "off"}**\n${icon("BOT")} ᴀᴘᴘʀᴏᴠᴇ ᴍᴏᴅᴇ: **${currentAutoApprove ? "auto (AI DM)" : "manual (approvals channel)"}**`,
@@ -152,9 +232,21 @@ export default {
       }
     } catch (error) {
       console.error("[ERROR] Error setting up verification:", error);
-      await interaction.reply(
-        eReply(`${i("ERROR")} ᴇʀʀᴏʀ`, "ғᴀɪʟᴇᴅ ᴛᴏ sᴇᴛ ᴜᴘ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴇᴍʙᴇᴅ."),
-      );
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply(
+          eReply(
+            `${i("ERROR")} ᴇʀʀᴏʀ`,
+            "ғᴀɪʟᴇᴅ ᴛᴏ sᴇᴛ ᴜᴘ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴇᴍʙᴇᴅ.",
+          ),
+        );
+      } else {
+        await interaction.reply(
+          eReply(
+            `${i("ERROR")} ᴇʀʀᴏʀ`,
+            "ғᴀɪʟᴇᴅ ᴛᴏ sᴇᴛ ᴜᴘ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴇᴍʙᴇᴅ.",
+          ),
+        );
+      }
     }
   },
 };

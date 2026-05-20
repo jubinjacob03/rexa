@@ -1,9 +1,14 @@
 import {
   SlashCommandBuilder,
-  EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  ContainerBuilder,
+  TextDisplayBuilder,
+  SectionBuilder,
+  ThumbnailBuilder,
+  SeparatorBuilder,
+  SeparatorSpacingSize,
   PermissionFlagsBits,
   MessageFlags,
 } from "discord.js";
@@ -11,7 +16,6 @@ import supabase from "../utils/supabaseClient.js";
 import { EMBED_COLOR } from "../utils/embed.js";
 import { icon } from "../utils/icons.js";
 
-// Stateless in-memory store for admin setup sessions (only lasts during mapping)
 export const setupSessions = new Map();
 
 export default {
@@ -24,10 +28,22 @@ export default {
         .setName("channel")
         .setDescription("The channel where the ticket panel will be published")
         .setRequired(true),
+    )
+    .addBooleanOption((option) =>
+      option
+        .setName("advanced")
+        .setDescription("Use the advanced ticket editor (default: off)")
+        .setRequired(false),
     ),
 
   async execute(interaction) {
     const targetChannel = interaction.options.getChannel("channel");
+    const advanced = interaction.options.getBoolean("advanced") || false;
+
+    if (!advanced) {
+      await publishSimpleTicketPanel(interaction, targetChannel);
+      return;
+    }
 
     let ticketMods = [];
     if (supabase) {
@@ -43,7 +59,6 @@ export default {
       }
     }
 
-    // Initialize default ticket configuration for this admin session
     setupSessions.set(interaction.user.id, {
       title: "🎟️ sᴜᴘᴘᴏʀᴛ ᴛɪᴄᴋᴇᴛs",
       description:
@@ -59,23 +74,93 @@ export default {
   },
 };
 
+async function publishSimpleTicketPanel(interaction, targetChannel) {
+  const botUser = interaction.client.user;
+  const botAvatar = botUser.displayAvatarURL({ size: 128 });
+  const year = new Date().getFullYear();
+  const startYear = year - 1;
+  const ts = Math.floor(Date.now() / 1000);
+
+  const panelContainer = new ContainerBuilder()
+    .setAccentColor(EMBED_COLOR)
+    .addSectionComponents(
+      new SectionBuilder()
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(
+            `**${botUser.username}**\n## ᴛɪᴄᴋᴇᴛs\nᴄʟɪᴄᴋ ᴏɴ ᴛᴏ ᴏᴘᴇɴ ᴀ ᴛɪᴄᴋᴇᴛ - ᴏᴜʀ ᴀɪ ᴀɢᴇɴᴛ ᴡɪʟʟ ᴊᴏɪɴ ʏᴏᴜ sʜᴏʀᴛʟʏ.`,
+          ),
+        )
+        .setThumbnailAccessory(new ThumbnailBuilder().setURL(botAvatar)),
+    )
+    .addSeparatorComponents(
+      new SeparatorBuilder()
+        .setDivider(true)
+        .setSpacing(SeparatorSpacingSize.Small),
+    )
+    .addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(
+        `-# © ${botUser.username} ${startYear} - ${year} • <t:${ts}:f>`,
+      ),
+    )
+    .addActionRowComponents(
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("tkt_open_simple")
+          .setLabel("ᴄʀᴇᴀᴛᴇ ᴛɪᴄᴋᴇᴛ")
+          .setEmoji("🎫")
+          .setStyle(ButtonStyle.Secondary),
+      ),
+    );
+
+  await targetChannel.send({
+    components: [panelContainer],
+    flags: MessageFlags.IsComponentsV2,
+  });
+
+  await interaction.reply({
+    content: `✅ ᴛɪᴄᴋᴇᴛ ᴘᴀɴᴇʟ ᴄʀᴇᴀᴛᴇᴅ ɪɴ <#${targetChannel.id}>.`,
+    flags: MessageFlags.Ephemeral,
+  });
+}
+
 export async function renderTicketDashboard(interaction, isUpdate = false) {
   const config = setupSessions.get(interaction.user.id);
   if (!config) return;
 
-  const controlsEmbed = new EmbedBuilder()
-    .setColor(EMBED_COLOR)
-    .setTitle(`${icon("EDITOR")} ᴛɪᴄᴋᴇᴛ ᴇᴅɪᴛᴏʀ`)
-    .setDescription(
-      "ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ᴄᴏɴғɪɢᴜʀᴇ ᴀɴᴅ ᴘᴜʙʟɪsʜ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ ᴛᴏ ᴛʜᴇ sᴇʟᴇᴄᴛᴇᴅ ᴄʜᴀɴɴᴇʟ.",
-    )
-    .setTimestamp();
+  const container = new ContainerBuilder().setAccentColor(EMBED_COLOR);
+  const iconUrl = interaction.guild?.iconURL({ size: 256, dynamic: true });
+  const headerContent = `## ${icon("EDITOR")} ᴛɪᴄᴋᴇᴛ ᴇᴅɪᴛᴏʀ\nᴜsᴇ ᴛʜᴇ ᴄᴏɴᴛʀᴏʟs ʙᴇʟᴏᴡ ᴛᴏ ᴄᴏɴғɪɢᴜʀᴇ ᴀɴᴅ ᴘᴜʙʟɪsʜ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ ᴘᴀɴᴇʟ.\n\n**ᴛᴀʀɢᴇᴛ:** <#${config.targetChannelId}>`;
 
-  if (interaction.guild?.iconURL()) {
-    controlsEmbed.setThumbnail(
-      interaction.guild.iconURL({ size: 256, dynamic: true }),
+  if (iconUrl) {
+    const headerSection = new SectionBuilder()
+      .addTextDisplayComponents(new TextDisplayBuilder().setContent(headerContent))
+      .setThumbnailAccessory(new ThumbnailBuilder().setURL(iconUrl));
+    container.addSectionComponents(headerSection);
+  } else {
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(headerContent),
     );
   }
+
+  const buttonCount = config.buttons.length;
+  const maxButtons = 3;
+  const ticketCount = config.buttons.filter((b) => b.type === "ticket").length;
+  const replyCount = config.buttons.filter((b) => b.type !== "ticket").length;
+
+  container
+    .addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(
+        `**sᴇssɪᴏɴ:** ᴀᴄᴛɪᴠᴇ • **ʙᴜᴛᴛᴏɴs:** ${buttonCount}/${maxButtons} • **ᴛɪᴄᴋᴇᴛs:** ${ticketCount} • **ʀᴇᴘʟɪᴇs:** ${replyCount}`,
+      ),
+    )
+    .addSeparatorComponents(
+      new SeparatorBuilder()
+        .setDivider(true)
+        .setSpacing(SeparatorSpacingSize.Small),
+    )
+    .addTextDisplayComponents(
+      new TextDisplayBuilder().setContent("### sᴇᴛᴜᴘ ᴀᴄᴛɪᴏɴs"),
+    );
 
   const hasTextTicket = config.buttons.some(
     (b) => b.type === "ticket" && b.ticketType === "text",
@@ -133,10 +218,21 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
       .setStyle(ButtonStyle.Secondary),
   );
 
+  container
+    .addActionRowComponents(row1)
+    .addSeparatorComponents(
+      new SeparatorBuilder()
+        .setDivider(true)
+        .setSpacing(SeparatorSpacingSize.Small),
+    )
+    .addTextDisplayComponents(
+      new TextDisplayBuilder().setContent("### ᴘᴜʙʟɪsʜ"),
+    )
+    .addActionRowComponents(row2);
+
   const payload = {
-    embeds: [controlsEmbed],
-    components: [row1, row2],
-    flags: MessageFlags.Ephemeral,
+    components: [container],
+    flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
   };
 
   if (isUpdate) {

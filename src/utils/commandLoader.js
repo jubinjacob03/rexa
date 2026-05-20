@@ -2,10 +2,11 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { readdirSync } from "fs";
 
-export async function loadCommands(commandsDir = "../commands") {
+export async function loadCommands(commandsDir = "../commands", options = {}) {
   const currentDir = dirname(fileURLToPath(import.meta.url));
   const commandsPath = join(currentDir, commandsDir);
   const commandFiles = readdirSync(commandsPath).filter((file) => file.endsWith(".js"));
+  const allowlist = Array.isArray(options.allowlist) ? options.allowlist : null;
   
   const commands = [];
   
@@ -16,7 +17,9 @@ export async function loadCommands(commandsDir = "../commands") {
       const command = commandModule.default;
       
       if (command && "data" in command && "execute" in command) {
-        commands.push(command);
+        if (!allowlist || allowlist.includes(command.data?.name)) {
+          commands.push(command);
+        }
       } else {
         console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
       }
