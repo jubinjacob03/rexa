@@ -7,5 +7,6 @@ services:
       tags:
         - rexa-bot:latest
     image: rexa-bot:latest
+    container_name: rexa-bot
     env_file: .env
     restart: unless-stopped
