@@ -25,6 +25,7 @@ import {
 import { handleAutomodInteraction } from "./commands/automod.js";
 import { handleTicketInteraction } from "./utils/ticketHandler.js";
 import { buildStatusPayload } from "./commands/status.js";
+import { postDashboard, handleDashboardInteraction, handleDashboardModal, showPrivateVCModal } from "./dashboard/dashboard.js";
 
 if (ffmpegPath) {
   process.env.FFMPEG_PATH = ffmpegPath;
@@ -85,7 +86,25 @@ for (const file of eventFiles) {
   console.log(`[INFO] Loaded event: ${event.default.name}`);
 }
 
+client.once(Events.ClientReady, async () => {
+  console.log(`[INFO] Logged in as ${client.user.tag}`);
+  await postDashboard(client);
+});
+
 client.on(Events.InteractionCreate, async (interaction) => {
+  if (interaction.isButton() && interaction.customId.startsWith("shantha_")) {
+    if (interaction.customId === "shantha_private_vc") {
+      await showPrivateVCModal(interaction);
+      return;
+    }
+    await handleDashboardInteraction(interaction);
+    return;
+  }
+  if (interaction.isModalSubmit() && interaction.customId.startsWith("shantha_")) {
+    await handleDashboardModal(interaction);
+    return;
+  }
+
   if (
     interaction.isModalSubmit() &&
     interaction.customId.startsWith("tsetup_modal_")

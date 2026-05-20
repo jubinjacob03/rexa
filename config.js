@@ -56,4 +56,7 @@ export default {
   rulesChannelId: process.env.RULES_CHANNEL_ID || "1473075468805738538",
   instagramUrl: process.env.INSTAGRAM_URL || null,
   whatsappUrl: process.env.WHATSAPP_URL || null,
+
+  // Bot command channel
+  botCmdChannelId: process.env.BOT_CMD_CHANNEL_ID,
 };
