@@ -24,9 +24,11 @@ export default {
     .setDescription("Show overall bot status"),
 
   async execute(interaction) {
-    await interaction.reply(
-      await buildStatusPayload(interaction.client, interaction.guild),
-    );
+    const payload = await buildStatusPayload(interaction.client, interaction.guild);
+    await interaction.reply({
+      ...payload,
+      ephemeral: true
+    });
   },
 };
 

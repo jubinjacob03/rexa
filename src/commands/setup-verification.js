@@ -89,8 +89,7 @@ export default {
           .setLabel("ɢᴜɪʟᴅ-ᴍᴇᴍʙᴇʀ")
           .setStyle(ButtonStyle.Success),
       );
-
-      const selfRoleRow1 = new ActionRowBuilder().addComponents(
+      const selfRoleRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId("selfrole_pc")
           .setLabel("PC")
@@ -106,9 +105,6 @@ export default {
           .setLabel("Mobile-PC")
           .setEmoji("📲")
           .setStyle(ButtonStyle.Secondary),
-      );
-
-      const selfRoleRow2 = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId("selfrole_18_plus")
           .setLabel("18+")
@@ -118,7 +114,7 @@ export default {
           .setCustomId("selfrole_18_minus")
           .setLabel("18-")
           .setEmoji("🧒")
-          .setStyle(ButtonStyle.Secondary),
+          .setStyle(ButtonStyle.Secondary)
       );
 
       const verificationContainer = new ContainerBuilder()
@@ -142,7 +138,7 @@ export default {
         .addTextDisplayComponents(
           new TextDisplayBuilder().setContent("### sᴇʟғ-ʀᴏʟᴇs"),
         )
-        .addActionRowComponents(selfRoleRow1, selfRoleRow2);
+        .addActionRowComponents(selfRoleRow);
 
       const payload = {
         components: [verificationContainer],

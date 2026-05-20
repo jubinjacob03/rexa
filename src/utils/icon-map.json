@@ -17,7 +17,6 @@
   "SHIELD": { "serverEmojiName": "admin", "fallback": "🛡️" },
   "KEYLOCK": { "serverEmojiName": "locked", "fallback": "🔐" },
   "TICKET": { "serverEmojiName": "ticket", "fallback": "🎫" },
-  "PANEL": { "serverEmojiName": "VIPTicket", "fallback": "🎟️" },
   "EDIT": { "serverEmojiName": "edit", "fallback": "🖋️" },
   "EDITOR": { "serverEmojiName": "Editor", "fallback": "🖊️" },
   "TYPE": { "serverEmojiName": "points", "fallback": "💠" },

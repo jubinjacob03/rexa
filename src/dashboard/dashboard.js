@@ -1,4 +1,5 @@
 import { PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } from "discord.js";
+import { SectionBuilder, ThumbnailBuilder } from "discord.js";
 import config from "../../config.js";
 import { updateConfig, loadConfig } from "../utils/automodManager.js";
 import privateVC from "../commands/private-vc.js";
@@ -9,6 +10,7 @@ import purge from "../commands/purge.js";
 import refresh from "../commands/refresh.js";
 import { eReply } from "../utils/embed.js";
 import { getVCByMember, removeMember } from "../utils/privateVCManager.js";
+import { icon } from "../utils/icons.js";
 
 export function getBotCmdChannel(client) {
   const channelId = config.botCmdChannelId;
@@ -25,12 +27,19 @@ export async function buildDashboardContainer(member) {
   const onOff = (v) => (v ? "ON" : "OFF");
 
   const container = new ContainerBuilder().setAccentColor(0x00ced1);
-
-  container.addTextDisplayComponents(
-    new TextDisplayBuilder().setContent(
-      "## 🛠️ Shantha Control Center\nControl private VC, automod, and admin actions below."
-    )
-  );
+  const guild = member.guild;
+  const iconUrl = guild.iconURL({ dynamic: true, size: 256 });
+  const headerContent = `## ${icon("KEYLOCK")} Control Center\nManage Private Voice Channels, Auto-Moderations, and Administrative actions below.`;
+  if (iconUrl) {
+    const section = new SectionBuilder()
+      .addTextDisplayComponents(new TextDisplayBuilder().setContent(headerContent))
+      .setThumbnailAccessory(new ThumbnailBuilder().setURL(iconUrl));
+    container.addSectionComponents(section);
+  } else {
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(headerContent),
+    );
+  }
 
   container.addSeparatorComponents(
     new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
@@ -38,31 +47,26 @@ export async function buildDashboardContainer(member) {
 
   container.addTextDisplayComponents(
     new TextDisplayBuilder().setContent(
-      "### 🎙️ Voice Manager\nCreate and manage your private voice channels."
+      `### ${icon("VOICE")} Voice Manager\nCreate and manage your private voice channels.`
     )
   );
-
   container.addActionRowComponents(
     new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("shantha_vc_create")
         .setLabel("Create")
-        .setEmoji("🔊")
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId("shantha_vc_add")
         .setLabel("Add")
-        .setEmoji("➕")
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId("shantha_vc_remove")
         .setLabel("Remove")
-        .setEmoji("➖")
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId("shantha_vc_leave")
         .setLabel("Leave")
-        .setEmoji("🚪")
         .setStyle(ButtonStyle.Secondary)
     )
   );
@@ -73,7 +77,7 @@ export async function buildDashboardContainer(member) {
 
   container.addTextDisplayComponents(
     new TextDisplayBuilder().setContent(
-      `### 🤖 Automod\n**Master:** ${onOff(automodOn)} • **Spam:** ${onOff(spamOn)} • **Raid:** ${onOff(raidOn)} • **Toxicity:** ${onOff(toxicityOn)}`
+      `### ${icon("BOT")} AutoMOD\n**Master:** ${onOff(automodOn)} • **Spam:** ${onOff(spamOn)} • **Raid:** ${onOff(raidOn)} • **Toxicity:** ${onOff(toxicityOn)}`
     )
   );
 
@@ -82,27 +86,22 @@ export async function buildDashboardContainer(member) {
       new ButtonBuilder()
         .setCustomId("shantha_automod_master")
         .setLabel(`Automod: ${onOff(automodOn)}`)
-        .setEmoji("🤖")
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId("shantha_automod_limits")
         .setLabel("Edit Limits")
-        .setEmoji("🖊️")
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId("shantha_automod_spam")
         .setLabel(`Spam: ${onOff(spamOn)}`)
-        .setEmoji("🧹")
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId("shantha_automod_raid")
         .setLabel(`Raid: ${onOff(raidOn)}`)
-        .setEmoji("🛡️")
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId("shantha_automod_toxicity")
         .setLabel(`Toxicity: ${onOff(toxicityOn)}`)
-        .setEmoji("☣️")
         .setStyle(ButtonStyle.Secondary)
     )
   );
@@ -114,8 +113,8 @@ export async function buildDashboardContainer(member) {
   container.addTextDisplayComponents(
     new TextDisplayBuilder().setContent(
       isAdmin
-        ? "### 🛡️ Admin Tools\nPurge messages and manage server content."
-        : "### 🛡️ Admin Tools\n🔒 *Requires administrator permissions*"
+        ? `### ${icon("PURGE")} Purge\nPurge messages and manage server content.`
+        : `### ${icon("PURGE")} Purge\n🔒 *Requires administrator permissions*`
     )
   );
 
@@ -124,25 +123,21 @@ export async function buildDashboardContainer(member) {
       new ButtonBuilder()
         .setCustomId("shantha_purge_all")
         .setLabel("Purge All")
-        .setEmoji("🗑️")
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(!isAdmin),
       new ButtonBuilder()
         .setCustomId("shantha_purge_user")
         .setLabel("Purge User")
-        .setEmoji("👥")
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(!isAdmin),
       new ButtonBuilder()
         .setCustomId("shantha_purge_trail")
         .setLabel("Purge Trail")
-        .setEmoji("📋")
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(!isAdmin),
       new ButtonBuilder()
         .setCustomId("shantha_purge_trail_user")
         .setLabel("Purge Trail User")
-        .setEmoji("🧾")
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(!isAdmin)
     )
@@ -153,7 +148,7 @@ export async function buildDashboardContainer(member) {
   );
 
   container.addTextDisplayComponents(
-    new TextDisplayBuilder().setContent("### ⚙️ System")
+    new TextDisplayBuilder().setContent(`### ${icon("CHANNELS")} System`)
   );
 
   container.addActionRowComponents(
@@ -161,12 +156,10 @@ export async function buildDashboardContainer(member) {
       new ButtonBuilder()
         .setCustomId("shantha_status")
         .setLabel("Status")
-        .setEmoji("📊")
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId("shantha_refresh")
         .setLabel("Refresh Info")
-        .setEmoji("🔄")
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(!isAdmin)
     )
