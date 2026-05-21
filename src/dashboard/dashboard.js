@@ -75,7 +75,7 @@ export async function buildDashboardContainer(member) {
   container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
 
   container.addTextDisplayComponents(new TextDisplayBuilder().setContent(
-    isMod ? `### ${icon("PURGE")} Purge\nPurge messages and manage server content.` : `### ${icon("PURGE")} Purge\n🔒 *Requires moderator permissions*`
+    isMod ? `### ${icon("PURGE")} Purge\nPurge messages and manage server content.` : `### ${icon("PURGE")} Purge\n🔒 *Requires moderator permissions*`
   ));
 
   container.addActionRowComponents(
@@ -90,7 +90,7 @@ export async function buildDashboardContainer(member) {
   container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
 
   container.addTextDisplayComponents(new TextDisplayBuilder().setContent(
-    isMod ? `### ${icon("CHANNELS")} System\nStatus and moderation tools.` : `### ${icon("CHANNELS")} System\n🔒 *Requires moderator permissions*`
+    isMod ? `### ${icon("CHANNELS")} System\nStatus and moderation tools.` : `### ${icon("CHANNELS")} System\n🔒 *Requires moderator permissions*`
   ));
 
   container.addActionRowComponents(

@@ -3,8 +3,9 @@ import { z } from "zod";
 import config, { getLanguageModel } from "../agents/config.js";
 import * as modTools from "./moderation.js";
 import { loadConfig } from "./automodManager.js";
-import { eSend } from "./embed.js";
+import { eSend, EMBED_COLOR } from "./embed.js";
 import { i } from "./icons.js";
+import { ContainerBuilder, SectionBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } from "discord.js";
 
 async function sendActionEmbed(
   channel,
@@ -420,3 +421,106 @@ async function triggerAIModeration(
     activeModerationLocks.delete(userId);
   }
 }
+
+export async function checkHackedAccountSpam(message, imageUrls) {
+  const cfg = await loadConfig();
+  if (!cfg.enabled) return;
+
+  // Don't scrutinize admins or bots
+  const member = await message.guild.members.fetch(message.author.id).catch(() => null);
+  if (!member || member.id === message.guild.ownerId || member.user.bot) return;
+  const isMod = await modTools.checkModerationPermission(message.guild, member.id, "mod");
+  if (isMod) return;
+
+  if (activeModerationLocks.has(member.id)) return;
+  activeModerationLocks.add(member.id);
+
+  try {
+    console.log(`[AutoMod] Running proactive image spam scrutiny on ${member.user.tag}...`);
+
+    const promptText = `
+      You are a strict Discord Trust & Safety AI. Analyze these images uploaded by a user.
+      A common hacked account scam involves posting images of Discord profiles alongside fake crypto exchanges, fake Nitro giveaways, or fake server promotions.
+      Look closely at the images. Does this contain clear indicators of a hacked account scam (e.g. 'I won 0.5 BTC', 'Free Discord Nitro', 'Join this server to claim', fake withdrawal screenshots)?
+      Return true ONLY if you are absolutely confident it is a malicious scam/promotion. If they are just normal gaming screenshots, memes, or casual chat, return false.
+    `;
+
+    const modelObj = getLanguageModel(config.model.provider, config.model.name);
+
+    const result = await generateObject({
+      model: modelObj,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: promptText },
+            ...imageUrls.map(url => ({ type: "image", image: new URL(url) }))
+          ]
+        }
+      ],
+      schema: z.object({
+        isHackedPromo: z.boolean().describe("Whether this looks like a hacked account posting a crypto/giveaway scam"),
+        reason: z.string().describe("Explanation for why it was classified this way"),
+      }),
+    });
+
+    const { isHackedPromo, reason } = result.object;
+
+    if (isHackedPromo) {
+      console.log(`[AutoMod] Hacked account scam detected for ${member.user.tag}: ${reason}`);
+
+      // Delete message
+      await message.delete().catch(() => {});
+
+      // Apply timeout (max 28 days)
+      await modTools.timeout(member, 40320, "[AutoMod] Hacked Account Scam Promotion").catch(() => {});
+
+      // Strip all roles
+      const rolesToRemove = member.roles.cache.filter(r => r.id !== message.guild.id);
+      if (rolesToRemove.size > 0) {
+        await member.roles.remove(rolesToRemove, "[AutoMod] Quarantine Hacked Account").catch(() => {});
+      }
+
+      // DM the user
+      const dmEmbed = new ContainerBuilder()
+        .setAccentColor(EMBED_COLOR)
+        .addSectionComponents(
+          new SectionBuilder().addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+              `## ${i("WARNING")} ᴀᴄᴄᴏᴜɴᴛ ᴄᴏᴍᴘʀᴏᴍɪsᴇᴅ\nᴏᴜʀ sʏsᴛᴇᴍ ʜᴀs ғᴏᴜɴᴅ ᴛʜᴀᴛ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ ɪs ᴄᴏᴍᴘʀᴏᴍɪsᴇᴅ ᴀɴᴅ ᴀʟʟ sᴇʀᴠᴇʀ ᴀᴜᴛʜᴏʀɪᴛɪᴇs ʜᴀᴠᴇ ʙᴇᴇɴ ʀᴇᴠᴏᴋᴇᴅ. ᴘʟᴇᴀsᴇ ʀᴇᴀᴄʜ ᴏᴜᴛ ᴛᴏ ᴀɴʏ ᴍᴏᴅᴇʀᴀᴛᴏʀ ᴛᴏ sᴏʟᴠᴇ ᴛʜɪs ᴍᴀɴᴜᴀʟʟʏ.`
+            )
+          )
+        );
+      await member.send({ components: [dmEmbed], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
+
+      // Log to specific channel
+      const logChannel = await message.guild.channels.fetch("1489967421283369011").catch(() => null);
+      if (logChannel) {
+        const logEmbed = new ContainerBuilder()
+          .setAccentColor(EMBED_COLOR)
+          .addSectionComponents(
+            new SectionBuilder().addTextDisplayComponents(
+              new TextDisplayBuilder().setContent(
+                `## ${i("WARNING")} ʜᴀᴄᴋᴇᴅ ᴀᴄᴄᴏᴜɴᴛ sᴘᴀᴍ ᴅᴇᴛᴇᴄᴛᴇᴅ\n**ᴜsᴇʀ:** <@${member.id}> (${member.user.tag})\n**ᴀᴄᴛɪᴏɴ ᴛᴀᴋᴇɴ:** ᴍᴇssᴀɢᴇ ᴅᴇʟᴇᴛᴇᴅ, 28-ᴅᴀʏ ᴛɪᴍᴇᴏᴜᴛ, ʀᴏʟᴇs sᴛʀɪᴘᴘᴇᴅ`
+              )
+            )
+          )
+          .addSeparatorComponents(
+            new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+          )
+          .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+              `### ʀᴇᴀsᴏɴ\n${reason}\n\n*[AutoMod] Proactive AI Scrutiny triggered on multiple image upload.*`
+            )
+          );
+
+        await logChannel.send({ components: [logEmbed], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
+      }
+    }
+  } catch (error) {
+    console.error("[AutoMod] Image Scrutiny Error:", error);
+  } finally {
+    activeModerationLocks.delete(member.id);
+  }
+}
+

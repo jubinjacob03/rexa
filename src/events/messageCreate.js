@@ -1,6 +1,6 @@
 import { Events, MessageFlags } from "discord.js";
 import config from "../../config.js";
-import { checkSpam, checkToxicity } from "../utils/automodRunner.js";
+import { checkSpam, checkToxicity, checkHackedAccountSpam } from "../utils/automodRunner.js";
 import { eSend } from "../utils/embed.js";
 import { i } from "../utils/icons.js";
 
@@ -51,6 +51,22 @@ export default {
     // Trigger AutoMod
     await checkSpam(message);
     await checkToxicity(message);
+    
+    // Trigger Multi-image Spam Scrutiny (Async)
+    if (message.attachments.size >= 2) {
+      const imageUrls = [];
+      message.attachments.forEach(att => {
+        if (att.contentType && att.contentType.startsWith("image/")) {
+          imageUrls.push(att.url);
+        }
+      });
+      
+      if (imageUrls.length >= 2) {
+        checkHackedAccountSpam(message, imageUrls).catch(err => {
+          console.error("[AutoMod] Async Image Scrutiny Error:", err);
+        });
+      }
+    }
 
     const isMentioned = message.mentions.has(message.client.user.id, {
       ignoreEveryone: true,

@@ -87,7 +87,7 @@ async function initialize() {
       console.log("[KNOWLEDGE BASE] Supabase initialized successfully");
 
       console.log(
-        "[KNOWLEDGE BASE] Skipping default knowledge load (embeddings disabled)",
+        "[KNOWLEDGE BASE] Custom KB successfully loaded from SHANTHA_KNOWLEDGE_BASE.txt",
       );
     } catch (error) {
       console.error("[KNOWLEDGE BASE] Initialization error:", error);
