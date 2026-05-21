@@ -5,7 +5,7 @@ import * as modTools from "./moderation.js";
 import { loadConfig } from "./automodManager.js";
 import { eSend, EMBED_COLOR } from "./embed.js";
 import { i } from "./icons.js";
-import { ContainerBuilder, SectionBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } from "discord.js";
+import { ContainerBuilder, SectionBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags, EmbedBuilder } from "discord.js";
 
 async function sendActionEmbed(
   channel,
@@ -469,52 +469,38 @@ export async function checkHackedAccountSpam(message, imageUrls) {
     if (isHackedPromo) {
       console.log(`[AutoMod] Hacked account scam detected for ${member.user.tag}: ${reason}`);
 
-      // Delete message
-      await message.delete().catch(() => {});
 
       // Apply timeout (max 28 days)
-      await modTools.timeout(member, 40320, "[AutoMod] Hacked Account Scam Promotion").catch(() => {});
+      await modTools.timeout(member, 40320, "[AutoMod] Hacked Account Scam Promotion").catch(err => console.error("[AutoMod] Failed to timeout user:", err));
 
       // Strip all roles
       const rolesToRemove = member.roles.cache.filter(r => r.id !== message.guild.id);
       if (rolesToRemove.size > 0) {
-        await member.roles.remove(rolesToRemove, "[AutoMod] Quarantine Hacked Account").catch(() => {});
+        await member.roles.remove(rolesToRemove, "[AutoMod] Quarantine Hacked Account").catch(err => console.error("[AutoMod] Failed to remove roles:", err));
       }
 
-      // DM the user
-      const dmEmbed = new ContainerBuilder()
-        .setAccentColor(EMBED_COLOR)
-        .addSectionComponents(
-          new SectionBuilder().addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(
-              `## ${i("WARNING")} ᴀᴄᴄᴏᴜɴᴛ ᴄᴏᴍᴘʀᴏᴍɪsᴇᴅ\nᴏᴜʀ sʏsᴛᴇᴍ ʜᴀs ғᴏᴜɴᴅ ᴛʜᴀᴛ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ ɪs ᴄᴏᴍᴘʀᴏᴍɪsᴇᴅ ᴀɴᴅ ᴀʟʟ sᴇʀᴠᴇʀ ᴀᴜᴛʜᴏʀɪᴛɪᴇs ʜᴀᴠᴇ ʙᴇᴇɴ ʀᴇᴠᴏᴋᴇᴅ. ᴘʟᴇᴀsᴇ ʀᴇᴀᴄʜ ᴏᴜᴛ ᴛᴏ ᴀɴʏ ᴍᴏᴅᴇʀᴀᴛᴏʀ ᴛᴏ sᴏʟᴠᴇ ᴛʜɪs ᴍᴀɴᴜᴀʟʟʏ.`
-            )
-          )
-        );
-      await member.send({ components: [dmEmbed], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
+      const dmEmbed = new EmbedBuilder()
+        .setColor(EMBED_COLOR)
+        .setTitle(`${i("WARNING")} ᴀᴄᴄᴏᴜɴᴛ ᴄᴏᴍᴘʀᴏᴍɪsᴇᴅ`)
+        .setDescription(`ᴏᴜʀ sʏsᴛᴇᴍ ʜᴀs ғᴏᴜɴᴅ ᴛʜᴀᴛ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ ɪs ᴄᴏᴍᴘʀᴏᴍɪsᴇᴅ ᴀɴᴅ ᴀʟʟ sᴇʀᴠᴇʀ ᴀᴜᴛʜᴏʀɪᴛɪᴇs ʜᴀᴠᴇ ʙᴇᴇɴ ʀᴇᴠᴏᴋᴇᴅ. ᴘʟᴇᴀsᴇ ʀᴇᴀᴄʜ ᴏᴜᴛ ᴛᴏ ᴀɴʏ ᴍᴏᴅᴇʀᴀᴛᴏʀ ᴛᴏ sᴏʟᴠᴇ ᴛʜɪs ᴍᴀɴᴜᴀʟʟʏ.`);
+      await member.send({ embeds: [dmEmbed] }).catch(err => console.error("[AutoMod] Failed to DM user:", err));
 
       // Log to specific channel
-      const logChannel = await message.guild.channels.fetch("1489967421283369011").catch(() => null);
+      const logChannel = await message.guild.channels.fetch("1489967421283369011").catch(err => {
+        console.error("[AutoMod] Failed to fetch log channel:", err);
+        return null;
+      });
+      
       if (logChannel) {
-        const logEmbed = new ContainerBuilder()
-          .setAccentColor(EMBED_COLOR)
-          .addSectionComponents(
-            new SectionBuilder().addTextDisplayComponents(
-              new TextDisplayBuilder().setContent(
-                `## ${i("WARNING")} ʜᴀᴄᴋᴇᴅ ᴀᴄᴄᴏᴜɴᴛ sᴘᴀᴍ ᴅᴇᴛᴇᴄᴛᴇᴅ\n**ᴜsᴇʀ:** <@${member.id}> (${member.user.tag})\n**ᴀᴄᴛɪᴏɴ ᴛᴀᴋᴇɴ:** ᴍᴇssᴀɢᴇ ᴅᴇʟᴇᴛᴇᴅ, 28-ᴅᴀʏ ᴛɪᴍᴇᴏᴜᴛ, ʀᴏʟᴇs sᴛʀɪᴘᴘᴇᴅ`
-              )
-            )
-          )
-          .addSeparatorComponents(
-            new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
-          )
-          .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(
-              `### ʀᴇᴀsᴏɴ\n${reason}\n\n*[AutoMod] Proactive AI Scrutiny triggered on multiple image upload.*`
-            )
-          );
+        const logEmbed = new EmbedBuilder()
+          .setColor(EMBED_COLOR)
+          .setTitle(`${i("WARNING")} ʜᴀᴄᴋᴇᴅ ᴀᴄᴄᴏᴜɴᴛ sᴘᴀᴍ ᴅᴇᴛᴇᴄᴛᴇᴅ`)
+          .setDescription(`**ᴜsᴇʀ:** <@${member.id}> (${member.user.tag})\n**ᴀᴄᴛɪᴏɴ ᴛᴀᴋᴇɴ:** ᴍᴇssᴀɢᴇ ᴅᴇʟᴇᴛᴇᴅ, 28-ᴅᴀʏ ᴛɪᴍᴇᴏᴜᴛ, ʀᴏʟᴇs sᴛʀɪᴘᴘᴇᴅ`)
+          .addFields({ name: "Reason", value: `${reason}\n\n*[AutoMod] Proactive AI Scrutiny triggered on multiple image upload.*` });
 
-        await logChannel.send({ components: [logEmbed], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
+        await logChannel.send({ embeds: [logEmbed] }).catch(err => console.error("[AutoMod] Failed to send log:", err));
+      } else {
+        console.error("[AutoMod] Could not find log channel 1489967421283369011");
       }
     }
   } catch (error) {
