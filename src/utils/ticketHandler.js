@@ -603,8 +603,8 @@ async function createTicketInstance(interaction, options = {}) {
     }
 
     const descriptionText = aiEnabled
-      ? "ᴘʟᴇᴀsᴇ ᴅᴇsᴄʀɪʙᴇ ʏᴏᴜʀ ɪssᴜᴇ ɪɴ ᴅᴇᴛᴀɪʟ. ᴏᴜʀ **ᴀɪ sᴜᴘᴘᴏʀᴛ ʙᴏᴛ** ᴡɪʟʟ ᴀssɪsᴛ ʏᴏᴜ sʜᴏʀᴛʟʏ. ɪғ ɪᴛ ʀᴇǫᴜɪʀᴇs ʜᴜᴍᴀɴ ɪɴᴛᴇʀᴠᴇɴᴛɪᴏɴ, ᴄʟɪᴄᴋ 'ᴇsᴄᴀʟᴀᴛᴇ'."
-      : "ᴘʟᴇᴀsᴇ ᴅᴇsᴄʀɪʙᴇ ʏᴏᴜʀ ɪssᴜᴇ. ᴀ **ʜᴜᴍᴀɴ ᴍᴏᴅᴇʀᴀᴛᴏʀ** ᴡɪʟʟ ʙᴇ ᴡɪᴛʜ ʏᴏᴜ ᴀs sᴏᴏɴ ᴀs ᴘᴏssɪʙʟᴇ. ʏᴏᴜ ᴍᴀʏ ᴘɪɴɢ ᴛʜᴇᴍ ᴠɪᴀ ᴛʜᴇ 'ᴇsᴄᴀʟᴀᴛᴇ' ʙᴜᴛᴛᴏɴ.";
+      ? "ᴘʟᴇᴀsᴇ ᴅᴇsᴄʀɪʙᴇ ʏᴏᴜʀ ɪssᴜᴇ ɪɴ ᴅᴇᴛᴀɪʟ. ᴏᴜʀ **ᴀɪ sᴜᴘᴘᴏʀᴛ ʙᴏᴛ** ᴡɪʟʟ ᴀssɪsᴛ ʏᴏᴜ sʜᴏʀᴛʟʏ. ɪғ ɪᴛ ʀᴇǫᴜɪʀᴇs ʜᴜᴍᴀɴ ɪɴᴛᴇʀᴠᴇɴᴛɪᴏɴ, ᴄʟɪᴄᴋ 'ᴇsᴄᴀʟᴀᴛᴇ'.\n\nᴜsᴇ ᴛʜᴇ ᴄʟᴏsᴇ ʙᴜᴛᴛᴏɴ ᴡʜᴇɴ ʏᴏᴜʀ ɪssᴜᴇ ɪs ʀᴇsᴏʟᴠᴇᴅ."
+      : "ᴘʟᴇᴀsᴇ ᴅᴇsᴄʀɪʙᴇ ʏᴏᴜʀ ɪssᴜᴇ. ᴀ **ʜᴜᴍᴀɴ ᴍᴏᴅᴇʀᴀᴛᴏʀ** ᴡɪʟʟ ʙᴇ ᴡɪᴛʜ ʏᴏᴜ ᴀs sᴏᴏɴ ᴀs ᴘᴏssɪʙʟᴇ. ʏᴏᴜ ᴍᴀʏ ᴘɪɴɢ ᴛʜᴇᴍ ᴠɪᴀ ᴛʜᴇ 'ᴇsᴄᴀʟᴀᴛᴇ' ʙᴜᴛᴛᴏɴ.\n\nᴜsᴇ ᴛʜᴇ ᴄʟᴏsᴇ ʙᴜᴛᴛᴏɴ ᴡʜᴇɴ ʏᴏᴜʀ ɪssᴜᴇ ɪs ʀᴇsᴏʟᴠᴇᴅ.";
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -632,15 +632,16 @@ async function createTicketInstance(interaction, options = {}) {
 
     const ticketContainer = new ContainerBuilder()
       .setAccentColor(EMBED_COLOR)
-      .addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(
-          `## Welcome to your ticket, ${interaction.user.username}\n${descriptionText}`
-        ),
-      )
-      .addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(
-          "ᴜsᴇ ᴛʜᴇ ᴄʟᴏsᴇ ʙᴜᴛᴛᴏɴ ᴡʜᴇɴ ʏᴏᴜʀ ɪssᴜᴇ ɪs ʀᴇsᴏʟᴠᴇᴅ",
-        ),
+      .addSectionComponents(
+        new SectionBuilder()
+          .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+              `## Welcome to your ticket, ${interaction.user.username}\n${descriptionText}`
+            )
+          )
+          .setThumbnailAccessory(
+            new ThumbnailBuilder().setURL(guild.iconURL({ dynamic: true, size: 256 }) || interaction.user.displayAvatarURL({ dynamic: true, size: 256 }))
+          )
       );
 
     if (ticketReason) {

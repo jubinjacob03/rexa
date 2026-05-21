@@ -113,6 +113,7 @@ export default {
             message.author.id,
             message.guild?.id || "dm",
             question,
+            message.member?.displayName || message.author.username
           );
 
           const safeReply = async (payload) => {

@@ -709,6 +709,9 @@ Uses advanced RAG with embedJS for accurate, contextual answers. Returns both an
       .optional()
       .default("query")
       .describe("query=get answer, search=get documents only"),
+    userId: z.string().optional().describe("invoking user's Discord ID"),
+    guildId: z.string().optional().describe("server ID"),
+    username: z.string().optional().describe("invoking user's username"),
   }),
 
   execute: async ({ query: queryText, category, tags, topK, mode }) => {

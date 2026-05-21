@@ -59,8 +59,9 @@ export const commandExecutorTool = tool({
     command: z.string().describe("Command name without slash"),
     parameters: z.record(z.string(), z.any()).optional(),
     channelId: z.string().optional(),
-    userId: z.string().optional(),
-    guildId: z.string().optional(),
+    userId: z.string().optional().describe("invoking user's Discord ID"),
+    guildId: z.string().optional().describe("server ID"),
+    username: z.string().optional().describe("invoking user's username"),
   }),
   execute: async ({ command, parameters, channelId, userId, guildId }) => {
     if (!config.commandExecution.enabled) {
@@ -154,6 +155,8 @@ export const serverInfoTool = tool({
       .optional()
       .default(20)
       .describe("Max results for lists/searches"),
+    userId: z.string().optional().describe("invoking user's Discord ID"),
+    username: z.string().optional().describe("invoking user's username"),
   }),
   execute: async ({
     infoType,
@@ -366,6 +369,7 @@ export const musicControlTool = tool({
     volume: z.number().min(0).max(100).optional(),
     userId: z.string(),
     guildId: z.string(),
+    username: z.string().optional().describe("invoking user's username"),
   }),
   execute: async ({ action, query, volume, userId, guildId }) => {
     const baseURL = process.env.REMANI_API_URL || "http://localhost:8000";
@@ -450,8 +454,9 @@ export const embedGeneratorTool = tool({
       .optional(),
     thumbnail: z.string().optional(),
     image: z.string().optional(),
-    footer: z.string().optional(),
-  }),
+    footer: z.string().optional(),    userId: z.string().optional().describe("invoking user's Discord ID"),
+    guildId: z.string().optional().describe("server ID"),
+    username: z.string().optional().describe("invoking user's username"),  }),
   execute: async ({
     title,
     description,
@@ -550,6 +555,8 @@ export const createPrivateVCTool = tool({
       .describe(
         "Display names or usernames of additional members to invite (besides the invoker)",
       ),
+    userId: z.string().optional().describe("invoking user's Discord ID"),
+    username: z.string().optional().describe("invoking user's username"),
   }),
   execute: async ({ guildId, invokerUserId, memberNames = [] }) => {
     if (!client) return { success: false, error: "Client not initialized" };
@@ -630,6 +637,9 @@ export const escalateTicketTool = tool({
     channelId: z
       .string()
       .describe("The ID of the channel/thread the command is executed in."),
+    userId: z.string().optional().describe("invoking user's Discord ID"),
+    guildId: z.string().optional().describe("server ID"),
+    username: z.string().optional().describe("invoking user's username"),
   }),
   execute: async ({ summary, channelId }) => {
     try {
@@ -713,6 +723,7 @@ The tool enforces role-based permissions internally. Always pass userId (invoker
       .describe(
         "For add-role / remove-role: the name of the role to add or remove from the target member (fuzzy match against role names).",
       ),
+    username: z.string().optional().describe("invoking user's username"),
   }),
   execute: async ({
     action,

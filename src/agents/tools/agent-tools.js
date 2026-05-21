@@ -156,6 +156,9 @@ DESIGN TIPS:
     footer: z.string().optional().describe("Footer text"),
     author: z.string().optional().describe("Author name (top)"),
     url: z.string().optional().describe("Title link URL"),
+    userId: z.string().optional().describe("invoking user's Discord ID"),
+    guildId: z.string().optional().describe("server ID"),
+    username: z.string().optional().describe("invoking user's username"),
   }),
 
   execute: async (options) => {

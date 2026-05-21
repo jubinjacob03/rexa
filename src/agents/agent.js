@@ -183,8 +183,8 @@ async function executeToolByName(toolName, params) {
   }
 }
 
-export async function processMessage(userId, guildId, message) {
-  console.log(`[AGENT] Processing message from user ${userId}`);
+export async function processMessage(userId, guildId, message, username = "Unknown") {
+  console.log(`[AGENT] Processing message from user ${userId} (${username})`);
 
   try {
     const model = _model ?? getLanguageModel();
@@ -194,7 +194,7 @@ export async function processMessage(userId, guildId, message) {
       dateStyle: "full",
       timeStyle: "short",
     });
-    const pass1System = `${pass1Base}\n\n- userId: \`${userId}\`\n- guildId: \`${guildId}\`\n- Use these exact IDs when a tool requires them.\n- Current date/time: ${nowUtc} UTC (use this year for any search queries, not your training cutoff year).`;
+    const pass1System = `${pass1Base}\n\n- userId: \`${userId}\`\n- username: \`${username}\`\n- guildId: \`${guildId}\`\n- Use these exact IDs when a tool requires them.\n- Current date/time: ${nowUtc} UTC (use this year for any search queries, not your training cutoff year).`;
 
     const recentMessages = contextManager.getFormattedHistory(
       userId,
@@ -288,7 +288,7 @@ export async function processMessage(userId, guildId, message) {
       JSON.stringify(toolParams).substring(0, 120),
     );
 
-    const enrichedParams = { ...toolParams, userId, guildId };
+    const enrichedParams = { ...toolParams, userId, guildId, username };
 
     let toolResult = await executeToolByName(toolName, enrichedParams);
     if (toolName === "serverInfo" && toolParams.infoType === "members") {
@@ -349,6 +349,7 @@ export async function processMessage(userId, guildId, message) {
         query: fallbackQuery,
         userId,
         guildId,
+        username,
       });
       if (wsResult?.success) {
         finalToolName = "webSearch";
@@ -368,6 +369,7 @@ export async function processMessage(userId, guildId, message) {
         query: enrichedParams.searchQuery,
         userId,
         guildId,
+        username,
       });
       const ragHasContent =
         ragResult?.success &&
@@ -439,12 +441,13 @@ export async function processMessage(userId, guildId, message) {
         ? toolResultStr.slice(0, 3000) + "\n...(truncated)"
         : toolResultStr
     }`;
+    const userContext = `You are talking to user: ${username}`;
 
     const runPass2 = async (ctx) => {
       try {
         return await generateText({
           model,
-          system: `${pass2Base}\n\n${ctx}`,
+          system: `${pass2Base}\n\n${userContext}\n\n${ctx}`,
           messages: [...historyMessages, { role: "user", content: message }],
           maxTokens: 400,
           maxSteps: 1,
@@ -467,6 +470,7 @@ export async function processMessage(userId, guildId, message) {
               ...extraParams,
               userId,
               guildId,
+              username,
             }).catch(() => null);
             if (extraResult) {
               const extraCtx = `${ctx}\n\n[${extraToolName} additional result]:\n${JSON.stringify(extraResult, null, 2).slice(0, 1500)}`;

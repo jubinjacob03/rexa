@@ -63,7 +63,7 @@ If none of the above apply and you can answer from your own knowledge or convers
 <!-- DEF:ragQuery -->
 
 **ragQuery** — Search the server knowledge base (rules, bots, members, events, commands, history)
-params: { "query": "string (required)", "category": "server"|"shantha"|"remani"|"commands"|"verification"|"private_vc"|"music"|"general" (optional), "tags": ["string"] (optional filter), "topK": 1-10 (optional, default 5), "mode": "query"|"search" (optional, default "query") }
+params: { "query": "string (required)", "category": "server"|"shantha"|"remani"|"commands"|"verification"|"private_vc"|"music"|"general" (optional), "tags": ["string"] (optional filter), "topK": 1-10 (optional, default 5), "mode": "query"|"search" (optional, default "query"), "userId": "invoking user's Discord ID (required)", "guildId": "server ID (required)", "username": "invoking user's username (required)" }
 
 - mode="query" → returns `answer` (LLM-generated) + `sources[]`. Use for natural-language questions.
 - mode="search" → returns raw `results[]` with `text` and `relevance`. Use when you need the raw docs.
@@ -73,7 +73,7 @@ params: { "query": "string (required)", "category": "server"|"shantha"|"remani"|
 <!-- DEF:serverInfo -->
 
 **serverInfo** — Get live Discord server/member/channel info
-params: { "infoType": "stats"|"member"|"channel"|"search"|"presentMembers"|"roleMembers"|"bannedMembers"|"kickedMembers" (required), "targetId": "user or channel ID (for member/channel)", "searchQuery": "name (for search)", "roleName": "role name (for roleMembers)", "limit": number (optional, default 20) }
+params: { "infoType": "stats"|"member"|"channel"|"search"|"presentMembers"|"roleMembers"|"bannedMembers"|"kickedMembers" (required), "targetId": "user or channel ID (for member/channel)", "searchQuery": "name (for search)", "roleName": "role name (for roleMembers)", "limit": number (optional, default 20), "userId": "invoking user's Discord ID (required)", "guildId": "server ID (required)", "username": "invoking user's username (required)" }
 
 **infoType decision guide — pick the right one every time:**
 
@@ -104,7 +104,7 @@ params: { "infoType": "stats"|"member"|"channel"|"search"|"presentMembers"|"role
 <!-- DEF:webSearch -->
 
 **webSearch** — Search the web for general or current information. Uses Tavily (preferred) with DuckDuckGo as fallback.
-params: { "query": "string (required)", "maxResults": 1-10 (optional, default 5) }
+params: { "query": "string (required)", "maxResults": 1-10 (optional, default 5), "userId": "invoking user's Discord ID (required)", "guildId": "server ID (required)", "username": "invoking user's username (required)" }
 
 - Returns: `success`, `query`, `answer` (direct answer if available), `source` (source site name), `url` (source URL), `relatedTopics[]` (each with `text` and `url`)
 - Use when: user asks about current events, external facts, anything not in the knowledge base
@@ -113,14 +113,14 @@ params: { "query": "string (required)", "maxResults": 1-10 (optional, default 5)
 <!-- DEF:fetchWebPage -->
 
 **fetchWebPage** — Fetch a URL. For weather: https://wttr.in/<city>?format=3
-params: { "url": "string (required)" }
+params: { "url": "string (required)", "userId": "invoking user's Discord ID (required)", "guildId": "server ID (required)", "username": "invoking user's username (required)" }
 
 <!-- END_DEF:fetchWebPage -->
 
 <!-- DEF:httpRequest -->
 
 **httpRequest** — Make an HTTP API request (GET/POST/PUT/DELETE/PATCH) to any public URL
-params: { "url": "string (required, must be a public URL)", "method": "GET"|"POST"|"PUT"|"DELETE"|"PATCH" (default GET), "headers": { "Header-Name": "value" } (optional), "body": any (optional, auto-serialized to JSON for POST/PUT/PATCH), "auth": { "type": "bearer"|"apiKey"|"basic", "token": "string", "username": "string", "password": "string" } (optional), "parseAs": "json"|"text" (default json) }
+params: { "url": "string (required, must be a public URL)", "method": "GET"|"POST"|"PUT"|"DELETE"|"PATCH" (default GET), "headers": { "Header-Name": "value" } (optional), "body": any (optional, auto-serialized to JSON for POST/PUT/PATCH), "auth": { "type": "bearer"|"apiKey"|"basic", "token": "string", "username": "string", "password": "string" } (optional), "parseAs": "json"|"text" (default json), "userId": "invoking user's Discord ID (required)", "guildId": "server ID (required)", "username": "invoking user's username (required)" }
 
 - Prefer `fetchWebPage` for scraping HTML pages — `httpRequest` is better for JSON APIs
 - Blocked: localhost, 127.0.0.1, private IP ranges (192.168.x, 10.x, 172.x) in production
@@ -130,9 +130,9 @@ params: { "url": "string (required, must be a public URL)", "method": "GET"|"POS
 <!-- DEF:musicControl -->
 
 **musicControl** — Control Remani music bot
-params: { "action": "play"|"pause"|"resume"|"skip"|"stop"|"queue"|"volume"|"nowplaying" (required), "query": "string (required for play action)", "volume": 0-100 (required for volume action), "userId": "invoking user's Discord ID (required)", "guildId": "server ID (required)" }
+params: { "action": "play"|"pause"|"resume"|"skip"|"stop"|"queue"|"volume"|"nowplaying" (required), "query": "string (required for play action)", "volume": 0-100 (required for volume action), "userId": "invoking user's Discord ID (required)", "guildId": "server ID (required)", "username": "invoking user's Discord username (required)" }
 
-- `userId` and `guildId` are ALWAYS required — pull them from the message context injected into your system prompt.
+- `userId`, `username`, and `guildId` are ALWAYS required — pull them from the message context injected into your system prompt.
 - `play` requires `query` (song name/URL/artist). User must be in a voice channel — the tool fetches their voice channel automatically using `userId`.
 - `queue` and `nowplaying` use GET internally; no body params needed beyond `guildId`.
 - Returns: success, action, and playback data (track title, duration, queue position, etc.) depending on action.
@@ -147,7 +147,7 @@ params: { "action": "play"|"pause"|"resume"|"skip"|"stop"|"queue"|"volume"|"nowp
 <!-- DEF:discordAction -->
 
 **discordAction** — Perform a real Discord moderation/admin action directly via the API
-params: { "action": (required, see below), "guildId": "server ID (required)", "userId": "invoking user's Discord ID (required — used for permission check)", "targetName": "display name or username of the target (fuzzy match — not needed for change-bot-nickname)", "durationMinutes": number (for timeout, default 5, max 40320), "deleteDays": 0-7 (for ban, number of days of messages to delete, default 0), "reason": "string (audit log reason)", "nickname": "string (for change-nickname: new nickname; omit to reset)", "roleName": "string (for add-role/remove-role: role name, fuzzy matched)" }
+params: { "action": (required, see below), "guildId": "server ID (required)", "userId": "invoking user's Discord ID (required — used for permission check)", "username": "invoking user's username (required)", "targetName": "display name or username of the target (fuzzy match — not needed for change-bot-nickname)", "durationMinutes": number (for timeout, default 5, max 40320), "deleteDays": 0-7 (for ban, number of days of messages to delete, default 0), "reason": "string (audit log reason)", "nickname": "string (for change-nickname: new nickname; omit to reset)", "roleName": "string (for add-role/remove-role: role name, fuzzy matched)" }
 
 **Moderator-level actions** (requires mod role — auto-enforced in tool):
 
@@ -174,7 +174,7 @@ params: { "action": (required, see below), "guildId": "server ID (required)", "u
 <!-- DEF:executeCommand -->
 
 **executeCommand** — Execute one of Shantha's slash commands (private VC management only)
-params: { "command": "add"|"remove"|"join"|"leave"|"delete"|"refresh"|"status"|"setup-verification"|"private" (required), "parameters": { key: value } (optional) }
+params: { "command": "add"|"remove"|"join"|"leave"|"delete"|"refresh"|"status"|"setup-verification"|"private" (required), "parameters": { key: value } (optional), "userId": "invoking user's Discord ID (required)", "guildId": "server ID (required)", "username": "invoking user's username (required)" }
 
 - These are the ONLY commands available: private VC management (add/remove members, join/leave/delete VC, etc.)
 - Blocked commands (will error if attempted): `ban`, `kick`, `delete-channel`, `setup-verification`
@@ -185,7 +185,7 @@ params: { "command": "add"|"remove"|"join"|"leave"|"delete"|"refresh"|"status"|"
 <!-- DEF:createPrivateVC -->
 
 **createPrivateVC** — Create a real private voice channel for a user and optional other members
-params: { "guildId": "server ID", "invokerUserId": "user ID of requester", "memberNames": ["name1", "name2"] (optional list of display names to invite) }
+params: { "guildId": "server ID (required)", "invokerUserId": "user ID of requester (required)", "username": "invoking user's username (required)", "userId": "invoking user's Discord ID (required)", "memberNames": ["name1", "name2"] (optional list of display names to invite) }
 
 - Use this INSTEAD of executeWorkflow for any private VC creation request
 - memberNames are fuzzy-matched against display names, nicknames, and usernames
@@ -195,7 +195,7 @@ params: { "guildId": "server ID", "invokerUserId": "user ID of requester", "memb
 <!-- DEF:executeWorkflow -->
 
 **executeWorkflow** — Run a predefined multi-step workflow (NOT for private VC — use createPrivateVC instead)
-params: { "workflowName": "welcome-new-member"|"setup-private-vc"|"play-music"|"server-stats"|"fetch-web-data" (required), "context": {} (optional key-value data passed to workflow steps) }
+params: { "workflowName": "welcome-new-member"|"setup-private-vc"|"play-music"|"server-stats"|"fetch-web-data" (required), "context": {} (optional key-value data passed to workflow steps), "userId": "invoking user's Discord ID (required)", "guildId": "server ID (required)", "username": "invoking user's username (required)" }
 
 - `welcome-new-member` → sends welcome message + assigns unverified role
 - `setup-private-vc` → creates + configures a private voice channel (prefer `createPrivateVC` tool instead for direct VC creation)
@@ -206,13 +206,16 @@ params: { "workflowName": "welcome-new-member"|"setup-private-vc"|"play-music"|"
 
 <!-- DEF:escalateTicket -->
 
+**escalateTicket** — Escalates a user's support ticket to human staff. Use this ONLY if the user is in a ticket thread, you cannot solve their problem, or they explicitly demand a human moderator. Provide a summary of the issue.
+params: { "summary": "string (required, 1-2 sentence summary of what the user needs help with)", "channelId": "string (required, ID of the channel/thread)", "userId": "invoking user's Discord ID (required)", "guildId": "server ID (required)", "username": "invoking user's username (required)" }
+
 - Use when: User asks for a human, admin, or support. Or when the interaction needs to be escalated.
 <!-- END_DEF:escalateTicket -->
 
 <!-- DEF:createEmbed -->
 
 **createEmbed** — Create a rich formatted Discord embed card for structured/visual info
-params: { "title": "string (required)", "description": "string (markdown supported)", "color": "#hexcolor or name: blue/green/red/purple/gold/orange", "fields": [{"name": "string", "value": "string", "inline": true|false}], "thumbnail": "image URL (small, top-right)", "image": "image URL (large, bottom)", "footer": "footer text", "author": "author name (top)", "url": "URL to link the title" }
+params: { "title": "string (required)", "description": "string (markdown supported)", "color": "#hexcolor or name: blue/green/red/purple/gold/orange", "fields": [{"name": "string", "value": "string", "inline": true|false}], "thumbnail": "image URL (small, top-right)", "image": "image URL (large, bottom)", "footer": "footer text", "author": "author name (top)", "url": "URL to link the title", "userId": "invoking user's Discord ID (required)", "guildId": "server ID (required)", "username": "invoking user's username (required)" }
 
 - Use embeds for: server stats, member lists, role lists, music info, structured data, important announcements
 - `inline: true` on fields places them side-by-side (max 3 per row)

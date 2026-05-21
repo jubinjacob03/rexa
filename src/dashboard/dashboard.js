@@ -34,7 +34,7 @@ export async function buildDashboardContainer(member) {
 
   const container = new ContainerBuilder().setAccentColor(0x00ced1);
   const iconUrl = guild.iconURL({ dynamic: true, size: 256 });
-  const headerContent = `## ${icon("KEYLOCK")} Control Center\nManage Private Voice Channels, Auto-Moderations, and Administrative actions below.`;
+  const headerContent = `## ${icon("KEYLOCK")} Control Center\nManage Private Voice Channels, Auto-Moderations, and Administrative actions below.`;
   
   if (iconUrl) {
     const section = new SectionBuilder()
@@ -49,7 +49,7 @@ export async function buildDashboardContainer(member) {
 
 
 
-  container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### ${icon("VOICE")} Voice Manager\nCreate and manage your private voice channels.`));
+  container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### ${icon("VOICE")} Voice Manager\nCreate and manage your private voice channels.`));
   container.addActionRowComponents(
     new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId("shantha_vc_create").setLabel("Create").setStyle(ButtonStyle.Secondary),
@@ -61,7 +61,7 @@ export async function buildDashboardContainer(member) {
 
   container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
 
-  container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### ${icon("BOT")} AutoMOD\n**Master :** ${onOff(automodOn)} • **Spam :** ${onOff(spamOn)} • **Raid :** ${onOff(raidOn)} • **Toxicity :** ${onOff(toxicityOn)}`));
+  container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### ${icon("BOT")} AutoMOD\n**Master :** ${onOff(automodOn)} • **Spam :** ${onOff(spamOn)} • **Raid :** ${onOff(raidOn)} • **Toxicity :** ${onOff(toxicityOn)}`));
   container.addActionRowComponents(
     new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId("shantha_automod_master").setLabel(`Automod: ${onOff(automodOn)}`).setStyle(ButtonStyle.Secondary),
@@ -75,7 +75,7 @@ export async function buildDashboardContainer(member) {
   container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
 
   container.addTextDisplayComponents(new TextDisplayBuilder().setContent(
-    isMod ? `### ${icon("PURGE")} Purge\nPurge messages and manage server content.` : `### ${icon("PURGE")} Purge\n🔒 *Requires moderator permissions*`
+    isMod ? `### ${icon("PURGE")} Purge\nPurge messages and manage server content.` : `### ${icon("PURGE")} Purge\n🔒 *Requires moderator permissions*`
   ));
 
   container.addActionRowComponents(
@@ -90,7 +90,7 @@ export async function buildDashboardContainer(member) {
   container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
 
   container.addTextDisplayComponents(new TextDisplayBuilder().setContent(
-    isMod ? `### ${icon("CHANNELS")} System\nStatus, refresh, and moderation tools.` : `### ${icon("CHANNELS")} System\n🔒 *Requires moderator permissions*`
+    isMod ? `### ${icon("CHANNELS")} System\nStatus and moderation tools.` : `### ${icon("CHANNELS")} System\n🔒 *Requires moderator permissions*`
   ));
 
   container.addActionRowComponents(

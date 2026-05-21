@@ -547,6 +547,9 @@ Use for: fetching data, accessing APIs, retrieving web content, and more.`,
       })
       .optional(),
     parseAs: z.enum(["json", "text"]).default("json"),
+    userId: z.string().optional().describe("invoking user's Discord ID"),
+    guildId: z.string().optional().describe("server ID"),
+    username: z.string().optional().describe("invoking user's username"),
   }),
 
   execute: async (options) => {
@@ -565,6 +568,9 @@ Automatically handles both HTML pages and JSON responses.`,
 
   parameters: z.object({
     url: z.string().url().describe("Web page or API URL to fetch"),
+    userId: z.string().optional().describe("invoking user's Discord ID"),
+    guildId: z.string().optional().describe("server ID"),
+    username: z.string().optional().describe("invoking user's username"),
   }),
 
   execute: async ({ url }) => {
@@ -582,6 +588,9 @@ Use when you need current information or facts not in your knowledge base.`,
   parameters: z.object({
     query: z.string().describe("Search query"),
     maxResults: z.number().min(1).max(10).default(5),
+    userId: z.string().optional().describe("invoking user's Discord ID"),
+    guildId: z.string().optional().describe("server ID"),
+    username: z.string().optional().describe("invoking user's username"),
   }),
 
   execute: async ({ query, maxResults }) => {
@@ -602,6 +611,9 @@ Each workflow runs a sequence of automated steps.`,
       .enum(Object.keys(WORKFLOWS))
       .describe("Workflow to execute"),
     context: z.record(z.any()).optional().describe("Context data for workflow"),
+    userId: z.string().optional().describe("invoking user's Discord ID"),
+    guildId: z.string().optional().describe("server ID"),
+    username: z.string().optional().describe("invoking user's username"),
   }),
 
   execute: async ({ workflowName, context }) => {
