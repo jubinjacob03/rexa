@@ -275,6 +275,8 @@ export default {
     await interaction.editReply({
       components: [container],
       flags: MessageFlags.IsComponentsV2,
+    }).catch(err => {
+      console.warn("[PURGE] Could not edit reply, interaction token likely expired after 15m:", err.message);
     });
   },
 };

@@ -31,6 +31,7 @@ import {
 import { handleTicketInteraction } from "./utils/ticketHandler.js";
 import { buildStatusPayload } from "./commands/status.js";
 import { postDashboard, handleDashboardInteraction, handleDashboardModal, handleDashboardSelect } from "./dashboard/dashboard.js";
+import { handleRolesInfo } from "./utils/rolesEmbed.js";
 
 if (ffmpegPath) {
   process.env.FFMPEG_PATH = ffmpegPath;
@@ -137,76 +138,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
+    if (interaction.customId === "dismiss_roles_info") {
+      await interaction.deferUpdate().catch(() => {});
+      return await interaction.deleteReply().catch(() => {});
+    }
+
     if (interaction.customId === "status_roles_info") {
-      const rolesPath = join(__dirname, "..", "data", "roles-info.json");
-      let rolesData;
-      try {
-        rolesData = JSON.parse(readFileSync(rolesPath, "utf8"));
-      } catch {
-        return await interaction.reply(
-          eReply(`${i("ERROR")} ᴇʀʀᴏʀ`, "ʀᴏʟᴇs ɪɴғᴏ ɴᴏᴛ ᴄᴏɴғɪɢᴜʀᴇᴅ."),
-        );
-      }
+      await handleRolesInfo(interaction);
+      return;
+    }
 
-      const resolveEmoji = (value) =>
-        (value ?? "").replace(/\{(\w+)\}/g, (match, key) => icon(key) || match);
-
-      const container = new ContainerBuilder().setAccentColor(EPHEMERAL_COLOR);
-      const title = rolesData.title || "Saiyan Gods — Roles";
-      const guildIcon = interaction.guild.iconURL({ dynamic: true, size: 256 });
-      const totalRoles = rolesData.sections.reduce(
-        (sum, section) => sum + section.roles.length,
-        0,
-      );
-
-      if (guildIcon) {
-        const header = new SectionBuilder()
-          .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(`## ${title}`),
-          )
-          .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(
-              "\n• Staff roles are assigned by bot, leaders, or moderators.\n• Self roles can be assigned automatically via the verification channel.",
-            ),
-          )
-          .setThumbnailAccessory(new ThumbnailBuilder().setURL(guildIcon));
-        container.addSectionComponents(header);
-      } else {
-        container.addTextDisplayComponents(
-          new TextDisplayBuilder().setContent(`## ${title}`),
-        );
-        container.addTextDisplayComponents(
-          new TextDisplayBuilder().setContent(
-            "**How Roles Work:**\n• Staff roles are assigned by bot, leaders, or moderators.\n• Self roles can be assigned automatically via the verification channel.",
-          ),
-        );
-      }
-
-      for (const section of rolesData.sections) {
-        const sectionTitle = resolveEmoji(section.name);
-        
-        let roleLines = section.roles
-          .map((r) => `${resolveEmoji(r.emoji)} **${r.name}** — ${r.description}`)
-          .join("\n");
-
-        container.addSeparatorComponents(
-          new SeparatorBuilder()
-            .setDivider(true)
-            .setSpacing(SeparatorSpacingSize.Small),
-        );
-        container.addTextDisplayComponents(
-          new TextDisplayBuilder().setContent(
-            `### ${sectionTitle}\n${roleLines}`
-          ),
-        );
-      }
-
-      addFooter(container);
-
-      return await interaction.reply({
-        components: [container],
-        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
-      });
+    if (interaction.customId.startsWith("dummy_role_")) {
+      await interaction.deferUpdate().catch(() => {});
+      return;
     }
 
     if (interaction.customId === "status_whatsapp") {
@@ -302,6 +246,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 
   if (interaction.isStringSelectMenu()) {
+    if (interaction.customId === "roles_nav_dropdown") {
+      await handleRolesInfo(interaction, interaction.values[0]);
+      return;
+    }
   }
 
   if (!interaction.isChatInputCommand()) return;
@@ -358,6 +306,14 @@ process.on("beforeExit", () => {
 
 process.on("unhandledRejection", (err) => {
   console.error("[ERROR] Unhandled rejection:", err?.message ?? err);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("[ERROR] Uncaught exception:", err?.message ?? err);
+});
+
+client.on("error", (err) => {
+  console.error("[Discord Client Error]", err?.message ?? err);
 });
 
 client.login(config.token);

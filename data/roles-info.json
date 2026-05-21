@@ -58,12 +58,12 @@
           "description": "Plays on PC."
         },
         {
-          "emoji": "\ud83d\udcf1",
+          "emoji": "📱",
           "name": "Mobile",
           "description": "Plays on Mobile."
         },
         {
-          "emoji": "\ud83d\udda5️\ud83d\udcf1",
+          "emoji": "💻",
           "name": "Mobile-PC",
           "description": "Plays on a mobile with keyboard & mouse peripherals."
         }
