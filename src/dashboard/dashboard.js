@@ -401,6 +401,8 @@ export async function handleDashboardInteraction(interaction) {
     case "shantha_mod_ban": {
       const isOwnerReq = interaction.customId === "shantha_mod_kick" || interaction.customId === "shantha_mod_ban";
       const isModReq = !isOwnerReq;
+      const isOwner = member.id === interaction.guild.ownerId;
+      const isMod = isOwner || await checkModerationPermission(interaction.guild, member.id, "mod");
       if (isOwnerReq && !isOwner) return interaction.reply(eReply("Notice", "🔒 Owners only."));
       if (isModReq && !isMod) return interaction.reply(eReply("Notice", "🔒 Moderators only."));
       

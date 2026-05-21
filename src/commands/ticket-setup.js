@@ -13,8 +13,9 @@ import {
   MessageFlags,
 } from "discord.js";
 import supabase from "../utils/supabaseClient.js";
-import { EMBED_COLOR, addFooter } from "../utils/embed.js";
+import { EMBED_COLOR, addFooter, eReply } from "../utils/embed.js";
 import { icon } from "../utils/icons.js";
+import { checkModerationPermission } from "../utils/moderation.js";
 
 export const setupSessions = new Map();
 

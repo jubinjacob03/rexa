@@ -19,6 +19,7 @@ import {
 } from "../utils/verificationHandler.js";
 import { eReply, addFooter } from "../utils/embed.js";
 import { i, icon } from "../utils/icons.js";
+import { checkModerationPermission } from "../utils/moderation.js";
 
 export default {
   data: new SlashCommandBuilder()

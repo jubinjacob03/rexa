@@ -13,6 +13,8 @@ import {
   TextDisplayBuilder,
   SeparatorBuilder,
   SeparatorSpacingSize,
+  SectionBuilder,
+  ThumbnailBuilder,
 } from "discord.js";
 import supabase from "./supabaseClient.js";
 import config from "../../config.js";
@@ -510,9 +512,9 @@ async function createTicketInstance(interaction, options = {}) {
 
   const guild = interaction.guild;
   const channel = interaction.channel;
+  let ticketChannel;
 
   try {
-    let ticketChannel;
     const ticketName = `ticket-${interaction.user.username.toLowerCase()}`;
 
     const defaultRoles = [config.ownerRoleId, config.managerRoleId].filter(Boolean);
