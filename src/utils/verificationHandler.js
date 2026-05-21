@@ -10,6 +10,8 @@ import {
   TextDisplayBuilder,
   SeparatorBuilder,
   SeparatorSpacingSize,
+  SectionBuilder,
+  ThumbnailBuilder,
 } from "discord.js";
 import { createClient } from "@supabase/supabase-js";
 import config from "../../config.js";
@@ -274,13 +276,18 @@ export async function handleVerificationApply(interaction) {
       );
     }
 
-    const approvalContainer = new ContainerBuilder()
-      .setAccentColor(EMBED_COLOR)
+    const userAvatar = interaction.user.displayAvatarURL({ dynamic: true, size: 256 });
+    const approvalSection = new SectionBuilder()
       .addTextDisplayComponents(
         new TextDisplayBuilder().setContent(
-          `## ${isFriends ? icon("FRIENDS_ROLE") : icon("MEMBER_ROLE")} ɴᴇᴡ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ\n<@${userId}> ʜᴀs ʀᴇǫᴜᴇsᴛᴇᴅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ғᴏʀ **${requestedRole}** ʀᴏʟᴇ.`,
-        ),
+          `## ${isFriends ? icon("FRIENDS_ROLE") : icon("MEMBER_ROLE")} ɴᴇᴡ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ\n<@${userId}> ʜᴀs ʀᴇǫᴜᴇsᴛᴇᴅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ғᴏʀ **${requestedRole}** ʀᴏʟᴇ.`
+        )
       )
+      .setThumbnailAccessory(new ThumbnailBuilder().setURL(userAvatar));
+
+    const approvalContainer = new ContainerBuilder()
+      .setAccentColor(EMBED_COLOR)
+      .addSectionComponents(approvalSection)
       .addSeparatorComponents(
         new SeparatorBuilder()
           .setDivider(true)
@@ -288,7 +295,7 @@ export async function handleVerificationApply(interaction) {
       )
       .addTextDisplayComponents(
         new TextDisplayBuilder().setContent(
-          `**ᴜsᴇʀ:** <@${userId}>\n**ᴜsᴇʀɴᴀᴍᴇ:** ${username}\n**ʀᴇǫᴜᴇsᴛᴇᴅ ʀᴏʟᴇ:** ${requestedRole}\n**ᴜsᴇʀ ɪᴅ:** ${userId}`,
+          `**ᴜsᴇʀ:** <@${userId}>\n**ᴜsᴇʀɴᴀᴍᴇ:** ${username}\n**ʀᴇǫᴜᴇsᴛᴇᴅ ʀᴏʟᴇ:** ${requestedRole}\n**ᴜsᴇʀ ɪᴅ:** ${userId}`
         ),
       );
 
@@ -535,13 +542,18 @@ export async function handleApprovalAction(interaction) {
 
       await interaction.showModal(modal);
     } else if (action === "reject") {
-      const rejectedContainer = new ContainerBuilder()
-        .setAccentColor(EMBED_COLOR)
+      const userAvatar = user.displayAvatarURL({ dynamic: true, size: 256 });
+      const rejectedSection = new SectionBuilder()
         .addTextDisplayComponents(
           new TextDisplayBuilder().setContent(
-            `## ${icon("ERROR")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇᴊᴇᴄᴛᴇᴅ`,
-          ),
+            `## ${icon("ERROR")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇᴊᴇᴄᴛᴇᴅ`
+          )
         )
+        .setThumbnailAccessory(new ThumbnailBuilder().setURL(userAvatar));
+
+      const rejectedContainer = new ContainerBuilder()
+        .setAccentColor(EMBED_COLOR)
+        .addSectionComponents(rejectedSection)
         .addSeparatorComponents(
           new SeparatorBuilder()
             .setDivider(true)
@@ -549,7 +561,7 @@ export async function handleApprovalAction(interaction) {
         )
         .addTextDisplayComponents(
           new TextDisplayBuilder().setContent(
-            `**ᴜsᴇʀ:** <@${userId}>\n**ᴜsᴇʀɴᴀᴍᴇ:** ${request.username}\n**ʀᴇǫᴜᴇsᴛᴇᴅ ʀᴏʟᴇ:** ${request.requestedRole}\n**ʀᴇᴊᴇᴄᴛᴇᴅ ʙʏ:** <@${interaction.user.id}>`,
+            `**ᴜsᴇʀ:** <@${userId}>\n**ᴜsᴇʀɴᴀᴍᴇ:** ${request.username}\n**ʀᴇǫᴜᴇsᴛᴇᴅ ʀᴏʟᴇ:** ${request.requestedRole}\n**ʀᴇᴊᴇᴄᴛᴇᴅ ʙʏ:** <@${interaction.user.id}>`
           ),
         );
 
@@ -639,13 +651,18 @@ export async function handleNicknameModal(interaction) {
 
     await member.setNickname(finalNickname);
 
-    const approvedContainer = new ContainerBuilder()
-      .setAccentColor(EMBED_COLOR)
+    const userAvatar = member.user.displayAvatarURL({ dynamic: true, size: 256 });
+    const approvedSection = new SectionBuilder()
       .addTextDisplayComponents(
         new TextDisplayBuilder().setContent(
-          `## ${icon("SUCCESS")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ`,
-        ),
+          `## ${icon("SUCCESS")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ`
+        )
       )
+      .setThumbnailAccessory(new ThumbnailBuilder().setURL(userAvatar));
+
+    const approvedContainer = new ContainerBuilder()
+      .setAccentColor(EMBED_COLOR)
+      .addSectionComponents(approvedSection)
       .addSeparatorComponents(
         new SeparatorBuilder()
           .setDivider(true)
@@ -653,7 +670,7 @@ export async function handleNicknameModal(interaction) {
       )
       .addTextDisplayComponents(
         new TextDisplayBuilder().setContent(
-          `**ᴜsᴇʀ:** <@${userId}>\n**ᴜsᴇʀɴᴀᴍᴇ:** ${request.username}\n**ʀᴇǫᴜᴇsᴛᴇᴅ ʀᴏʟᴇ:** ${request.requestedRole}\n**ᴀᴘᴘʀᴏᴠᴇᴅ ʙʏ:** <@${interaction.user.id}>\n**ɴɪᴄᴋɴᴀᴍᴇ:** ${finalNickname}`,
+          `**ᴜsᴇʀ:** <@${userId}>\n**ᴜsᴇʀɴᴀᴍᴇ:** ${request.username}\n**ʀᴇǫᴜᴇsᴛᴇᴅ ʀᴏʟᴇ:** ${request.requestedRole}\n**ᴀᴘᴘʀᴏᴠᴇᴅ ʙʏ:** <@${interaction.user.id}>\n**ɴɪᴄᴋɴᴀᴍᴇ:** ${finalNickname}`
         ),
       );
 
