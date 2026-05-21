@@ -12,6 +12,7 @@ import {
 } from "discord.js";
 import config from "../../../config.js";
 import { icon } from "../../utils/icons.js";
+import { addFooter } from "../../utils/embed.js";
 
 const router = Router();
 
@@ -59,17 +60,14 @@ router.post("/setup-verification", async (req, res) => {
     const selfRoleRow1 = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("selfrole_pc")
-        .setLabel("PC")
         .setEmoji("💻")
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId("selfrole_mobile")
-        .setLabel("Mobile")
         .setEmoji("📱")
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId("selfrole_mobile_pc")
-        .setLabel("Mobile-PC")
         .setEmoji("📲")
         .setStyle(ButtonStyle.Secondary),
     );
@@ -77,13 +75,11 @@ router.post("/setup-verification", async (req, res) => {
     const selfRoleRow2 = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("selfrole_18_plus")
-        .setLabel("18+")
-        .setEmoji("🔞")
+        .setEmoji(icon("18PLUS"))
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId("selfrole_18_minus")
-        .setLabel("18-")
-        .setEmoji("🧒")
+        .setEmoji(icon("18MINUS"))
         .setStyle(ButtonStyle.Secondary),
     );
 
@@ -109,6 +105,8 @@ router.post("/setup-verification", async (req, res) => {
         new TextDisplayBuilder().setContent("### sᴇʟғ-ʀᴏʟᴇs"),
       )
       .addActionRowComponents(selfRoleRow1, selfRoleRow2);
+
+    addFooter(verificationContainer);
 
     await verificationChannel.send({
       components: [verificationContainer],

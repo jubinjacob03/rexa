@@ -8,7 +8,7 @@ import privateVCRemove from "../commands/private-vc-remove.js";
 import status from "../commands/status.js";
 import purge from "../commands/purge.js";
 import refresh from "../commands/refresh.js";
-import { eReply } from "../utils/embed.js";
+import { eReply, addFooter } from "../utils/embed.js";
 import { getVCByMember, removeMember } from "../utils/privateVCManager.js";
 import { icon } from "../utils/icons.js";
 
@@ -77,7 +77,7 @@ export async function buildDashboardContainer(member) {
 
   container.addTextDisplayComponents(
     new TextDisplayBuilder().setContent(
-      `### ${icon("BOT")} AutoMOD\n**Master:** ${onOff(automodOn)} • **Spam:** ${onOff(spamOn)} • **Raid:** ${onOff(raidOn)} • **Toxicity:** ${onOff(toxicityOn)}`
+      `### ${icon("BOT")} AutoMOD\n**Master :** ${onOff(automodOn)} • **Spam :** ${onOff(spamOn)} • **Raid :** ${onOff(raidOn)} • **Toxicity :** ${onOff(toxicityOn)}`
     )
   );
 
@@ -164,6 +164,8 @@ export async function buildDashboardContainer(member) {
         .setDisabled(!isAdmin)
     )
   );
+
+  addFooter(container);
 
   return container;
 }
@@ -511,17 +513,21 @@ export async function handleDashboardModal(interaction) {
     return;
   }
   if (interaction.customId.startsWith("shantha_purge_")) {
-    const channelRaw = interaction.fields.getTextInputValue("purge_channel")?.trim();
+    const getVal = (id) => {
+      try { return interaction.fields.getTextInputValue(id)?.trim(); }
+      catch { return null; }
+    };
+    const channelRaw = getVal("purge_channel");
     const channel = channelRaw ? resolveChannelFromInput(interaction.guild, channelRaw) : null;
     if (!channel) {
       return interaction.reply({ content: "Channel not found.", ephemeral: true });
     }
-    const userRaw = interaction.fields.getTextInputValue("purge_user")?.trim();
+    const userRaw = getVal("purge_user");
     const user = userRaw ? await resolveMemberFromInput(interaction.guild, userRaw) : null;
     if (userRaw && !user) {
       return interaction.reply({ content: "User not found.", ephemeral: true });
     }
-    const messageId = interaction.fields.getTextInputValue("purge_message")?.trim() || null;
+    const messageId = getVal("purge_message");
     const mode = {
       shantha_purge_all_modal: "all",
       shantha_purge_user_modal: "user",

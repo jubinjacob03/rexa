@@ -8,7 +8,7 @@ import {
   MessageFlags,
 } from "discord.js";
 import config from "../../../config.js";
-import { EMBED_COLOR, eSend } from "../../utils/embed.js";
+import { EMBED_COLOR, eSend, addFooter } from "../../utils/embed.js";
 import { i, icon } from "../../utils/icons.js";
 import {
   getAllPendingRequests,
@@ -153,21 +153,30 @@ router.post("/apply", async (req, res) => {
       });
     }
 
-    const approvalEmbed = new EmbedBuilder()
-      .setColor(EMBED_COLOR)
-      .setTitle(
-        `${isFriends ? icon("FRIENDS_ROLE") : icon("MEMBER_ROLE")} ɴᴇᴡ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ`,
+    const iconStr = isFriends ? icon("FRIENDS_ROLE") : icon("MEMBER_ROLE");
+    const approvalContainer = new ContainerBuilder()
+      .setAccentColor(EMBED_COLOR)
+      .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(
+          `## ${iconStr} ɴᴇᴡ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ\n<@${userId}> ʜᴀs ʀᴇǫᴜᴇsᴛᴇᴅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ғᴏʀ **${requestedRole}** ʀᴏʟᴇ ᴠɪᴀ ᴡᴇʙ ᴅᴀsʜʙᴏᴀʀᴅ.`
+        )
       )
-      .setDescription(
-        `<@${userId}> ʜᴀs ʀᴇǫᴜᴇsᴛᴇᴅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ғᴏʀ **${requestedRole}** ʀᴏʟᴇ ᴠɪᴀ ᴡᴇʙ ᴅᴀsʜʙᴏᴀʀᴅ.`,
+      .addSeparatorComponents(
+        new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
       )
-      .addFields(
-        { name: "ᴜsᴇʀ", value: `<@${userId}>`, inline: true },
-        { name: "ᴜsᴇʀɴᴀᴍᴇ", value: member.user.tag, inline: true },
-        { name: "ʀᴇǫᴜᴇsᴛᴇᴅ ʀᴏʟᴇ", value: requestedRole, inline: true },
+      .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(
+          `**ᴜsᴇʀ:** <@${userId}>\n**ᴜsᴇʀɴᴀᴍᴇ:** ${member.user.tag}\n**ʀᴇǫᴜᴇsᴛᴇᴅ ʀᴏʟᴇ:** ${requestedRole}`
+        )
       )
-      .setTimestamp()
-      .setFooter({ text: `ᴜsᴇʀ ɪᴅ: ${userId}` });
+      .addSeparatorComponents(
+        new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+      )
+      .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(`-# User ID: ${userId}`)
+      );
+
+    addFooter(approvalContainer);
 
     const approvalsChannel = await guild.channels
       .fetch(config.approvalsChannelId)
@@ -177,9 +186,12 @@ router.post("/apply", async (req, res) => {
         .status(500)
         .json({ success: false, error: "Approvals channel not found." });
 
-    const approvalMessage = await approvalsChannel.send({
+    await approvalsChannel.send({
       content: `<@&${config.ownerRoleId}> <@&${config.managerRoleId}> <@&${config.moderatorRoleId}>`,
-      embeds: [approvalEmbed],
+    }).catch(() => null);
+    const approvalMessage = await approvalsChannel.send({
+      components: [approvalContainer],
+      flags: MessageFlags.IsComponentsV2,
     });
 
     await createRequest(
@@ -257,15 +269,24 @@ router.post("/approve", async (req, res) => {
           .fetch(request.approvalMessageId)
           .catch(() => null);
         if (msg) {
-          const updatedEmbed = EmbedBuilder.from(msg.embeds[0])
-            .setColor(EMBED_COLOR)
-            .setTitle(`${icon("SUCCESS")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ`)
-            .addFields(
-              { name: "ᴀᴘᴘʀᴏᴠᴇᴅ ʙʏ", value: `<@${requesterId}>`, inline: true },
-              { name: "ɴɪᴄᴋɴᴀᴍᴇ", value: finalNickname, inline: true },
+          const updatedContainer = new ContainerBuilder()
+            .setAccentColor(EMBED_COLOR)
+            .addTextDisplayComponents(
+              new TextDisplayBuilder().setContent(
+                `## ${icon("SUCCESS")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ\n<@${targetUserId}> (${request.username}) - **${request.requestedRole}**`
+              )
+            )
+            .addSeparatorComponents(
+              new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+            )
+            .addTextDisplayComponents(
+              new TextDisplayBuilder().setContent(
+                `**ᴀᴘᴘʀᴏᴠᴇᴅ ʙʏ:** <@${requesterId}>\n**ɴɪᴄᴋɴᴀᴍᴇ:** ${finalNickname}`
+              )
             );
+          addFooter(updatedContainer);
           await msg
-            .edit({ embeds: [updatedEmbed], components: [] })
+            .edit({ components: [updatedContainer], flags: MessageFlags.IsComponentsV2 })
             .catch(() => {});
         }
       }
@@ -353,16 +374,24 @@ router.post("/reject", async (req, res) => {
           .fetch(request.approvalMessageId)
           .catch(() => null);
         if (msg) {
-          const updatedEmbed = EmbedBuilder.from(msg.embeds[0])
-            .setColor(EMBED_COLOR)
-            .setTitle(`${icon("ERROR")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇᴊᴇᴄᴛᴇᴅ`)
-            .addFields({
-              name: "ʀᴇᴊᴇᴄᴛᴇᴅ ʙʏ",
-              value: `<@${requesterId}>`,
-              inline: true,
-            });
+          const updatedContainer = new ContainerBuilder()
+            .setAccentColor(EMBED_COLOR)
+            .addTextDisplayComponents(
+              new TextDisplayBuilder().setContent(
+                `## ${icon("ERROR")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇᴊᴇᴄᴛᴇᴅ\n<@${targetUserId}> (${request.username}) - **${request.requestedRole}**`
+              )
+            )
+            .addSeparatorComponents(
+              new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+            )
+            .addTextDisplayComponents(
+              new TextDisplayBuilder().setContent(
+                `**ʀᴇᴊᴇᴄᴛᴇᴅ ʙʏ:** <@${requesterId}>`
+              )
+            );
+          addFooter(updatedContainer);
           await msg
-            .edit({ embeds: [updatedEmbed], components: [] })
+            .edit({ components: [updatedContainer], flags: MessageFlags.IsComponentsV2 })
             .catch(() => {});
         }
       }
@@ -393,6 +422,8 @@ router.post("/reject", async (req, res) => {
             .setDivider(true)
             .setSpacing(SeparatorSpacingSize.Small),
         );
+
+      addFooter(rejectContainer);
 
       await user
         .send({

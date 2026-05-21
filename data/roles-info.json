@@ -1,8 +1,8 @@
 {
-  "title": "sᴀɪʏᴀɴ ɢᴏᴅs \u2014 ʀᴏʟᴇs",
+  "title": "Saiyan Gods — Roles",
   "sections": [
     {
-      "name": "\ud83c\udfc5 sᴛᴀFF ʀᴏʟᴇs",
+      "name": "🏆 Staff Roles",
       "inline": false,
       "roles": [
         {
@@ -23,7 +23,7 @@
       ]
     },
     {
-      "name": "\ud83d\udc65 ᴍᴇᴍʙᴇʀ ʀᴏʟᴇs",
+      "name": "👥 Member Roles",
       "inline": false,
       "roles": [
         {
@@ -38,7 +38,7 @@
         },
         {
           "emoji": "❗",
-          "name": "!! Unverified",
+          "name": "Unverified",
           "description": "New members pending verification."
         },
         {
@@ -49,7 +49,7 @@
       ]
     },
     {
-      "name": "\ud83c\udfae sᴇʟF ʀᴏʟᴇs \u2014 ᴅᴇᴠɪᴄᴇ",
+      "name": "🎮 Self Roles — Device",
       "inline": true,
       "roles": [
         {
@@ -70,15 +70,15 @@
       ]
     },
     {
-      "name": "\ud83d\udd1e sᴇʟF ʀᴏʟᴇs \u2014 ᴀɢᴇ",
+      "name": "🔰 Self Roles — Age",
       "inline": true,
       "roles": [
         {
-          "emoji": "\ud83d\udd1e",
+          "emoji": "🔞",
           "name": "18+",
           "description": "18 or above."
         },
-        { "emoji": "\ud83d\udd30", "name": "18-", "description": "Below 18." }
+        { "emoji": "🔰", "name": "18-", "description": "Below 18." }
       ]
     }
   ]

@@ -17,7 +17,7 @@ import {
   getAutoApprove,
   setAutoApprove,
 } from "../utils/verificationHandler.js";
-import { eReply } from "../utils/embed.js";
+import { eReply, addFooter } from "../utils/embed.js";
 import { i, icon } from "../utils/icons.js";
 
 export default {
@@ -92,28 +92,23 @@ export default {
       const selfRoleRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId("selfrole_pc")
-          .setLabel("PC")
           .setEmoji("💻")
           .setStyle(ButtonStyle.Secondary),
         new ButtonBuilder()
           .setCustomId("selfrole_mobile")
-          .setLabel("Mobile")
           .setEmoji("📱")
           .setStyle(ButtonStyle.Secondary),
         new ButtonBuilder()
           .setCustomId("selfrole_mobile_pc")
-          .setLabel("Mobile-PC")
           .setEmoji("📲")
           .setStyle(ButtonStyle.Secondary),
         new ButtonBuilder()
           .setCustomId("selfrole_18_plus")
-          .setLabel("18+")
-          .setEmoji("🔞")
+          .setEmoji(icon("18PLUS"))
           .setStyle(ButtonStyle.Secondary),
         new ButtonBuilder()
           .setCustomId("selfrole_18_minus")
-          .setLabel("18-")
-          .setEmoji("🧒")
+          .setEmoji(icon("18MINUS"))
           .setStyle(ButtonStyle.Secondary)
       );
 
@@ -139,6 +134,8 @@ export default {
           new TextDisplayBuilder().setContent("### sᴇʟғ-ʀᴏʟᴇs"),
         )
         .addActionRowComponents(selfRoleRow);
+
+      addFooter(verificationContainer);
 
       const payload = {
         components: [verificationContainer],
@@ -212,8 +209,8 @@ export default {
 
         await interaction.editReply(
           eReply(
-            `${i("SAVED")} ᴜᴘᴅᴀᴛᴇᴅ`,
-            `ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴇᴍʙᴇᴅ ᴜᴘᴅᴀᴛᴇᴅ.\n${icon("MAILBOX")} ᴀᴜᴛᴏ-ᴅᴍ ᴏɴ ᴊᴏɪɴ: **${currentAutoDm ? "on" : "off"}**\n${icon("BOT")} ᴀᴘᴘʀᴏᴠᴇ ᴍᴏᴅᴇ: **${currentAutoApprove ? "auto (AI DM)" : "manual (approvals channel)"}**`,
+            `${i("SUCCESS")} ᴜᴘᴅᴀᴛᴇᴅ`,
+            `ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴇᴍʙᴇᴅ ᴜᴘᴅᴀᴛᴇᴅ.\n\n${icon("MAILBOX")} ᴀᴜᴛᴏ-ᴅᴍ ᴏɴ ᴊᴏɪɴ: **${currentAutoDm ? "on" : "off"}**\n${icon("BOT")} ᴀᴘᴘʀᴏᴠᴇ ᴍᴏᴅᴇ: **${currentAutoApprove ? "auto (AI DM)" : "manual (approvals channel)"}**`,
           ),
         );
       } else {
@@ -221,8 +218,8 @@ export default {
         console.log("[INFO] Created new verification embed");
         await interaction.editReply(
           eReply(
-            `${i("SAVED")} ᴄᴏᴍᴘʟᴇᴛᴇ`,
-            `ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴇᴍʙᴇᴅ ᴄʀᴇᴀᴛᴇᴅ.\n${icon("MAILBOX")} ᴀᴜᴛᴏ-ᴅᴍ ᴏɴ ᴊᴏɪɴ: **${currentAutoDm ? "on" : "off"}**\n${icon("BOT")} ᴀᴘᴘʀᴏᴠᴇ ᴍᴏᴅᴇ: **${currentAutoApprove ? "auto (AI DM)" : "manual (approvals channel)"}**`,
+            `${i("SUCCESS")} ᴄᴏᴍᴘʟᴇᴛᴇ`,
+            `ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴇᴍʙᴇᴅ ᴄʀᴇᴀᴛᴇᴅ.\n\n${icon("MAILBOX")} ᴀᴜᴛᴏ-ᴅᴍ ᴏɴ ᴊᴏɪɴ: **${currentAutoDm ? "on" : "off"}**\n${icon("BOT")} ᴀᴘᴘʀᴏᴠᴇ ᴍᴏᴅᴇ: **${currentAutoApprove ? "auto (AI DM)" : "manual (approvals channel)"}**`,
           ),
         );
       }

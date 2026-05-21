@@ -1,4 +1,4 @@
-import { Events } from "discord.js";
+import { Events, MessageFlags } from "discord.js";
 import config from "../../config.js";
 import { checkSpam, checkToxicity } from "../utils/automodRunner.js";
 import { eSend } from "../utils/embed.js";
@@ -136,11 +136,12 @@ export default {
     });
     const isNoMentionChannel = NO_MENTION_CHANNELS.has(message.channel.id);
     const isBroadcastMention = message.mentions.everyone; // true for both @everyone and @here
+    const isAITicketChannel = message.channel.topic === "ticket_ai_enabled";
 
     // Ignore @everyone / @here pings unless the bot is explicitly mentioned by ID
     if (isBroadcastMention && !isMentioned) return;
 
-    if (isMentioned || isNoMentionChannel) {
+    if (isMentioned || isNoMentionChannel || isAITicketChannel) {
       console.log(`[DEBUG] AI mention detected - Message ID: ${message.id}`);
 
       if (processedMessages.has(message.id)) {
@@ -208,15 +209,18 @@ export default {
             }
           };
 
-          if (result.success) {
-            const response = result.response || "";
-            const hasEmbeds = result.embeds?.length > 0;
-
-            if (hasEmbeds) {
-              await safeReply({
-                content: response || undefined,
-                embeds: result.embeds,
-              });
+            if (result.success) {
+              const response = result.response || "";
+              const hasEmbeds = result.embeds?.length > 0;
+              const hasComponents = result.components?.length > 0;
+  
+              if (hasEmbeds || hasComponents) {
+                await safeReply({
+                  content: response || undefined,
+                  embeds: result.embeds,
+                  components: result.components,
+                  flags: hasComponents ? MessageFlags.IsComponentsV2 : undefined,
+                });
             } else if (!response || response.trim() === "") {
               console.warn(`[AI] Empty response for question: "${question}"`);
               await safeReply(
@@ -226,13 +230,12 @@ export default {
                 ),
               );
               return;
-            } else if (response.length <= 2000) {
-              await safeReply(response);
+            } else if (response.length <= 4000) {
+              await safeReply(eSend(null, response));
             } else {
-              const chunks = response.match(/[\s\S]{1,1900}/g) || [response];
-              await safeReply(chunks[0]);
-              for (let i = 1; i < chunks.length; i++) {
-                await message.channel.send(chunks[i]);
+              const chunks = response.match(/[\s\S]{1,4000}/g) || [];
+              for (const chunk of chunks) {
+                await safeReply(eSend(null, chunk));
               }
             }
 

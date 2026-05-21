@@ -13,7 +13,7 @@ import {
   MessageFlags,
 } from "discord.js";
 import supabase from "../utils/supabaseClient.js";
-import { EMBED_COLOR } from "../utils/embed.js";
+import { EMBED_COLOR, addFooter } from "../utils/embed.js";
 import { icon } from "../utils/icons.js";
 
 export const setupSessions = new Map();
@@ -81,35 +81,29 @@ async function publishSimpleTicketPanel(interaction, targetChannel) {
   const startYear = year - 1;
   const ts = Math.floor(Date.now() / 1000);
 
+  const serverIcon = interaction.guild.iconURL({ size: 128 });
   const panelContainer = new ContainerBuilder()
     .setAccentColor(EMBED_COLOR)
     .addSectionComponents(
       new SectionBuilder()
         .addTextDisplayComponents(
           new TextDisplayBuilder().setContent(
-            `**${botUser.username}**\n## ᴛɪᴄᴋᴇᴛs\nᴄʟɪᴄᴋ ᴏɴ ᴛᴏ ᴏᴘᴇɴ ᴀ ᴛɪᴄᴋᴇᴛ - ᴏᴜʀ ᴀɪ ᴀɢᴇɴᴛ ᴡɪʟʟ ᴊᴏɪɴ ʏᴏᴜ sʜᴏʀᴛʟʏ.`,
-          ),
+            `## ᴛɪᴄᴋᴇᴛ sᴜᴘᴘᴏʀᴛ\nᴄʟɪᴄᴋ ᴛʜᴇ ʙᴜᴛᴛᴏɴ ʙᴇʟᴏᴡ ᴀɴᴅ ᴇɴᴛᴇʀ ʏᴏᴜʀ ǫᴜᴇʀʏ ᴛᴏ \nᴏᴘᴇɴ ᴀ ᴘʀɪᴠᴀᴛᴇ ᴛɪᴄᴋᴇᴛ.`
+          )
         )
-        .setThumbnailAccessory(new ThumbnailBuilder().setURL(botAvatar)),
-    )
-    .addSeparatorComponents(
-      new SeparatorBuilder()
-        .setDivider(true)
-        .setSpacing(SeparatorSpacingSize.Small),
-    )
-    .addTextDisplayComponents(
-      new TextDisplayBuilder().setContent(
-        `-# © ${botUser.username} ${startYear} - ${year} • <t:${ts}:f>`,
-      ),
+        .setThumbnailAccessory(new ThumbnailBuilder().setURL(serverIcon))
     )
     .addActionRowComponents(
       new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId("tkt_open_simple")
           .setLabel("ᴄʀᴇᴀᴛᴇ ᴛɪᴄᴋᴇᴛ")
-          .setStyle(ButtonStyle.Success),
+          .setEmoji(icon("TICKET"))
+          .setStyle(ButtonStyle.Secondary),
       ),
     );
+
+  addFooter(panelContainer);
 
   await targetChannel.send({
     components: [panelContainer],

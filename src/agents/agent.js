@@ -279,7 +279,7 @@ export async function processMessage(userId, guildId, message) {
         contextManager.addMessage(userId, guildId, "user", message),
         contextManager.addMessage(userId, guildId, "assistant", safeResponse),
       ]);
-      return { success: true, response: safeResponse, embeds: [] };
+      return { success: true, response: safeResponse, components: [] };
     }
 
     const { name: toolName, params: toolParams = {} } = toolCall;
@@ -387,7 +387,7 @@ export async function processMessage(userId, guildId, message) {
     }
 
     if (finalToolName === "createEmbed") {
-      const embeds = finalToolResult?.embed ? [finalToolResult.embed] : [];
+      const components = finalToolResult?.components || [];
       const errMsg =
         finalToolResult?.success === false
           ? finalToolResult.error || "Couldn't create the embed."
@@ -401,7 +401,7 @@ export async function processMessage(userId, guildId, message) {
           errMsg || "[embed]",
         ),
       ]);
-      return { success: true, response: errMsg, embeds };
+      return { success: true, response: errMsg, components };
     }
 
     if (ACTION_ONLY_TOOLS.has(finalToolName)) {
@@ -413,7 +413,7 @@ export async function processMessage(userId, guildId, message) {
         contextManager.addMessage(userId, guildId, "user", message),
         contextManager.addMessage(userId, guildId, "assistant", finalResp),
       ]);
-      return { success: true, response: finalResp, embeds: [] };
+      return { success: true, response: finalResp, components: [] };
     }
 
     if (
@@ -428,7 +428,7 @@ export async function processMessage(userId, guildId, message) {
         contextManager.addMessage(userId, guildId, "user", message),
         contextManager.addMessage(userId, guildId, "assistant", finalResp),
       ]);
-      return { success: true, response: finalResp, embeds: [] };
+      return { success: true, response: finalResp, components: [] };
     }
 
     // Pass 2: feed tool result back for natural language synthesis
@@ -543,7 +543,7 @@ export async function processMessage(userId, guildId, message) {
       contextManager.addMessage(userId, guildId, "user", message),
       contextManager.addMessage(userId, guildId, "assistant", finalResponse),
     ]);
-    return { success: true, response: finalResponse, embeds: [] };
+    return { success: true, response: finalResponse, components: [] };
   } catch (error) {
     console.error("[AGENT] Error:", error);
     return {

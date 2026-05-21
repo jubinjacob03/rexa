@@ -12,6 +12,7 @@ import {
 import { updateStatusMessage } from "../utils/statusUpdater.js";
 import { icon } from "../utils/icons.js";
 import { getAutoDmEnabled } from "../utils/verificationHandler.js";
+import { addFooter } from "../utils/embed.js";
 import config from "../../config.js";
 
 export default {
@@ -61,7 +62,6 @@ export default {
             .setStyle(ButtonStyle.Secondary),
           new ButtonBuilder()
             .setCustomId("selfrole_mobile_pc")
-            .setLabel("Mobile-PC")
             .setEmoji("📲")
             .setStyle(ButtonStyle.Secondary),
         );
@@ -69,13 +69,11 @@ export default {
         const selfRoleRow2 = new ActionRowBuilder().addComponents(
           new ButtonBuilder()
             .setCustomId("selfrole_18_plus")
-            .setLabel("18+")
-            .setEmoji("🔞")
+            .setEmoji(icon("18PLUS"))
             .setStyle(ButtonStyle.Secondary),
           new ButtonBuilder()
             .setCustomId("selfrole_18_minus")
-            .setLabel("18-")
-            .setEmoji("🧒")
+            .setEmoji(icon("18MINUS"))
             .setStyle(ButtonStyle.Secondary),
         );
 
@@ -101,6 +99,8 @@ export default {
             new TextDisplayBuilder().setContent("### sᴇʟғ-ʀᴏʟᴇs"),
           )
           .addActionRowComponents(selfRoleRow1, selfRoleRow2);
+
+        addFooter(verificationContainer);
 
         await member.send({
           components: [verificationContainer],

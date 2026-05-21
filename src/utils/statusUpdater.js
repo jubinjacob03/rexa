@@ -12,7 +12,7 @@ import {
 } from "discord.js";
 import config from "../../config.js";
 import supabase from "./supabaseClient.js";
-import { EMBED_COLOR } from "./embed.js";
+import { EMBED_COLOR, addFooter } from "./embed.js";
 import { icon } from "./icons.js";
 
 let statusMessage = null;
@@ -148,6 +148,7 @@ export async function updateStatusMessage(client) {
     }
 
     container.addActionRowComponents(row);
+    addFooter(container);
 
     if (statusMessage) {
       try {

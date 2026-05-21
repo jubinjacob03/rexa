@@ -1,7 +1,10 @@
 import {
   SlashCommandBuilder,
   PermissionFlagsBits,
-  EmbedBuilder,
+  ContainerBuilder,
+  TextDisplayBuilder,
+  SeparatorBuilder,
+  SeparatorSpacingSize,
   MessageFlags,
 } from "discord.js";
 import config from "../../config.js";
@@ -251,27 +254,26 @@ export default {
       trail_user: `ᴀʟʟ ᴍᴇssᴀɢᴇs ғʀᴏᴍ <@${targetUser?.id}> ғʀᴏᴍ ᴍᴇssᴀɢᴇ \`${messageId}\` ᴏɴᴡᴀʀᴅ`,
     }[mode];
 
-    const embed = new EmbedBuilder()
-      .setColor(EMBED_COLOR)
-      .setTitle(`${i("PURGE")} ᴘᴜʀɢᴇ ᴄᴏᴍᴘʟᴇᴛᴇ`)
-      .addFields(
-        { name: "ᴄʜᴀɴɴᴇʟ", value: `<#${channel.id}>`, inline: true },
-        { name: "ᴍᴏᴅᴇ", value: mode, inline: true },
-        { name: "ᴘᴜʀɢᴇᴅ", value: `${deleted}`, inline: true },
-        ...(failed > 0
-          ? [
-              {
-                name: "ғᴀɪʟᴇᴅ",
-                value: `${failed} (ʟɪᴋᴇʟʏ ᴛᴏᴏ ᴏʟᴅ ᴏʀ ᴀʟʀᴇᴀᴅʏ ᴘᴜʀɢᴇᴅ)`,
-                inline: false,
-              },
-            ]
-          : []),
-        { name: "sᴄᴏᴘᴇ", value: modeLabel, inline: false },
+    const container = new ContainerBuilder().setAccentColor(EMBED_COLOR);
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(
+        `## ${i("PURGE")} ᴘᴜʀɢᴇ ᴄᴏᴍᴘʟᴇᴛᴇ\n**ᴄʜᴀɴɴᴇʟ:** <#${channel.id}>\n**ᴍᴏᴅᴇ:** ${mode}\n**ᴘᴜʀɢᴇᴅ:** ${deleted}${
+          failed > 0
+            ? `\n**ғᴀɪʟᴇᴅ:** ${failed} (ʟɪᴋᴇʟʏ ᴛᴏᴏ ᴏʟᴅ ᴏʀ ᴀʟʀᴇᴀᴅʏ ᴘᴜʀɢᴇᴅ)`
+            : ""
+        }\n\n**sᴄᴏᴘᴇ:** ${modeLabel}`
       )
-      .setFooter({ text: `ᴇxᴇᴄᴜᴛᴇᴅ ʙʏ ${interaction.user.tag}` })
-      .setTimestamp();
+    );
+    container.addSeparatorComponents(
+      new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+    );
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(`-*ᴇxᴇᴄᴜᴛᴇᴅ ʙʏ ${interaction.user.tag}*-`)
+    );
 
-    await interaction.editReply({ content: null, embeds: [embed] });
+    await interaction.editReply({
+      components: [container],
+      flags: MessageFlags.IsComponentsV2,
+    });
   },
 };

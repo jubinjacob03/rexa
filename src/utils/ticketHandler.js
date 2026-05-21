@@ -20,7 +20,7 @@ import {
   setupSessions,
   renderTicketDashboard,
 } from "../commands/ticket-setup.js";
-import { eReply, eSend, EMBED_COLOR } from "./embed.js";
+import { eReply, eSend, EMBED_COLOR, addFooter } from "./embed.js";
 import { i, icon } from "./icons.js";
 
 const activeTickets = new Set();
@@ -415,8 +415,7 @@ export async function handleTicketInteraction(interaction) {
         await waitingMsg.delete().catch(() => null);
         return await renderTicketDashboard(interaction, true);
       } catch (err) {
-        return interaction.editReply(
-          eSend(
+        return interaction.editReply(eReply(
             `${i("ERROR")} ᴛɪᴍᴇ ᴇxᴘɪʀᴇᴅ`,
             "ʏᴏᴜ ᴅɪᴅɴ'ᴛ ᴜᴘʟᴏᴀᴅ ᴀɴ ɪᴍᴀɢᴇ ɪɴ ᴛɪᴍᴇ. ʀᴜɴ `/setup-ticket` ᴛᴏ ʀᴇsᴜᴍᴇ ᴏʀ ᴛʀʏ ᴀɢᴀɪɴ.",
           ),
@@ -518,7 +517,8 @@ async function createTicketInstance(interaction, options = {}) {
     let ticketChannel;
     const ticketName = `ticket-${interaction.user.username.toLowerCase()}`;
 
-    const modRoles = config.ticketModeratorRoles || [];
+    const defaultRoles = [config.ownerRoleId, config.managerRoleId].filter(Boolean);
+    let modRoles = defaultRoles.length > 0 ? defaultRoles : [config.moderatorRoleId].filter(Boolean);
     const permissionOverwrites = [
       {
         id: guild.id,
@@ -584,6 +584,7 @@ async function createTicketInstance(interaction, options = {}) {
         name: ticketName,
         type: ChannelType.GuildText,
         parent: channel.parentId,
+        topic: aiEnabled ? "ticket_ai_enabled" : "ticket_human",
         permissionOverwrites: permissionOverwrites,
       });
     }
@@ -612,7 +613,7 @@ async function createTicketInstance(interaction, options = {}) {
         .setCustomId("ticket_escalate")
         .setEmoji(icon("BELL"))
         .setLabel("ᴇsᴄᴀʟᴀᴛᴇ ᴛᴏ sᴛᴀғғ")
-        .setStyle(ButtonStyle.Secondary),
+        .setStyle(ButtonStyle.Success),
       new ButtonBuilder()
         .setCustomId("ticket_close")
         .setEmoji(icon("LOCK"))
@@ -621,61 +622,75 @@ async function createTicketInstance(interaction, options = {}) {
     );
 
     let mentionText = `<@${interaction.user.id}>`;
+    const pingStr = config.ownerRoleId ? `<@&${config.ownerRoleId}>` : "";
+    
     if (!aiEnabled) {
-      const pingStr =
-        modRoles.length > 0
-          ? modRoles.map((r) => `<@&${r}>`).join(" ")
-          : `<@&${config.moderatorRoleId}>`;
       mentionText += ` ${pingStr} **ᴀ ɴᴇᴡ ᴛɪᴄᴋᴇᴛ ʀᴇǫᴜɪʀᴇs ᴀᴛᴛᴇɴᴛɪᴏɴ.**`;
     } else {
-      const pingStr =
-        modRoles.length > 0
-          ? modRoles.map((r) => `<@&${r}>`).join(" ")
-          : `<@&${config.moderatorRoleId}>`;
-      mentionText += ` ${pingStr} **ᴀ ɴᴇᴡ ᴛɪᴄᴋᴇᴛ \(ᴀɪ-ᴀssɪsᴛᴇᴅ\) ʜᴀs ʙᴇᴇɴ ᴄʀᴇᴀᴛᴇᴅ.**`;
+      mentionText += ` ${pingStr} **ᴀ ɴᴇᴡ ᴛɪᴄᴋᴇᴛ (ᴀɪ-ᴀssɪsᴛᴇᴅ) ʜᴀs ʙᴇᴇɴ ᴄʀᴇᴀᴛᴇᴅ.**`;
     }
 
-    const reasonLine = ticketReason ? `\n\n**ʀᴇᴀsᴏɴ:** ${ticketReason}` : "";
+    const reasonLine = ticketReason ? `\n> ${ticketReason}` : "";
 
     const ticketContainer = new ContainerBuilder()
       .setAccentColor(EMBED_COLOR)
       .addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(mentionText),
-      )
-      .addSeparatorComponents(
-        new SeparatorBuilder()
-          .setDivider(true)
-          .setSpacing(SeparatorSpacingSize.Small),
+        new TextDisplayBuilder().setContent(
+          `## Welcome to your ticket, ${interaction.user.username}\n${descriptionText}`
+        ),
       )
       .addTextDisplayComponents(
         new TextDisplayBuilder().setContent(
-          `## 🎫 ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ, ${interaction.user.username}\n${descriptionText}${reasonLine}\n\n_ᴜsᴇ ᴛʜᴇ ᴄʟᴏsᴇ ʙᴜᴛᴛᴏɴ ᴡʜᴇɴ ʏᴏᴜʀ ɪssᴜᴇ ɪs ʀᴇsᴏʟᴠᴇᴅ._`,
+          "ᴜsᴇ ᴛʜᴇ ᴄʟᴏsᴇ ʙᴜᴛᴛᴏɴ ᴡʜᴇɴ ʏᴏᴜʀ ɪssᴜᴇ ɪs ʀᴇsᴏʟᴠᴇᴅ",
         ),
-      )
-      .addSeparatorComponents(
+      );
+
+    if (ticketReason) {
+      ticketContainer.addSeparatorComponents(
         new SeparatorBuilder()
           .setDivider(true)
-          .setSpacing(SeparatorSpacingSize.Small),
-      )
-      .addActionRowComponents(row);
+          .setSpacing(SeparatorSpacingSize.Small)
+      );
+      ticketContainer.addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(`### 📝 ʀᴇᴀsᴏɴ\n${ticketReason}`)
+      );
+    }
+    
+    ticketContainer.addSeparatorComponents(
+      new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small),
+    ).addActionRowComponents(row);
 
+    addFooter(ticketContainer);
+
+    await ticketChannel.send(mentionText);
+    
     await ticketChannel.send({
       components: [ticketContainer],
       flags: MessageFlags.IsComponentsV2,
     });
 
-    await interaction.editReply(
-      eSend(
+    await interaction.editReply(eReply(
         `${i("DONE")} ᴛɪᴄᴋᴇᴛ ᴄʀᴇᴀᴛᴇᴅ`,
         `ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ ʜᴀs ʙᴇᴇɴ ᴄʀᴇᴀᴛᴇᴅ: <#${ticketChannel.id}>`,
       ),
     );
   } catch (error) {
     console.error("[TICKETS] Error creating ticket:", error);
-    await interaction.editReply(
-      eSend(
+    activeTickets.delete(interaction.user.id);
+    if (supabase) {
+      try {
+        await supabase
+          .from("active_tickets")
+          .delete()
+          .eq("user_id", interaction.user.id);
+      } catch {}
+    }
+    if (ticketChannel) {
+      await ticketChannel.delete().catch(() => {});
+    }
+    await interaction.editReply(eReply(
         `${i("ERROR")} ᴇʀʀᴏʀ`,
-        "ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ ᴡʜɪʟᴇ ᴄʀᴇᴀᴛɪɴɢ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ.",
+        "ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ ᴡʜɪʟᴇ ᴄʀᴇᴀᴛɪɴɢ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ. ᴘʟᴇᴀsᴇ ᴛʀʏ ᴀɢᴀɪɴ.",
       ),
     );
   }
@@ -693,8 +708,7 @@ async function closeTicketThread(interaction) {
     thread.type === ChannelType.GuildVoice;
 
   if (!isTextCompatible) {
-    return interaction.editReply(
-      eSend(
+    return interaction.editReply(eReply(
         `${i("ERROR")} ɪɴᴠᴀʟɪᴅ ᴄʜᴀɴɴᴇʟ`,
         "ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ ᴄᴀɴ ᴏɴʟʏ ʙᴇ ᴜsᴇᴅ ɪɴ ᴛᴇxᴛ-ʙᴀsᴇᴅ ᴏʀ ᴠᴏɪᴄᴇ-ʙᴀsᴇᴅ ᴛɪᴄᴋᴇᴛs.",
       ),
@@ -716,8 +730,7 @@ async function closeTicketThread(interaction) {
           content: `${icon("LOCK")} **ᴠᴏɪᴄᴇ ᴛɪᴄᴋᴇᴛ ᴄʟᴏsᴇᴅ:** \`${thread.name}\` ᴄʟᴏsᴇᴅ ʙʏ <@${interaction.user.id}>. (ɴᴏ ᴛʀᴀɴsᴄʀɪᴘᴛ ғᴏʀ ᴠᴏɪᴄᴇ ᴛɪᴄᴋᴇᴛs)`,
         });
       }
-      await interaction.editReply(
-        eSend(`${i("LOCK")} ᴄʟᴏsɪɴɢ`, "ᴠᴏɪᴄᴇ ᴛɪᴄᴋᴇᴛ ɪs ᴄʟᴏsɪɴɢ."),
+      await interaction.editReply(eReply(`${i("LOCK")} ᴄʟᴏsɪɴɢ`, "ᴠᴏɪᴄᴇ ᴛɪᴄᴋᴇᴛ ɪs ᴄʟᴏsɪɴɢ."),
       );
     } else {
       const messages = await thread.messages.fetch({ limit: 100 });
@@ -751,8 +764,7 @@ async function closeTicketThread(interaction) {
         });
       }
 
-      await interaction.editReply(
-        eSend(
+      await interaction.editReply(eReply(
           `${i("LOCK")} ᴄʟᴏsɪɴɢ`,
           "ᴛɪᴄᴋᴇᴛ ɪs ᴄʟᴏsɪɴɢ. ᴛʜᴇ ᴛʀᴀɴsᴄʀɪᴘᴛ ʜᴀs ʙᴇᴇɴ sᴀᴠᴇᴅ ᴛᴏ ᴛʜᴇ ʟᴏɢɢɪɴɢ ᴄʜᴀɴɴᴇʟ.",
         ),
@@ -796,8 +808,7 @@ async function closeTicketThread(interaction) {
   } catch (error) {
     console.error("[TICKETS] Error closing ticket:", error);
     if (!interaction.replied) {
-      await interaction.editReply(
-        eSend(
+      await interaction.editReply(eReply(
           `${i("ERROR")} ᴇʀʀᴏʀ`,
           "ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ ᴡʜɪʟᴇ ᴄʟᴏsɪɴɢ ᴛʜᴇ ᴛɪᴄᴋᴇᴛ.",
         ),
@@ -822,6 +833,10 @@ async function escalateTicket(interaction) {
         ),
       );
     }
+    
+    if (thread.isTextBased() && thread.topic === "ticket_ai_enabled") {
+        await thread.setTopic("ticket_human").catch(() => {});
+    }
 
     let ticketModIds = [];
     if (supabase) {
@@ -840,17 +855,19 @@ async function escalateTicket(interaction) {
     const pings =
       ticketModIds.length > 0
         ? ticketModIds.map((id) => `<@${id}>`).join(" ")
-        : config.ticketModeratorRoles?.length > 0
-          ? config.ticketModeratorRoles.map((r) => `<@&${r}>`).join(" ")
+        : [config.ownerRoleId, config.managerRoleId].filter(Boolean).length > 0
+          ? [config.ownerRoleId, config.managerRoleId].filter(Boolean).map((r) => `<@&${r}>`).join(" ")
           : `<@&${config.moderatorRoleId}>`;
 
-    await interaction.reply({
+    await interaction.channel.send({
       content: `${icon("BELL")} ${pings}`,
-      ...eSend(
+    });
+    await interaction.reply(
+      eSend(
         `${i("BELL")} ᴇsᴄᴀʟᴀᴛᴇᴅ ᴛᴏ sᴛᴀғғ`,
         "ᴀ ᴜsᴇʀ ʜᴀs ᴇsᴄᴀʟᴀᴛᴇᴅ ᴛʜɪs ᴛɪᴄᴋᴇᴛ ᴀɴᴅ ʀᴇǫᴜɪʀᴇs ʜᴜᴍᴀɴ ᴀᴛᴛᴇɴᴛɪᴏɴ.",
       ),
-    });
+    );
   } catch (error) {
     console.error("[TICKETS] Error escalating ticket:", error);
   }

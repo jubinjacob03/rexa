@@ -16,7 +16,7 @@ import {
   SeparatorSpacingSize,
 } from "discord.js";
 import { loadConfig, updateConfig } from "../utils/automodManager.js";
-import { EMBED_COLOR, eReply } from "../utils/embed.js";
+import { EMBED_COLOR, eReply, addFooter } from "../utils/embed.js";
 import { i, icon } from "../utils/icons.js";
 
 export async function generateAutomodDashboard(guild = null) {
@@ -89,6 +89,8 @@ export async function generateAutomodDashboard(guild = null) {
         .setStyle(ButtonStyle.Primary),
     ),
   );
+
+  addFooter(container);
 
   return { components: [container] };
 }

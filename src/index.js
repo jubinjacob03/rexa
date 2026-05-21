@@ -7,10 +7,15 @@ import {
   Collection,
   Events,
   MessageFlags,
-  EmbedBuilder,
+  ContainerBuilder,
+  TextDisplayBuilder,
+  SectionBuilder,
+  ThumbnailBuilder,
+  SeparatorBuilder,
+  SeparatorSpacingSize,
 } from "discord.js";
-import { eReply, EMBED_COLOR } from "./utils/embed.js";
-import { i } from "./utils/icons.js";
+import { eReply, EMBED_COLOR, EPHEMERAL_COLOR, addFooter } from "./utils/embed.js";
+import { i, icon } from "./utils/icons.js";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { readdirSync, readFileSync } from "fs";
@@ -153,63 +158,77 @@ client.on(Events.InteractionCreate, async (interaction) => {
         );
       }
 
-      const buildEmbed = (sections) => {
-        const fields = [];
-        for (let i = 0; i < sections.length; i++) {
-          if (i > 0)
-            fields.push({
-              name: sections[i].name,
-              value:
-                "`──────────────────────────────────────────────────────────────────`",
-              inline: false,
-            });
-          for (const role of sections[i].roles) {
-            fields.push({
-              name: `${role.emoji} ${role.name}`,
-              value: role.description,
-              inline: true,
-            });
-          }
+      const resolveEmoji = (value) =>
+        (value ?? "").replace(/\{(\w+)\}/g, (match, key) => icon(key) || match);
+
+      const container = new ContainerBuilder().setAccentColor(EPHEMERAL_COLOR);
+      const title = rolesData.title || "Saiyan Gods — Roles";
+      const guildIcon = interaction.guild.iconURL({ dynamic: true, size: 256 });
+      const totalRoles = rolesData.sections.reduce(
+        (sum, section) => sum + section.roles.length,
+        0,
+      );
+
+      if (guildIcon) {
+        const header = new SectionBuilder()
+          .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(`## ${title}`),
+          )
+          .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+              "\n• Staff roles are assigned by bot, leaders, or moderators.\n• Self roles can be assigned automatically via the verification channel.",
+            ),
+          )
+          .setThumbnailAccessory(new ThumbnailBuilder().setURL(guildIcon));
+        container.addSectionComponents(header);
+      } else {
+        const header = new SectionBuilder()
+          .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(`## ${title}`),
+          )
+          .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+              "**How Roles Work:**\n• Staff roles are assigned by bot, leaders, or moderators.\n• Self roles can be assigned automatically via the verification channel.",
+            ),
+          );
+        container.addSectionComponents(header);
+      }
+
+      const formatColumns = (roles) => {
+        if (!roles || roles.length === 0) return "";
+        const totalWidth = 92;
+        const out = [];
+        for (const r of roles) {
+          const label = `${resolveEmoji(r.emoji)} ${r.name}`.trim();
+          const desc = r.description ? ` — ${r.description}` : "";
+          const line = (label + desc).slice(0, totalWidth).trim();
+          out.push(line);
+          out.push("");
         }
-        return fields;
+        return out.join("\n");
       };
 
-      const buildDesc = (sections) =>
-        sections
-          .map(
-            (s) =>
-              `**${s.name}**\n\`──────────────────────────────────────────────────────────────────\``,
-          )
-          .join("\n");
+      for (const section of rolesData.sections) {
+        const sectionTitle = resolveEmoji(section.name);
+        const roleLines = formatColumns(section.roles);
 
-      const guildIcon = interaction.guild.iconURL({ dynamic: true, size: 256 });
-      const staffSections = rolesData.sections.slice(0, 1);
-      const memberSections = rolesData.sections.slice(1, 2);
-      const selfSections = rolesData.sections.slice(2);
+        container.addSeparatorComponents(
+          new SeparatorBuilder()
+            .setDivider(true)
+            .setSpacing(SeparatorSpacingSize.Small),
+        );
+        container.addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(
+            `### ${sectionTitle}\n\`\`\`\n${roleLines}\n\`\`\``,
+          ),
+        );
+      }
 
-      const staffEmbed = new EmbedBuilder()
-        .setColor(EMBED_COLOR)
-        .setTitle(`${rolesData.title || "sᴀɪʏᴀɴ ɢᴏᴅs"} — sᴛᴀFF`)
-        .setDescription(buildDesc(staffSections))
-        .setFields(buildEmbed(staffSections));
-
-      const memberEmbed = new EmbedBuilder()
-        .setColor(EMBED_COLOR)
-        .setTitle(`${rolesData.title || "sᴀɪʏᴀɴ ɢᴏᴅs"} — ᴍᴇᴍʙᴇʀs`)
-        .setDescription(buildDesc(memberSections))
-        .setFields(buildEmbed(memberSections));
-
-      const selfEmbed = new EmbedBuilder()
-        .setColor(EMBED_COLOR)
-        .setTitle(`${rolesData.title || "sᴀɪʏᴀɴ ɢᴏᴅs"} — sᴇʟF ʀᴏʟᴇs`)
-        .setDescription(buildDesc(selfSections.slice(0, 1)))
-        .setFields(buildEmbed(selfSections))
-        .setFooter({ text: "sᴀɪʏᴀɴ ɢᴏᴅs • ʀᴏʟᴇs ɪɴғᴏ" })
-        .setTimestamp();
+      addFooter(container);
 
       return await interaction.reply({
-        embeds: [staffEmbed, memberEmbed, selfEmbed],
-        flags: MessageFlags.Ephemeral,
+        components: [container],
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
       });
     }
 

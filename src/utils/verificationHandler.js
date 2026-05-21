@@ -14,7 +14,7 @@ import {
 import { createClient } from "@supabase/supabase-js";
 import config from "../../config.js";
 import { generateText } from "ai";
-import { eReply, eSend, EMBED_COLOR } from "./embed.js";
+import { eReply, eSend, EMBED_COLOR, addFooter } from "./embed.js";
 import { i, icon } from "./icons.js";
 import { getLanguageModel } from "../agents/config.js";
 
@@ -306,12 +306,15 @@ export async function handleVerificationApply(interaction) {
     );
 
     approvalContainer.addActionRowComponents(approvalButtons);
+    addFooter(approvalContainer);
 
     const approvalsChannel = await interaction.guild.channels.fetch(
       config.approvalsChannelId,
     );
-    const approvalMessage = await approvalsChannel.send({
+    await approvalsChannel.send({
       content: `<@&${config.ownerRoleId}> <@&${config.managerRoleId}> <@&${config.moderatorRoleId}>`,
+    }).catch(() => null);
+    const approvalMessage = await approvalsChannel.send({
       components: [approvalContainer],
       flags: MessageFlags.IsComponentsV2,
     });
@@ -550,6 +553,8 @@ export async function handleApprovalAction(interaction) {
           ),
         );
 
+      addFooter(rejectedContainer);
+
       await interaction.update({
         components: [rejectedContainer],
         flags: MessageFlags.IsComponentsV2,
@@ -602,8 +607,7 @@ export async function handleNicknameModal(interaction) {
 
     const request = await getRequest(userId);
     if (!request) {
-      return interaction.editReply(
-        eSend(
+      return interaction.editReply(eReply(
           `${i("WARNING")}ɴᴏᴛ ғᴏᴜɴᴅ`,
           "ᴛʜɪs ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ ɴᴏ ʟᴏɴɢᴇʀ ᴇxɪsᴛs.",
         ),
@@ -615,14 +619,12 @@ export async function handleNicknameModal(interaction) {
       .catch(() => null);
     if (!member) {
       await removeRequest(userId);
-      return interaction.editReply(
-        eSend(`${i("ERROR")}ɴᴏᴛ ғᴏᴜɴᴅ`, "ᴜsᴇʀ ɪs ɴᴏ ʟᴏɴɢᴇʀ ɪɴ ᴛʜᴇ sᴇʀᴠᴇʀ."),
+      return interaction.editReply(eReply(`${i("ERROR")}ɴᴏᴛ ғᴏᴜɴᴅ`, "ᴜsᴇʀ ɪs ɴᴏ ʟᴏɴɢᴇʀ ɪɴ ᴛʜᴇ sᴇʀᴠᴇʀ."),
       );
     }
 
     if (member.roles.cache.has(roleId)) {
-      return interaction.editReply(
-        eSend(
+      return interaction.editReply(eReply(
           `${i("ERROR")}ᴀʟʀᴇᴀᴅʏ ᴀssɪɢɴᴇᴅ`,
           `ᴜsᴇʀ ᴀʟʀᴇᴀᴅʏ ʜᴀs ᴛʜᴇ **${request.requestedRole}** ʀᴏʟᴇ. ɴᴏ ᴄʜᴀɴɢᴇs ᴍᴀᴅᴇ.`,
         ),
@@ -655,6 +657,8 @@ export async function handleNicknameModal(interaction) {
         ),
       );
 
+    addFooter(approvedContainer);
+
     await interaction.message.edit({
       components: [approvedContainer],
       flags: MessageFlags.IsComponentsV2,
@@ -682,16 +686,14 @@ export async function handleNicknameModal(interaction) {
       )
       .catch(() => console.log(`[WARN] Could not DM user ${userId}`));
 
-    await interaction.editReply(
-      eSend(
+    await interaction.editReply(eReply(
         `${i("DONE")}ᴀᴘᴘʀᴏᴠᴇᴅ`,
         `ᴜsᴇʀ ʜᴀs ʙᴇᴇɴ ɢɪᴠᴇɴ **${request.requestedRole}** ʀᴏʟᴇ ᴡɪᴛʜ ɴɪᴄᴋɴᴀᴍᴇ **${finalNickname}**.`,
       ),
     );
   } catch (error) {
     console.error("[ERROR] Error handling nickname modal:", error);
-    await interaction.editReply(
-      eSend(`${i("ERROR")}ᴇʀʀᴏʀ`, "ғᴀɪʟᴇᴅ ᴛᴏ ᴄᴏᴍᴘʟᴇᴛᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴀʟ."),
+    await interaction.editReply(eReply(`${i("ERROR")}ᴇʀʀᴏʀ`, "ғᴀɪʟᴇᴅ ᴛᴏ ᴄᴏᴍᴘʟᴇᴛᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴀʟ."),
     );
   }
 }

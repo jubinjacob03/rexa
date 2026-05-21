@@ -1,6 +1,13 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { EmbedBuilder } from "discord.js";
+import {
+  ContainerBuilder,
+  TextDisplayBuilder,
+  SectionBuilder,
+  ThumbnailBuilder,
+  SeparatorBuilder,
+  SeparatorSpacingSize,
+} from "discord.js";
 
 function parseColorValue(color) {
   if (!color) return 0x7289da;
@@ -31,52 +38,68 @@ export function createDiscordEmbed(options) {
   } = options;
 
   try {
-    const embed = new EmbedBuilder();
-
-    if (title) embed.setTitle(title);
-    if (description) embed.setDescription(description);
-    if (url) embed.setURL(url);
-
+    const container = new ContainerBuilder();
     const colorValue = parseColorValue(color);
-    embed.setColor(colorValue);
+    container.setAccentColor(colorValue);
+
+    let headerText = "";
+    if (author) {
+      const authorName = typeof author === "string" ? author : author.name;
+      headerText += `-*${authorName}*-\n`;
+    }
+    if (title) headerText += `## ${title}\n`;
+    if (description) headerText += `${description}`;
+
+    if (headerText) {
+      if (thumbnail) {
+        const section = new SectionBuilder()
+          .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(headerText.trim())
+          )
+          .setThumbnailAccessory(new ThumbnailBuilder().setURL(thumbnail));
+        container.addSectionComponents(section);
+      } else {
+        container.addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(headerText.trim())
+        );
+      }
+    }
 
     if (fields && Array.isArray(fields) && fields.length > 0) {
+      container.addSeparatorComponents(
+        new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+      );
       fields.forEach((field) => {
-        embed.addFields({
-          name: field.name,
-          value: field.value,
-          inline: field.inline !== false,
-        });
+        container.addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(`**${field.name}**\n${field.value}`)
+        );
       });
     }
 
-    if (thumbnail) embed.setThumbnail(thumbnail);
-    if (image) embed.setImage(image);
+    if (image) {
+      container.addSeparatorComponents(
+        new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+      );
+      container.addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(`[Image](${image})`)
+      );
+    }
 
     if (footer) {
-      embed.setFooter(
-        typeof footer === "string"
-          ? { text: footer }
-          : { text: footer.text, iconURL: footer.icon },
+      const footerText = typeof footer === "string" ? footer : footer.text;
+      container.addSeparatorComponents(
+        new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+      );
+      container.addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(`-*${footerText}*-`)
       );
     }
 
-    if (author) {
-      embed.setAuthor(
-        typeof author === "string"
-          ? { name: author }
-          : { name: author.name, iconURL: author.icon, url: author.url },
-      );
-    }
-
-    if (timestamp) embed.setTimestamp();
-
-    console.log(`[EMBED] Created Discord embed: ${title || "Untitled"}`);
+    console.log(`[EMBED] Created Discord container: ${title || "Untitled"}`);
 
     return {
       success: true,
-      embed: embed.toJSON(),
-      embedObject: embed,
+      components: [container],
       preview: `Embed: ${title || "Untitled"}${description ? " - " + description.substring(0, 50) : ""}`,
     };
   } catch (error) {
@@ -141,7 +164,7 @@ DESIGN TIPS:
     if (result.success) {
       return {
         success: true,
-        embed: result.embed,
+        components: result.components,
         preview: result.preview,
       };
     }
