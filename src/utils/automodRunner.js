@@ -5,7 +5,7 @@ import * as modTools from "./moderation.js";
 import { loadConfig } from "./automodManager.js";
 import { eSend, EMBED_COLOR } from "./embed.js";
 import { i } from "./icons.js";
-import { ContainerBuilder, SectionBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags, EmbedBuilder } from "discord.js";
+import { EmbedBuilder } from "discord.js";
 
 async function sendActionEmbed(
   channel,
@@ -69,6 +69,11 @@ function cleanupTrackers() {
 }
 setInterval(cleanupTrackers, 10000);
 
+/**
+ * Checks if a message is considered spam and takes appropriate action.
+ * @param {import('discord.js').Message} message - The message to check.
+ * @returns {Promise<void>}
+ */
 export async function checkSpam(message) {
   const cfg = await loadConfig();
   if (!cfg.enabled || !cfg.spam) return;
@@ -259,6 +264,12 @@ export async function checkMemberUpdate(oldMember, newMember) {
   }
 }
 
+/**
+ * Checks if a message deletion is part of a raid and takes appropriate action.
+ * @param {import('discord.js').Message} message - The deleted message.
+ * @param {import('discord.js').User} executor - The user who deleted the message.
+ * @returns {Promise<void>}
+ */
 export async function checkMessageDelete(message, executor) {
   const cfg = await loadConfig();
   if (!cfg.enabled || !cfg.raid) return;
@@ -290,11 +301,15 @@ export async function checkMessageDelete(message, executor) {
   }
 }
 
+/**
+ * Checks if a message contains toxic content and takes appropriate action.
+ * @param {import('discord.js').Message} message - The message to check.
+ * @returns {Promise<void>}
+ */
 export async function checkToxicity(message) {
   const cfg = await loadConfig();
   if (!cfg.enabled || !cfg.toxicity) return;
 
-  // Basic heuristic check before invoking expensive AI for every message
   const toxicKeywords = [
     "bitch",
     "nigger",
@@ -329,7 +344,6 @@ export async function checkToxicity(message) {
   }
 }
 
-// Ensure we don't trigger multiple LLM calls for the same user concurrently
 const activeModerationLocks = new Set();
 
 async function triggerAIModeration(
@@ -346,7 +360,6 @@ async function triggerAIModeration(
     const member = await guild.members.fetch(userId).catch(() => null);
     if (!member) return;
 
-    // Ignore owner/bots
     if (member.id === guild.ownerId || member.user.bot) return;
 
     console.log(
@@ -469,11 +482,8 @@ export async function checkHackedAccountSpam(message, imageUrls) {
     if (isHackedPromo) {
       console.log(`[AutoMod] Hacked account scam detected for ${member.user.tag}: ${reason}`);
 
-
-      // Apply timeout (max 28 days)
       await modTools.timeout(member, 40320, "[AutoMod] Hacked Account Scam Promotion").catch(err => console.error("[AutoMod] Failed to timeout user:", err));
 
-      // Strip all roles
       const rolesToRemove = member.roles.cache.filter(r => r.id !== message.guild.id);
       if (rolesToRemove.size > 0) {
         await member.roles.remove(rolesToRemove, "[AutoMod] Quarantine Hacked Account").catch(err => console.error("[AutoMod] Failed to remove roles:", err));
@@ -485,7 +495,6 @@ export async function checkHackedAccountSpam(message, imageUrls) {
         .setDescription(`ᴏᴜʀ sʏsᴛᴇᴍ ʜᴀs ғᴏᴜɴᴅ ᴛʜᴀᴛ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ ɪs ᴄᴏᴍᴘʀᴏᴍɪsᴇᴅ ᴀɴᴅ ᴀʟʟ sᴇʀᴠᴇʀ ᴀᴜᴛʜᴏʀɪᴛɪᴇs ʜᴀᴠᴇ ʙᴇᴇɴ ʀᴇᴠᴏᴋᴇᴅ. ᴘʟᴇᴀsᴇ ʀᴇᴀᴄʜ ᴏᴜᴛ ᴛᴏ ᴀɴʏ ᴍᴏᴅᴇʀᴀᴛᴏʀ ᴛᴏ sᴏʟᴠᴇ ᴛʜɪs ᴍᴀɴᴜᴀʟʟʏ.`);
       await member.send({ embeds: [dmEmbed] }).catch(err => console.error("[AutoMod] Failed to DM user:", err));
 
-      // Log to specific channel
       const logChannel = await message.guild.channels.fetch("1489967421283369011").catch(err => {
         console.error("[AutoMod] Failed to fetch log channel:", err);
         return null;

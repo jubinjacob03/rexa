@@ -4,8 +4,9 @@ import { ChannelType } from "discord.js";
 const router = Router();
 
 /**
- * GET /api/channels?guildId=...
- * Returns all voice channels in a guild
+ * GET /api/channels
+ * Returns all voice channels in a guild.
+ * Requires `guildId` query parameter.
  */
 router.get("/", async (req, res) => {
   try {

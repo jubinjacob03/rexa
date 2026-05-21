@@ -12,7 +12,11 @@ export function issueToken() {
   return token;
 }
 
-/** Validate and consume a token. Returns true once, false after. */
+/**
+ * Validates and consumes a token.
+ * @param {string} token - The token to validate.
+ * @returns {boolean} True if the token is valid and consumed, false otherwise.
+ */
 export function consumeToken(token) {
   const expiresAt = tokens.get(token);
   if (!expiresAt) return false;

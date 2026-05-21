@@ -36,7 +36,6 @@ export async function loadConfig() {
       .single();
 
     if (error || !data) {
-      // Row doesn't exist yet — create it with defaults
       await supabase.from("bot_automod").upsert({
         guild_id: GUILD_ID,
         ...defaultData,
@@ -83,6 +82,11 @@ export async function saveConfig(data) {
   }
 }
 
+/**
+ * Updates the automod configuration with new values.
+ * @param {Object} updates - The updates to apply.
+ * @returns {Promise<Object>} The updated configuration.
+ */
 export async function updateConfig(updates) {
   const current = await loadConfig();
   const newData = {

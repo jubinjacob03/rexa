@@ -1,7 +1,6 @@
 import { SlashCommandBuilder, MessageFlags } from "discord.js";
 import {
   canCreate,
-  activeCount,
   createPrivateVC,
   getVCByMember,
 } from "../utils/privateVCManager.js";
@@ -9,6 +8,10 @@ import config from "../../config.js";
 import { eSend } from "../utils/embed.js";
 import { i } from "../utils/icons.js";
 
+/**
+ * Command to create a private voice channel for selected members.
+ * @module privateVcCommand
+ */
 export default {
   data: new SlashCommandBuilder()
     .setName("private-vc")
@@ -41,12 +44,19 @@ export default {
         .setRequired(false),
     ),
 
+  /**
+   * Executes the private-vc command.
+   * @param {import("discord.js").ChatInputCommandInteraction} interaction - The interaction object.
+   * @returns {Promise<void>}
+   */
   async execute(interaction) {
+    // Defer the reply to ensure the interaction doesn't timeout
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const guild = interaction.guild;
     const invoker = interaction.member;
 
+    // Check if the invoker is already in a private VC
     if (getVCByMember(invoker.id)) {
       return interaction.editReply(
         eSend(
@@ -56,6 +66,7 @@ export default {
       );
     }
 
+    // Check if the maximum number of private VCs has been reached
     if (!canCreate()) {
       return interaction.editReply(
         eSend(
@@ -65,17 +76,19 @@ export default {
       );
     }
 
+    // Collect all unique members to invite, including the invoker
     const memberMap = new Map([[invoker.id, invoker]]);
     for (const key of ["member1", "member2", "member3", "member4", "member5"]) {
       const user = interaction.options.getUser(key);
       if (!user) continue;
-      if (user.bot) continue;
+      if (user.bot) continue; // Skip bots
       const member = await guild.members.fetch(user.id).catch(() => null);
       if (member) memberMap.set(member.id, member);
     }
 
     const members = [...memberMap.values()];
 
+    // Create the private VC
     const channel = await createPrivateVC(guild, members);
     if (!channel) {
       return interaction.editReply(
@@ -86,6 +99,7 @@ export default {
       );
     }
 
+    // Generate mentions for the invited members
     const mentions = members
       .filter((m) => m.id !== invoker.id)
       .map((m) => `<@${m.id}>`)

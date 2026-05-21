@@ -1,24 +1,28 @@
 /**
- * Vector Store using AI SDK's built-in embedding functions
- * Optimized for RAG with cosine similarity search
+ * @file vector-store.js
+ * @description Vector Store using AI SDK's built-in embedding functions. Optimized for RAG with cosine similarity search.
  */
 
 import { embed, embedMany, cosineSimilarity } from "ai";
 import config, { getEmbeddingModel } from "../config.js";
 
 /**
- * In-memory vector store
- * For production, consider using a persistent vector database like Pinecone, Weaviate, or Qdrant
+ * In-memory vector store.
+ * For production, consider using a persistent vector database like Pinecone, Weaviate, or Qdrant.
  */
 class VectorStore {
+  /**
+   * Creates an instance of VectorStore.
+   */
   constructor() {
-    this.vectors = new Map(); // id -> { embedding, metadata }
+    this.vectors = new Map();
     this.embeddingModel = null;
     this.initialized = false;
   }
 
   /**
-   * Initialize the vector store with embedding model
+   * Initializes the vector store with the embedding model.
+   * @returns {Promise<void>}
    */
   async initialize() {
     if (this.initialized) return;
@@ -29,7 +33,11 @@ class VectorStore {
   }
 
   /**
-   * Add a single document to the vector store using AI SDK's embed()
+   * Adds a single document to the vector store using AI SDK's embed().
+   * @param {string} id - The document ID.
+   * @param {string} text - The document text.
+   * @param {object} [metadata={}] - Additional metadata.
+   * @returns {Promise<object>} The result of the operation.
    */
   async addDocument(id, text, metadata = {}) {
     await this.initialize();
@@ -58,8 +66,10 @@ class VectorStore {
   }
 
   /**
-   * Add multiple documents in batch using AI SDK's embedMany()
-   * This is more efficient than calling addDocument multiple times
+   * Adds multiple documents in batch using AI SDK's embedMany().
+   * This is more efficient than calling addDocument multiple times.
+   * @param {Array<object>} documents - The documents to add.
+   * @returns {Promise<object>} The result of the operation.
    */
   async addDocuments(documents) {
     await this.initialize();
@@ -93,7 +103,13 @@ class VectorStore {
   }
 
   /**
-   * Search for similar documents using AI SDK's cosine similarity
+   * Searches for similar documents using AI SDK's cosine similarity.
+   * @param {string} query - The search query.
+   * @param {object} [options={}] - Search options.
+   * @param {number} [options.topK] - Number of top results to return.
+   * @param {number} [options.threshold] - Similarity threshold.
+   * @param {object} [options.filter={}] - Metadata filter.
+   * @returns {Promise<object>} The search results.
    */
   async search(query, options = {}) {
     await this.initialize();
@@ -150,7 +166,9 @@ class VectorStore {
   }
 
   /**
-   * Get document by ID
+   * Gets a document by ID.
+   * @param {string} id - The document ID.
+   * @returns {object} The document data.
    */
   getDocument(id) {
     const doc = this.vectors.get(id);
@@ -166,7 +184,9 @@ class VectorStore {
   }
 
   /**
-   * Delete document by ID
+   * Deletes a document by ID.
+   * @param {string} id - The document ID.
+   * @returns {object} The result of the deletion.
    */
   deleteDocument(id) {
     const existed = this.vectors.has(id);
@@ -179,7 +199,8 @@ class VectorStore {
   }
 
   /**
-   * Clear all documents
+   * Clears all documents from the vector store.
+   * @returns {object} The result of the clear operation.
    */
   clear() {
     const count = this.vectors.size;
@@ -190,7 +211,8 @@ class VectorStore {
   }
 
   /**
-   * Get statistics about the vector store
+   * Gets statistics about the vector store.
+   * @returns {object} The statistics.
    */
   getStats() {
     return {
@@ -201,7 +223,8 @@ class VectorStore {
   }
 
   /**
-   * Export all vectors (for persistence)
+   * Exports all vectors (for persistence).
+   * @returns {object} The exported data.
    */
   export() {
     return {
@@ -214,7 +237,9 @@ class VectorStore {
   }
 
   /**
-   * Import vectors (from persistence)
+   * Imports vectors (from persistence).
+   * @param {object} data - The data to import.
+   * @returns {object} The result of the import operation.
    */
   import(data) {
     try {

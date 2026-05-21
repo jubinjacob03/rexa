@@ -697,6 +697,11 @@ async function createTicketInstance(interaction, options = {}) {
   }
 }
 
+/**
+ * Closes an active ticket thread or channel.
+ * @param {import('discord.js').Interaction} interaction - The interaction object.
+ * @returns {Promise<void>}
+ */
 async function closeTicketThread(interaction) {
   if (!interaction.deferred && !interaction.replied) {
     await interaction.deferReply();
@@ -818,6 +823,11 @@ async function closeTicketThread(interaction) {
   }
 }
 
+/**
+ * Escalates a ticket to human staff.
+ * @param {import('discord.js').Interaction} interaction - The interaction object.
+ * @returns {Promise<void>}
+ */
 async function escalateTicket(interaction) {
   try {
     const thread = interaction.channel;

@@ -1,6 +1,6 @@
 /**
- * Unified Tools Implementation
- * All agent tools in one place using AI SDK
+ * @file tools.js
+ * @description Unified Tools Implementation. All agent tools in one place using AI SDK.
  */
 
 import { tool } from "ai";
@@ -24,16 +24,24 @@ import * as modTools from "../../utils/moderation.js";
 
 let client = null;
 
+/**
+ * Initializes the tools with the Discord client.
+ * @param {object} discordClient - The Discord client instance.
+ */
 export function initializeTools(discordClient) {
   client = discordClient;
   modTools.setupModerationTools(discordClient);
   console.log("[TOOLS] Initialized with Discord client");
 }
 
-// Member cache: avoid force-fetching on every call (Discord rate limits)
 const memberCacheMap = new Map();
 const MEMBER_CACHE_TTL = 60_000;
 
+/**
+ * Fetches members of a guild, utilizing a cache to avoid rate limits.
+ * @param {object} guild - The Discord guild object.
+ * @returns {Promise<object>} The fetched members.
+ */
 async function fetchMembersWithCache(guild) {
   const cached = memberCacheMap.get(guild.id);
   if (cached && Date.now() - cached.timestamp < MEMBER_CACHE_TTL) {
@@ -44,6 +52,11 @@ async function fetchMembersWithCache(guild) {
   return members;
 }
 
+/**
+ * Fetches members of a guild freshly, bypassing the cache.
+ * @param {object} guild - The Discord guild object.
+ * @returns {Promise<object>} The fetched members.
+ */
 async function fetchMembersFresh(guild) {
   const members = await guild.members.fetch({ force: true });
   memberCacheMap.set(guild.id, { members, timestamp: Date.now() });
@@ -51,7 +64,7 @@ async function fetchMembersFresh(guild) {
 }
 
 /**
- * Command Executor - Execute Discord commands
+ * Command Executor Tool - Executes Discord commands autonomously.
  */
 export const commandExecutorTool = tool({
   description: `Execute Discord commands autonomously. Use for actions like playing music, managing channels, or triggering bot functions.`,
@@ -105,7 +118,7 @@ export const commandExecutorTool = tool({
 });
 
 /**
- * Server Info Tool
+ * Server Info Tool - Retrieves Discord server or member information.
  */
 export const serverInfoTool = tool({
   description: `Get Discord server or member information. Use this tool to:
@@ -350,7 +363,7 @@ export const serverInfoTool = tool({
 });
 
 /**
- * Music Control Tool
+ * Music Control Tool - Controls the Remani music bot.
  */
 export const musicControlTool = tool({
   description: `Control Remani music bot: play, pause, resume, skip, stop, queue, volume, nowplaying.`,
@@ -435,7 +448,7 @@ export const musicControlTool = tool({
 });
 
 /**
- * Embed Generator Tool
+ * Embed Generator Tool - Creates beautiful Discord embeds.
  */
 export const embedGeneratorTool = tool({
   description: `Create beautiful Discord embeds with rich formatting, colors, fields, and images.`,
@@ -542,6 +555,9 @@ export const embedGeneratorTool = tool({
   },
 });
 
+/**
+ * Create Private VC Tool - Creates a real private voice channel for specified members.
+ */
 export const createPrivateVCTool = tool({
   description: `Create a real private voice channel for specified members. Resolves member names to Discord members and calls the actual private VC system. Use this whenever a user asks to create a private VC for themselves and/or others.`,
   parameters: z.object({
@@ -625,7 +641,9 @@ export const createPrivateVCTool = tool({
   },
 });
 
-// ── Moderation Tool wrapper over src/utils/moderation.js ──────────────────────
+/**
+ * Escalate Ticket Tool - Escalates a user's support ticket to human staff.
+ */
 export const escalateTicketTool = tool({
   description: `Escalates a user's support ticket to human staff. Use this ONLY if the user is in a ticket thread, you cannot solve their problem, or they explicitly demand a human moderator. Provide a summary of the issue.`,
   parameters: z.object({
@@ -662,6 +680,9 @@ export const escalateTicketTool = tool({
   },
 });
 
+/**
+ * Discord Action Tool - Performs a real Discord moderation or administration action.
+ */
 export const discordActionTool = tool({
   description: `Perform a real Discord moderation or administration action directly via the Discord API.
 Available actions:

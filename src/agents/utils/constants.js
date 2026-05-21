@@ -1,5 +1,6 @@
 /**
- * Agent-related constants for tool handling and response generation.
+ * @file constants.js
+ * @description Agent-related constants for tool handling and response generation.
  */
 
 import { e } from "./customEmoji.js";

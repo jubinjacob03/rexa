@@ -1,5 +1,6 @@
 /**
- * Agent utilities index - re-exports all utilities for convenient imports.
+ * @file index.js
+ * @description Agent utilities index - re-exports all utilities for convenient imports.
  */
 
 export {

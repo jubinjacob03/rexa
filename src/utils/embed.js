@@ -94,6 +94,11 @@ export function eSend(title, description = null, opts = {}) {
   };
 }
 
+/**
+ * Adds a standard footer to a container builder.
+ * @param {import('discord.js').ContainerBuilder} container - The container builder.
+ * @returns {import('discord.js').ContainerBuilder} The modified container builder.
+ */
 export function addFooter(container) {
   const ts = Math.floor(Date.now() / 1000);
   container.addSeparatorComponents(

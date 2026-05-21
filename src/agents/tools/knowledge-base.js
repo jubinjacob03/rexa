@@ -1,6 +1,6 @@
 /**
- * Knowledge Base - Full RAG System using Supabase pgvector
- * Comprehensive document management with FREE Gemini embeddings
+ * @file knowledge-base.js
+ * @description Knowledge Base - Full RAG System using Supabase pgvector. Comprehensive document management with FREE Gemini embeddings.
  */
 
 import { tool } from "ai";
@@ -8,9 +8,6 @@ import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 import config from "../config.js";
 
-/**
- * Supabase client for vector storage
- */
 const supabase = createClient(config.supabase.url, config.supabase.serviceKey, {
   auth: {
     autoRefreshToken: false,
@@ -18,25 +15,20 @@ const supabase = createClient(config.supabase.url, config.supabase.serviceKey, {
   },
 });
 
-/**
- * Initialization flag
- */
 let initialized = false;
 let initializationPromise = null;
 
-/**
- * Document metadata store (cached in memory, synced with Supabase)
- */
 const documentMetadata = new Map();
 
-/**
- * Embedding cache - LRU with TTL to avoid repeated API calls
- * Key: text hash, Value: { embedding, timestamp }
- */
 const embeddingCache = new Map();
-const EMBEDDING_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+const EMBEDDING_CACHE_TTL = 60 * 60 * 1000;
 const EMBEDDING_CACHE_MAX = 500;
 
+/**
+ * Hashes a text string.
+ * @param {string} text - The text to hash.
+ * @returns {string} The hashed string.
+ */
 function hashText(text) {
   let hash = 0;
   for (let i = 0; i < text.length; i++) {
@@ -45,6 +37,11 @@ function hashText(text) {
   return hash.toString(36);
 }
 
+/**
+ * Retrieves a cached embedding for a given text.
+ * @param {string} text - The text to retrieve the embedding for.
+ * @returns {Array<number>|null} The embedding, or null if not found or expired.
+ */
 function getCachedEmbedding(text) {
   const key = hashText(text);
   const cached = embeddingCache.get(key);
@@ -55,6 +52,11 @@ function getCachedEmbedding(text) {
   return null;
 }
 
+/**
+ * Sets a cached embedding for a given text.
+ * @param {string} text - The text to cache the embedding for.
+ * @param {Array<number>} embedding - The embedding to cache.
+ */
 function setCachedEmbedding(text, embedding) {
   if (embeddingCache.size >= EMBEDDING_CACHE_MAX) {
     const oldest = embeddingCache.keys().next().value;
@@ -64,7 +66,8 @@ function setCachedEmbedding(text, embedding) {
 }
 
 /**
- * Initialize the knowledge base with Supabase pgvector
+ * Initializes the knowledge base with Supabase pgvector.
+ * @returns {Promise<void>}
  */
 async function initialize() {
   if (initialized) {
@@ -100,7 +103,8 @@ async function initialize() {
 }
 
 /**
- * Ensure the vector table exists in Supabase
+ * Ensures the vector table exists in Supabase.
+ * @returns {Promise<void>}
  */
 async function ensureVectorTable() {
   try {
@@ -130,13 +134,6 @@ CREATE TABLE IF NOT EXISTS knowledge_embeddings (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-
--- Create index for similarity search (skip for small KBs - sequential scan is fine)
--- CREATE INDEX IF NOT EXISTS knowledge_embeddings_embedding_idx 
--- ON knowledge_embeddings 
--- USING ivfflat (embedding vector_cosine_ops)
--- WITH (lists = 100);
--- Note: ivfflat max 2000 dims; gemini-embedding-001 uses 3072. Use hnsw or no index.
 
 -- Create function for similarity search
 CREATE OR REPLACE FUNCTION match_knowledge_embeddings(
@@ -184,7 +181,8 @@ $$;
 }
 
 /**
- * Load default knowledge about Shantha and Remani
+ * Loads default knowledge about Shantha and Remani.
+ * @returns {Promise<void>}
  */
 async function loadDefaultKnowledge() {
   console.log("[KNOWLEDGE BASE] Loading default knowledge...");
@@ -341,6 +339,11 @@ Server Info:
   );
 }
 
+/**
+ * Generates an embedding for the given text.
+ * @param {string} text - The text to embed.
+ * @returns {Promise<Array<number>>} The generated embedding.
+ */
 async function generateEmbedding(text) {
   const cached = getCachedEmbedding(text);
   if (cached) return cached;
@@ -367,7 +370,11 @@ async function generateEmbedding(text) {
 }
 
 /**
- * Add document to Supabase with embedding
+ * Adds a document to Supabase with its embedding.
+ * @param {string} id - The document ID.
+ * @param {string} content - The document content.
+ * @param {object} [metadata={}] - Additional metadata.
+ * @returns {Promise<void>}
  */
 async function addDocumentToSupabase(id, content, metadata = {}) {
   const embedding = await generateEmbedding(content);
@@ -396,12 +403,15 @@ async function addDocumentToSupabase(id, content, metadata = {}) {
 }
 
 /**
- * Add a text document to knowledge base
+ * Adds a text document to the knowledge base.
+ * @param {string} id - The document ID.
+ * @param {string} content - The document content.
+ * @param {object} [metadata={}] - Additional metadata.
+ * @returns {Promise<object>} The result of the operation.
  */
 export async function addDocument(id, content, metadata = {}) {
-  await initialize();
-
   try {
+    await initialize();
     await addDocumentToSupabase(id, content, metadata);
 
     console.log(`[KNOWLEDGE BASE] Added document: ${id}`);
@@ -413,12 +423,14 @@ export async function addDocument(id, content, metadata = {}) {
 }
 
 /**
- * Add a web page to knowledge base
+ * Adds a web page to the knowledge base.
+ * @param {string} url - The URL of the web page.
+ * @param {object} [metadata={}] - Additional metadata.
+ * @returns {Promise<object>} The result of the operation.
  */
 export async function addWebPage(url, metadata = {}) {
-  await initialize();
-
   try {
+    await initialize();
     const { fetchWebPage } = await import("./executor-tools.js");
     const result = await fetchWebPage(url);
 
@@ -442,11 +454,16 @@ export async function addWebPage(url, metadata = {}) {
 }
 
 /**
- * Query the knowledge base using Supabase pgvector similarity search
+ * Queries the knowledge base using Supabase pgvector similarity search.
+ * @param {string} question - The query string.
+ * @param {object} [options={}] - Query options.
+ * @param {number} [options.topK=5] - Number of top results to return.
+ * @param {string} [options.category=null] - Category filter.
+ * @param {Array<string>} [options.tags=null] - Tags filter.
+ * @param {number} [options.threshold=0.5] - Similarity threshold.
+ * @returns {Promise<object>} The query results.
  */
 export async function query(question, options = {}) {
-  await initialize();
-
   const {
     topK = config.rag.topK || 5,
     category = null,
@@ -455,6 +472,7 @@ export async function query(question, options = {}) {
   } = options;
 
   try {
+    await initialize();
     console.log(`[KNOWLEDGE BASE] Query: "${question}"`);
 
     const queryEmbedding = await generateEmbedding(question);
@@ -506,11 +524,16 @@ export async function query(question, options = {}) {
 }
 
 /**
- * Search for documents (without generating answer)
+ * Searches for documents (without generating an answer).
+ * @param {string} queryText - The search query.
+ * @param {object} [options={}] - Search options.
+ * @param {number} [options.topK=5] - Number of top results to return.
+ * @param {string} [options.category=null] - Category filter.
+ * @param {Array<string>} [options.tags=null] - Tags filter.
+ * @param {number} [options.threshold=0.5] - Similarity threshold.
+ * @returns {Promise<object>} The search results.
  */
 export async function search(queryText, options = {}) {
-  await initialize();
-
   const {
     topK = config.rag.topK || 5,
     category = null,
@@ -519,6 +542,7 @@ export async function search(queryText, options = {}) {
   } = options;
 
   try {
+    await initialize();
     console.log(`[KNOWLEDGE BASE] Search: "${queryText}"`);
 
     const queryEmbedding = await generateEmbedding(queryText);
@@ -557,7 +581,8 @@ export async function search(queryText, options = {}) {
 }
 
 /**
- * Get all documents from Supabase
+ * Gets all documents from Supabase.
+ * @returns {Promise<object>} The documents.
  */
 export async function getDocuments() {
   try {
@@ -582,7 +607,9 @@ export async function getDocuments() {
 }
 
 /**
- * Delete a document from Supabase
+ * Deletes a document from Supabase.
+ * @param {string} id - The document ID.
+ * @returns {Promise<object>} The result of the deletion.
  */
 export async function deleteDocument(id) {
   try {
@@ -609,7 +636,8 @@ export async function deleteDocument(id) {
 }
 
 /**
- * Get statistics from Supabase
+ * Gets statistics from Supabase.
+ * @returns {Promise<object>} The statistics.
  */
 export async function getStats() {
   try {
@@ -655,14 +683,15 @@ export async function getStats() {
 }
 
 /**
- * Reset the knowledge base (clear all embeddings from Supabase)
+ * Resets the knowledge base (clears all embeddings from Supabase).
+ * @returns {Promise<object>} The result of the reset operation.
  */
 export async function reset() {
   try {
     const { error } = await supabase
       .from("knowledge_embeddings")
       .delete()
-      .neq("id", ""); // Delete all
+      .neq("id", "");
 
     if (error) throw error;
 
@@ -682,7 +711,7 @@ export async function reset() {
 }
 
 /**
- * RAG Tool for AI agent
+ * RAG Tool for AI agent.
  */
 export const ragTool = tool({
   description: `Search knowledge base for information about Shantha, Remani, commands, and server features. 

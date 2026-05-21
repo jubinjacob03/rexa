@@ -7,6 +7,10 @@ import {
 import { eSend } from "../utils/embed.js";
 import { i } from "../utils/icons.js";
 
+/**
+ * Command to add a member to a private voice channel.
+ * @module privateVcAddCommand
+ */
 export default {
   data: new SlashCommandBuilder()
     .setName("private-vc-add")
@@ -15,11 +19,19 @@ export default {
       o.setName("member").setDescription("Member to add").setRequired(true),
     ),
 
+  /**
+   * Executes the private-vc-add command.
+   * @param {import("discord.js").ChatInputCommandInteraction} interaction - The interaction object.
+   * @returns {Promise<void>}
+   */
   async execute(interaction) {
+    // Defer the reply to ensure the interaction doesn't timeout
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const guild = interaction.guild;
     const invokerId = interaction.user.id;
+    
+    // Retrieve the private VC associated with the invoker
     const channelId = getVCByMember(invokerId);
     if (!channelId) {
       return interaction.editReply(
@@ -28,6 +40,8 @@ export default {
     }
 
     const invokerMember = interaction.member;
+    
+    // Ensure the invoker is currently connected to their private VC
     if (invokerMember.voice?.channelId !== channelId) {
       return interaction.editReply(
         eSend(
@@ -38,6 +52,8 @@ export default {
     }
 
     const targetUser = interaction.options.getUser("member");
+    
+    // Prevent adding bots to the private VC
     if (targetUser.bot) {
       return interaction.editReply(
         eSend(`${i("ERROR")} ɪɴᴠᴀʟɪᴅ`, "ʏᴏᴜ ᴄᴀɴɴᴏᴛ ᴀᴅᴅ ʙᴏᴛs."),
@@ -45,6 +61,8 @@ export default {
     }
 
     const data = getVCData(channelId);
+    
+    // Check if the target user is already in the private VC
     if (data.members.has(targetUser.id)) {
       return interaction.editReply(
         eSend(
@@ -54,6 +72,7 @@ export default {
       );
     }
 
+    // Check if the target user is already in another private VC
     if (getVCByMember(targetUser.id)) {
       return interaction.editReply(
         eSend(
@@ -63,15 +82,18 @@ export default {
       );
     }
 
+    // Fetch the target member from the guild
     const targetMember = await guild.members
       .fetch(targetUser.id)
       .catch(() => null);
+      
     if (!targetMember) {
       return interaction.editReply(
         eSend(`${i("ERROR")} ɴᴏᴛ ғᴏᴜɴᴅ`, "ᴄᴏᴜʟᴅ ɴᴏᴛ ғɪɴᴅ ᴛʜᴀᴛ ᴍᴇᴍʙᴇʀ."),
       );
     }
 
+    // Attempt to add the member to the private VC
     const ok = await addMember(channelId, targetMember, guild);
     if (!ok) {
       return interaction.editReply(

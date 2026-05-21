@@ -1,8 +1,17 @@
 import { Events, AuditLogEvent } from "discord.js";
 import { checkMessageDelete } from "../utils/automodRunner.js";
 
+/**
+ * Handles the MessageDelete event.
+ * @module events/messageDelete
+ */
 export default {
     name: Events.MessageDelete,
+    /**
+     * Executes the event handler.
+     * @param {import("discord.js").Message} message - The message that was deleted.
+     * @returns {Promise<void>}
+     */
     async execute(message) {
         if (!message.guild || message.author?.bot) return;
         
@@ -14,9 +23,6 @@ export default {
             const deletionLog = fetchedLogs.entries.first();
             if (!deletionLog) return;
             
-            // If the executor exists and it's not the message author (i.e. mod deleted it for them)
-            // wait, raid protection means someone rapidly deleting OTHERS messages or rapidly deleting their own.
-            // If it's a mod abusing powers:
             const { executor } = deletionLog;
             await checkMessageDelete(message, executor);
             

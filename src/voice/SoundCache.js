@@ -1,5 +1,5 @@
 import { Readable } from "stream";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync } from "fs";
 import { readFile, writeFile, unlink } from "fs/promises";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -89,12 +89,19 @@ class SoundCache {
     return buf;
   }
 
-  /** @param {Buffer} buffer @returns {Readable} */
+  /**
+   * Converts a buffer to a readable stream.
+   * @param {Buffer} buffer - The buffer to convert.
+   * @returns {Readable} The readable stream.
+   */
   toReadable(buffer) {
     return Readable.from(buffer);
   }
 
-  /** Re-download manifest entries missing from disk. Prunes entries that 404. */
+  /**
+   * Re-downloads manifest entries missing from disk. Prunes entries that 404.
+   * @returns {Promise<void>}
+   */
   async warmup() {
     const entries = Object.values(this.manifest);
     if (entries.length === 0) {
@@ -110,14 +117,14 @@ class SoundCache {
 
     await Promise.all(
       entries.map(async ({ soundId, soundUrl, soundName }) => {
-        const filePath = this._filePath(soundId);
-        if (existsSync(filePath)) {
-          const buf = await readFile(filePath);
-          this.memory.set(soundId, buf);
-          restored++;
-          return;
-        }
         try {
+          const filePath = this._filePath(soundId);
+          if (existsSync(filePath)) {
+            const buf = await readFile(filePath);
+            this.memory.set(soundId, buf);
+            restored++;
+            return;
+          }
           await this._fetchAndStore(soundId, soundUrl, soundName);
           restored++;
         } catch (err) {
@@ -135,7 +142,11 @@ class SoundCache {
     );
   }
 
-  /** @param {string} soundId */
+  /**
+   * Invalidates a sound from the cache.
+   * @param {string} soundId - The ID of the sound to invalidate.
+   * @returns {Promise<void>}
+   */
   async invalidate(soundId) {
     this.memory.delete(soundId);
     this._removeManifest(soundId);
@@ -155,8 +166,12 @@ class SoundCache {
     };
   }
 
-  // --- Manifest helpers ---
-
+  /**
+   * Gets the file path for a sound ID.
+   * @param {string} soundId - The ID of the sound.
+   * @returns {string} The file path.
+   * @private
+   */
   _filePath(soundId) {
     return join(CACHE_DIR, `${soundId}.bin`);
   }
@@ -169,19 +184,34 @@ class SoundCache {
     return {};
   }
 
+  /**
+   * Updates a manifest entry.
+   * @param {string} soundId - The ID of the sound.
+   * @param {Object} entry - The manifest entry.
+   * @private
+   */
   _updateManifest(soundId, entry) {
     this.manifest[soundId] = entry;
     this._saveManifest();
   }
 
+  /**
+   * Removes a manifest entry.
+   * @param {string} soundId - The ID of the sound.
+   * @private
+   */
   _removeManifest(soundId) {
     delete this.manifest[soundId];
     this._saveManifest();
   }
 
-  _saveManifest() {
+  /**
+   * Saves the manifest to disk asynchronously.
+   * @private
+   */
+  async _saveManifest() {
     try {
-      writeFileSync(MANIFEST_PATH, JSON.stringify(this.manifest, null, 2));
+      await writeFile(MANIFEST_PATH, JSON.stringify(this.manifest, null, 2));
     } catch (err) {
       console.error(
         "[ERROR] SoundCache: failed to save manifest:",

@@ -1,3 +1,8 @@
+/**
+ * @file config.js
+ * @description Configuration settings and model initialization for the agent.
+ */
+
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -20,6 +25,9 @@ try {
   console.warn("Could not parse tools.json");
 }
 
+/**
+ * Global configuration object.
+ */
 const config = {
   apiKeys: {
     google: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
@@ -82,6 +90,12 @@ const config = {
   },
 };
 
+/**
+ * Retrieves the configured language model instance.
+ * @param {string} [preset=config.model.preset] - The model preset to use.
+ * @param {string|null} [customModel=null] - A custom model name to override the preset.
+ * @returns {object} The initialized language model.
+ */
 export function getLanguageModel(
   preset = config.model.preset,
   customModel = null,
@@ -104,7 +118,6 @@ export function getLanguageModel(
 
     const model = preset !== "custom" ? openrouterModels[preset] : modelName;
 
-    // Use .chat() to force standard Chat Completions API instead of Responses API
     return openrouter.chat(model || "stepfun/step-3.5-flash:free", {
       temperature: config.model.temperature,
     });
@@ -144,12 +157,21 @@ export function getLanguageModel(
   });
 }
 
+/**
+ * Retrieves the configured embedding model instance.
+ * @returns {object} The initialized embedding model.
+ */
 export function getEmbeddingModel() {
   return google.textEmbeddingModel("gemini-embedding-001", {
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
   });
 }
 
+/**
+ * Retrieves the configured image generation model settings.
+ * @returns {object} The image model configuration.
+ * @throws {Error} If the configured image provider is unknown.
+ */
 export function getImageModel() {
   const provider = config.imageGeneration.provider;
 

@@ -2,6 +2,11 @@ import { ChannelType, PermissionFlagsBits } from "discord.js";
 import config from "../../config.js";
 
 const ROMAN = ["ɪ", "ɪɪ", "ɪɪɪ", "ɪᴠ", "ᴠ"];
+/**
+ * Converts a number to a Roman numeral (1-5).
+ * @param {number} n - The number to convert.
+ * @returns {string} The Roman numeral or string representation.
+ */
 function toRoman(n) {
   return ROMAN[n - 1] ?? String(n);
 }
@@ -17,6 +22,11 @@ const {
   maxLifetimeMs: MAX_MS,
 } = config.privateVC;
 
+/**
+ * Generates a name for a private VC based on its index.
+ * @param {number} index - The index of the VC.
+ * @returns {string} The generated name.
+ */
 function vcName(index) {
   return `🎟️〢・ᴘʀɪᴠᴀᴛᴇ-ᴠᴄ ${toRoman(index)}`;
 }
@@ -58,6 +68,11 @@ async function destroyVC(channelId, guild) {
   if (activeVCs.size === 0) highestIndex = 0;
 }
 
+/**
+ * Starts the idle timer for a private VC.
+ * @param {string} channelId - The ID of the channel.
+ * @param {import('discord.js').Guild} guild - The Discord guild.
+ */
 function startIdleTimer(channelId, guild) {
   const data = activeVCs.get(channelId);
   if (!data) return;
@@ -76,6 +91,10 @@ export function canCreate() {
   return activeVCs.size < MAX_VCS;
 }
 
+/**
+ * Gets the number of active private VCs.
+ * @returns {number} The number of active VCs.
+ */
 export function activeCount() {
   return activeVCs.size;
 }
@@ -84,10 +103,20 @@ export function isPrivateVC(channelId) {
   return activeVCs.has(channelId);
 }
 
+/**
+ * Gets the data for a private VC.
+ * @param {string} channelId - The ID of the channel.
+ * @returns {Object|undefined} The VC data.
+ */
 export function getVCData(channelId) {
   return activeVCs.get(channelId);
 }
 
+/**
+ * Gets the private VC channel ID for a member.
+ * @param {string} userId - The ID of the user.
+ * @returns {string|null} The channel ID or null if not found.
+ */
 export function getVCByMember(userId) {
   for (const [channelId, data] of activeVCs) {
     if (data.members.has(userId)) return channelId;
@@ -95,7 +124,12 @@ export function getVCByMember(userId) {
   return null;
 }
 
-/** Create a new private VC. members = array of GuildMember (invoker included). */
+/**
+ * Creates a new private VC.
+ * @param {import('discord.js').Guild} guild - The Discord guild.
+ * @param {import('discord.js').GuildMember[]} members - Array of members to add (invoker included).
+ * @returns {Promise<import('discord.js').VoiceChannel|null>} The created channel or null.
+ */
 export async function createPrivateVC(guild, members) {
   if (activeVCs.size >= MAX_VCS) return null;
 
@@ -156,6 +190,13 @@ export async function createPrivateVC(guild, members) {
   return channel;
 }
 
+/**
+ * Adds a member to a private VC.
+ * @param {string} channelId - The ID of the channel.
+ * @param {import('discord.js').GuildMember} member - The member to add.
+ * @param {import('discord.js').Guild} guild - The Discord guild.
+ * @returns {Promise<boolean>} True if successful.
+ */
 export async function addMember(channelId, member, guild) {
   const data = activeVCs.get(channelId);
   if (!data) return false;
@@ -224,7 +265,11 @@ export function onMemberJoined(channelId) {
   stopIdleTimer(channelId);
 }
 
-/** Returns serialisable list of all active private VCs. */
+/**
+ * Returns a serialisable list of all active private VCs.
+ * @param {import('discord.js').Guild} guild - The Discord guild.
+ * @returns {Array} The list of active VCs.
+ */
 export function listAllVCs(guild) {
   const result = [];
   for (const [channelId, data] of activeVCs) {

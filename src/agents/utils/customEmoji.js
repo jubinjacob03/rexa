@@ -1,7 +1,6 @@
 /**
- * Custom emoji utilities for Shantha Discord bot.
- * Loads custom emojis from Discord server and provides fallback to unicode.
- * Based on the Zyra/Remani implementation.
+ * @file customEmoji.js
+ * @description Custom emoji utilities for Shantha Discord bot. Loads custom emojis from Discord server and provides fallback to unicode. Based on the Zyra/Remani implementation.
  */
 
 /** Maps Discord emoji names to internal keys */

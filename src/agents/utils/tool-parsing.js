@@ -1,6 +1,6 @@
 /**
- * Tool call parsing utilities for extracting tool invocations from LLM responses.
- * Handles JSON, XML, and various malformed formats.
+ * @file tool-parsing.js
+ * @description Tool call parsing utilities for extracting tool invocations from LLM responses. Handles JSON, XML, and various malformed formats.
  */
 
 // Pre-compiled regexes for tool extraction (avoids re-creating on each call)
@@ -29,10 +29,10 @@ export const RE_WTTR_MATCH = /wttr\.in\/([^?]+)/i;
 export const RE_TIME_QUERY = /\b(time|what time|current time|clock)\b/i;
 
 /**
- * Extract tool call from LLM response text.
+ * Extracts a tool call from LLM response text.
  * Handles multiple formats: JSON, XML (<function=NAME>), wrapped <tool_calls>, etc.
- * @param {string} text - Raw LLM response
- * @returns {{ name: string, params: object } | null}
+ * @param {string} text - Raw LLM response.
+ * @returns {{ name: string, params: object } | null} The extracted tool call, or null if none found.
  */
 export function extractToolCall(text) {
   const stripped = text.replace(/```(?:json)?\s*\n?/gi, "").trim();

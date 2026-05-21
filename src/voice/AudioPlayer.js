@@ -131,7 +131,10 @@ export class AudioPlayerManager {
     return false;
   }
 
-  /** Resume paused playback. Returns true if resumed. */
+  /**
+   * Resumes paused playback.
+   * @returns {boolean} True if resumed, false otherwise.
+   */
   resume() {
     if (this.player.state.status === AudioPlayerStatus.Paused) {
       this.player.unpause();
@@ -168,7 +171,10 @@ export class AudioPlayerManager {
     this.onIdleCallback = callback;
   }
 
-  /** @private */
+  /**
+   * Starts the inactivity timer.
+   * @private
+   */
   startInactivityTimer() {
     this.clearInactivityTimer();
 
@@ -198,7 +204,10 @@ export class AudioPlayerManager {
     console.log(`[INFO] Audio player destroyed for guild ${this.guildId}`);
   }
 
-  /** @returns {AudioPlayer} The underlying @discordjs/voice player instance. */
+  /**
+   * Gets the underlying @discordjs/voice player instance.
+   * @returns {import("@discordjs/voice").AudioPlayer} The audio player.
+   */
   getPlayer() {
     return this.player;
   }

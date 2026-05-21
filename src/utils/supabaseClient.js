@@ -28,7 +28,14 @@ export async function getSoundById(soundId) {
 }
 
 /**
- * Log playback event to database
+ * Logs a playback event to the database.
+ * @param {string} soundId - The ID of the sound.
+ * @param {string} guildId - The ID of the guild.
+ * @param {string} channelId - The ID of the channel.
+ * @param {string|null} channelName - The name of the channel.
+ * @param {string} userId - The ID of the user.
+ * @param {string} username - The username of the user.
+ * @returns {Promise<void>}
  */
 export async function logPlayback(
   soundId,
@@ -58,7 +65,10 @@ export async function logPlayback(
 }
 
 /**
- * Get all sounds from database
+ * Gets all public sounds from the database.
+ * @param {number} [limit=100] - The maximum number of sounds to fetch.
+ * @param {number} [offset=0] - The offset for pagination.
+ * @returns {Promise<Array>} An array of sound objects.
  */
 export async function getAllSounds(limit = 100, offset = 0) {
   try {

@@ -1,3 +1,8 @@
+/**
+ * @file gemini-web-tunnel.js
+ * @description Puppeteer-based tunnel for interacting with the Gemini web interface.
+ */
+
 import puppeteer from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import fs from "fs/promises";
@@ -9,9 +14,24 @@ const __dirname = path.dirname(__filename);
 
 puppeteer.use(StealthPlugin());
 
+/**
+ * Utility function to wait for a specified duration.
+ * @param {number} ms - The number of milliseconds to wait.
+ * @returns {Promise<void>}
+ */
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * Class representing a tunnel to the Gemini web interface.
+ */
 class GeminiWebTunnel {
+  /**
+   * Creates an instance of GeminiWebTunnel.
+   * @param {object} [options={}] - Configuration options.
+   * @param {string} [options.email] - The email for login.
+   * @param {string} [options.password] - The password for login.
+   * @param {boolean} [options.headless] - Whether to run the browser in headless mode.
+   */
   constructor(options = {}) {
     this.email = options.email || process.env.GEMINI_EMAIL;
     this.password = options.password || process.env.GEMINI_PASSWORD;
@@ -24,6 +44,10 @@ class GeminiWebTunnel {
     this.headless = options.headless !== false;
   }
 
+  /**
+   * Initializes the browser and attempts to log in or load a saved session.
+   * @returns {Promise<boolean>} True if initialization and login were successful.
+   */
   async initialize() {
     try {
       this.browser = await puppeteer.launch({
@@ -77,6 +101,10 @@ class GeminiWebTunnel {
     }
   }
 
+  /**
+   * Checks if the user is currently logged into the Gemini web interface.
+   * @returns {Promise<boolean>} True if logged in, false otherwise.
+   */
   async checkIfLoggedIn() {
     try {
       const selectors = [
@@ -98,6 +126,10 @@ class GeminiWebTunnel {
     }
   }
 
+  /**
+   * Performs the login process for the Gemini web interface.
+   * @returns {Promise<void>}
+   */
   async login() {
     try {
       console.log("[GEMINI TUNNEL] Starting login process...");
@@ -211,6 +243,10 @@ class GeminiWebTunnel {
     }
   }
 
+  /**
+   * Initializes the personality of the agent by sending a system prompt.
+   * @returns {Promise<void>}
+   */
   async initializePersonality() {
     const systemPrompt = `You are Shantha - casual Gen Z friend in Discord. Rules:
 1. Talk casual - no formal stuff
@@ -278,6 +314,12 @@ Examples:
     }
   }
 
+  /**
+   * Sends a prompt to the Gemini web interface and retrieves the response.
+   * @param {string} prompt - The prompt to send.
+   * @param {object} [options={}] - Additional options.
+   * @returns {Promise<string>} The response from Gemini.
+   */
   async sendPrompt(prompt, options = {}) {
     if (!this.isAuthenticated) {
       throw new Error("Not authenticated. Call initialize() first.");
@@ -528,6 +570,10 @@ Examples:
     }
   }
 
+  /**
+   * Saves the current browser cookies to a file.
+   * @returns {Promise<void>}
+   */
   async saveCookies() {
     try {
       const cookies = await this.page.cookies();
@@ -539,6 +585,10 @@ Examples:
     }
   }
 
+  /**
+   * Loads saved browser cookies from a file.
+   * @returns {Promise<boolean>} True if cookies were loaded successfully.
+   */
   async loadCookies() {
     try {
       const cookiesString = await fs.readFile(this.cookiesPath, "utf8");
@@ -552,6 +602,10 @@ Examples:
     }
   }
 
+  /**
+   * Closes the browser instance.
+   * @returns {Promise<void>}
+   */
   async close() {
     if (this.browser) {
       await this.browser.close();
@@ -562,6 +616,10 @@ Examples:
 
 let tunnelInstance = null;
 
+/**
+ * Retrieves the singleton instance of the GeminiWebTunnel.
+ * @returns {Promise<GeminiWebTunnel>} The tunnel instance.
+ */
 export async function getTunnel() {
   if (!tunnelInstance) {
     tunnelInstance = new GeminiWebTunnel({
@@ -572,11 +630,21 @@ export async function getTunnel() {
   return tunnelInstance;
 }
 
+/**
+ * Sends a prompt using the tunnel instance.
+ * @param {string} prompt - The prompt to send.
+ * @param {object} [options] - Additional options.
+ * @returns {Promise<string>} The response from Gemini.
+ */
 export async function sendPromptTunnel(prompt, options) {
   const tunnel = await getTunnel();
   return await tunnel.sendPrompt(prompt, options);
 }
 
+/**
+ * Pre-warms the tunnel by initializing the personality if not already done.
+ * @returns {Promise<GeminiWebTunnel>} The tunnel instance.
+ */
 export async function prewarmTunnel() {
   const tunnel = await getTunnel();
   if (!tunnel.systemPromptSent && !tunnel.initializingPersonality) {
@@ -594,6 +662,10 @@ export async function prewarmTunnel() {
   return tunnel;
 }
 
+/**
+ * Closes the tunnel instance.
+ * @returns {Promise<void>}
+ */
 export async function closeTunnel() {
   if (tunnelInstance) {
     await tunnelInstance.close();

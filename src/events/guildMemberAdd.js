@@ -15,8 +15,17 @@ import { getAutoDmEnabled } from "../utils/verificationHandler.js";
 import { addFooter } from "../utils/embed.js";
 import config from "../../config.js";
 
+/**
+ * Handles the GuildMemberAdd event.
+ * @module events/guildMemberAdd
+ */
 export default {
   name: Events.GuildMemberAdd,
+  /**
+   * Executes the event handler.
+   * @param {import("discord.js").GuildMember} member - The member that joined the guild.
+   * @returns {Promise<void>}
+   */
   async execute(member) {
     console.log(`[INFO] Member joined: ${member.user.tag}`);
 

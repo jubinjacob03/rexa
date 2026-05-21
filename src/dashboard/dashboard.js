@@ -13,6 +13,11 @@ import { eReply, addFooter } from "../utils/embed.js";
 import { getVCByMember, removeMember } from "../utils/privateVCManager.js";
 import { icon } from "../utils/icons.js";
 
+/**
+ * Retrieves the bot command channel from the client cache.
+ * @param {import("discord.js").Client} client - The Discord client instance.
+ * @returns {import("discord.js").Channel|undefined} The bot command channel, or undefined if not found.
+ */
 export function getBotCmdChannel(client) {
   const channelId = config.botCmdChannelId;
   return client.channels.cache.get(channelId);
@@ -20,6 +25,11 @@ export function getBotCmdChannel(client) {
 
 const tempSelections = new Map();
 
+/**
+ * Builds the dashboard container component for the control center.
+ * @param {import("discord.js").GuildMember} member - The guild member requesting the dashboard.
+ * @returns {Promise<import("discord.js").ContainerBuilder>} The constructed container builder.
+ */
 export async function buildDashboardContainer(member) {
   const guild = member.guild;
   const isMod = await checkModerationPermission(guild, member.user.id, "mod");
@@ -46,8 +56,6 @@ export async function buildDashboardContainer(member) {
       new TextDisplayBuilder().setContent(headerContent)
     );
   }
-
-
 
   container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### ${icon("VOICE")} Voice Manager\nCreate and manage your private voice channels.`));
   container.addActionRowComponents(
@@ -116,12 +124,23 @@ export async function buildDashboardContainer(member) {
   return container;
 }
 
-
+/**
+ * Parses an ID from a mention string based on a regex pattern.
+ * @param {string} value - The mention string.
+ * @param {RegExp} pattern - The regex pattern to match.
+ * @returns {string|null} The extracted ID, or null if no match.
+ */
 function parseIdFromMention(value, pattern) {
   const match = value.match(pattern);
   return match ? match[1] : null;
 }
 
+/**
+ * Resolves a guild member from a user input string (mention, ID, or username#discriminator).
+ * @param {import("discord.js").Guild} guild - The guild to search in.
+ * @param {string} value - The input string to resolve.
+ * @returns {Promise<import("discord.js").GuildMember|null>} The resolved member, or null if not found.
+ */
 async function resolveMemberFromInput(guild, value) {
   const mentionId = parseIdFromMention(value, /^<@!?([0-9]+)>$/);
   if (mentionId) return guild.members.fetch(mentionId).catch(() => null);
@@ -135,6 +154,12 @@ async function resolveMemberFromInput(guild, value) {
   return null;
 }
 
+/**
+ * Resolves a channel from a user input string (mention or ID).
+ * @param {import("discord.js").Guild} guild - The guild to search in.
+ * @param {string} value - The input string to resolve.
+ * @returns {import("discord.js").Channel|null} The resolved channel, or null if not found.
+ */
 function resolveChannelFromInput(guild, value) {
   const mentionId = parseIdFromMention(value, /^<#([0-9]+)>$/);
   if (mentionId) return guild.channels.cache.get(mentionId) || null;
@@ -142,10 +167,23 @@ function resolveChannelFromInput(guild, value) {
   return null;
 }
 
+/**
+ * Gets the dashboard components for a member.
+ * @param {import("discord.js").GuildMember} member - The guild member.
+ * @returns {Promise<Array>} An array of components.
+ */
 export async function getDashboardComponents(member) {
   return [];
 }
 
+/**
+ * Shows a modal for purging messages.
+ * @param {import("discord.js").Interaction} interaction - The interaction that triggered the modal.
+ * @param {string} customId - The custom ID for the modal.
+ * @param {string} title - The title of the modal.
+ * @param {Array<{customId: string, label: string, required?: boolean}>} fields - The fields to add to the modal.
+ * @returns {Promise<void>}
+ */
 export async function showPurgeModal(interaction, customId, title, fields) {
   const modal = new ModalBuilder().setCustomId(customId).setTitle(title);
   fields.forEach(f => {
@@ -162,6 +200,17 @@ export async function showPurgeModal(interaction, customId, title, fields) {
   return interaction.showModal(modal);
 }
 
+/**
+ * Shows a select menu with a confirmation button.
+ * @param {import("discord.js").Interaction} interaction - The interaction that triggered this.
+ * @param {string} title - The title of the container.
+ * @param {string} description - The description of the container.
+ * @param {string} selectId - The custom ID for the select menu.
+ * @param {string} confirmId - The custom ID for the confirm button.
+ * @param {string} confirmLabel - The label for the confirm button.
+ * @param {number} [maxValues=1] - The maximum number of values that can be selected.
+ * @returns {Promise<void>}
+ */
 export async function showSelectWithConfirm(interaction, title, description, selectId, confirmId, confirmLabel, maxValues = 1) {
   const select = new UserSelectMenuBuilder()
     .setCustomId(selectId)
@@ -186,6 +235,11 @@ export async function showSelectWithConfirm(interaction, title, description, sel
   await interaction.reply({ components: [container], flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
 }
 
+/**
+ * Handles select menu interactions for the dashboard.
+ * @param {import("discord.js").Interaction} interaction - The interaction to handle.
+ * @returns {Promise<void>}
+ */
 export async function handleDashboardSelect(interaction) {
   if (!interaction.isUserSelectMenu()) return;
   if ([
@@ -200,6 +254,11 @@ export async function handleDashboardSelect(interaction) {
   }
 }
 
+/**
+ * Builds the payload for the dashboard message.
+ * @param {import("discord.js").GuildMember} member - The guild member.
+ * @returns {Promise<import("discord.js").MessageCreateOptions>} The message payload.
+ */
 async function buildDashboardPayload(member) {
   const container = await buildDashboardContainer(member);
   return {
@@ -208,6 +267,11 @@ async function buildDashboardPayload(member) {
   };
 }
 
+/**
+ * Posts or updates the dashboard message in the bot command channel.
+ * @param {import("discord.js").Client} client - The Discord client instance.
+ * @returns {Promise<void>}
+ */
 export async function postDashboard(client) {
   const channel = getBotCmdChannel(client);
   if (!channel) return;
@@ -323,8 +387,12 @@ export async function handleDashboardInteraction(interaction) {
     }
     
     case "shantha_private_vc_confirm": {
-      const values = tempSelections.get(`${interaction.user.id}_shantha_private_vc_select`) || [];
+      const cacheKey = `${interaction.user.id}_shantha_private_vc_select`;
+      const values = tempSelections.get(cacheKey) || [];
       if (!values.length) return interaction.reply(eReply("Notice", "Please select at least 1 member first."));
+      tempSelections.delete(cacheKey);
+      
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       const resolvedMembers = [];
       for (const id of values) {
         const member = await interaction.guild.members.fetch(id).catch(() => null);
@@ -337,37 +405,67 @@ export async function handleDashboardInteraction(interaction) {
       const mapping = {};
       for (let i = 0; i < resolvedMembers.length; i++) mapping[`member${i + 1}`] = resolvedMembers[i].user;
       interaction.options = { getUser: (key) => mapping[key] || null };
-      await import("../commands/private-vc.js").then(m => m.default.execute(interaction));
+      try {
+        const m = await import("../commands/private-vc.js");
+        await m.default.execute(interaction);
+      } catch (err) {
+        console.error(err);
+        await interaction.editReply(eReply("Error", "Failed to create VC."));
+      }
       return;
     }
     case "shantha_vc_add_confirm": {
-      const values = tempSelections.get(`${interaction.user.id}_shantha_vc_add_select`) || [];
+      const cacheKey = `${interaction.user.id}_shantha_vc_add_select`;
+      const values = tempSelections.get(cacheKey) || [];
       if (!values.length) return interaction.reply(eReply("Notice", "Please select 1 member first."));
+      tempSelections.delete(cacheKey);
+      
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       const member = await interaction.guild.members.fetch(values[0]).catch(() => null);
-      if (!member) return interaction.reply(eReply("Notice", "Member not found."));
+      if (!member) return interaction.editReply(eReply("Notice", "Member not found."));
       interaction.options = { getUser: (key) => key === "member" ? member.user : null };
-      await import("../commands/private-vc-add.js").then(m => m.default.execute(interaction));
+      try {
+        const m = await import("../commands/private-vc-add.js");
+        await m.default.execute(interaction);
+      } catch (err) {
+        console.error(err);
+        await interaction.editReply(eReply("Error", "Failed to add member."));
+      }
       return;
     }
     case "shantha_vc_remove_confirm": {
-      const values = tempSelections.get(`${interaction.user.id}_shantha_vc_remove_select`) || [];
+      const cacheKey = `${interaction.user.id}_shantha_vc_remove_select`;
+      const values = tempSelections.get(cacheKey) || [];
       if (!values.length) return interaction.reply(eReply("Notice", "Please select 1 member first."));
+      tempSelections.delete(cacheKey);
+      
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       const member = await interaction.guild.members.fetch(values[0]).catch(() => null);
-      if (!member) return interaction.reply(eReply("Notice", "Member not found."));
+      if (!member) return interaction.editReply(eReply("Notice", "Member not found."));
       interaction.options = { getUser: (key) => key === "member" ? member.user : null };
-      await import("../commands/private-vc-remove.js").then(m => m.default.execute(interaction));
+      try {
+        const m = await import("../commands/private-vc-remove.js");
+        await m.default.execute(interaction);
+      } catch (err) {
+        console.error(err);
+        await interaction.editReply(eReply("Error", "Failed to remove member."));
+      }
       return;
     }
     case "shantha_purge_user_confirm":
     case "shantha_purge_trail_user_confirm": {
       const isTrail = interaction.customId === "shantha_purge_trail_user_confirm";
       const selectId = isTrail ? "shantha_purge_trail_user_select" : "shantha_purge_user_select";
-      const values = tempSelections.get(`${interaction.user.id}_${selectId}`) || [];
+      const cacheKey = `${interaction.user.id}_${selectId}`;
+      const values = tempSelections.get(cacheKey) || [];
       if (!values.length) return interaction.reply(eReply("Notice", "Please select 1 member first."));
+      tempSelections.delete(cacheKey);
+      
       const member = await interaction.guild.members.fetch(values[0]).catch(() => null);
       if (!member) return interaction.reply(eReply("Notice", "Member not found."));
       
-      tempSelections.set(interaction.user.id, { purgeUserId: member.id });
+      const targetCacheKey = `${interaction.user.id}_${isTrail ? 'purge_trail_target' : 'purge_user_target'}`;
+      tempSelections.set(targetCacheKey, { purgeUserId: member.id });
       
       const modalId = isTrail ? "shantha_purge_trail_user_modal" : "shantha_purge_user_modal";
       const fields = [ { customId: "purge_channel", label: "Channel (#channel or ID)", required: true } ];
@@ -440,8 +538,11 @@ export async function handleDashboardInteraction(interaction) {
     case "shantha_mod_ban_confirm": {
       const action = interaction.customId.replace("_confirm", "");
       const selectId = `${action}_select`;
-      const values = tempSelections.get(`${interaction.user.id}_${selectId}`) || [];
+      const cacheKey = `${interaction.user.id}_${selectId}`;
+      const values = tempSelections.get(cacheKey) || [];
       if (!values.length) return interaction.reply(eReply("Notice", "Please select 1 member first."));
+      tempSelections.delete(cacheKey);
+      
       const member = await interaction.guild.members.fetch(values[0]).catch(() => null);
       if (!member) return interaction.reply(eReply("Notice", "Member not found."));
       
@@ -486,13 +587,23 @@ export async function handleDashboardInteraction(interaction) {
   }
 }
 
+/**
+ * Handles modal submit interactions for the dashboard.
+ * @param {import("discord.js").Interaction} interaction - The interaction to handle.
+ * @returns {Promise<void>}
+ */
 export async function handleDashboardModal(interaction) {
   if (!interaction.isModalSubmit()) return;
   if (interaction.customId === "shantha_automod_limits_modal") {
-    const msg = parseInt(interaction.fields.getTextInputValue("limit_msg")) || 5;
-    const chDel = parseInt(interaction.fields.getTextInputValue("limit_chdel")) || 2;
-    const nick = parseInt(interaction.fields.getTextInputValue("limit_nick")) || 3;
-    const msgDel = parseInt(interaction.fields.getTextInputValue("limit_msgdel")) || 3;
+    const rawMsg = parseInt(interaction.fields.getTextInputValue("limit_msg"));
+    const msg = isNaN(rawMsg) ? 5 : rawMsg;
+    const rawChDel = parseInt(interaction.fields.getTextInputValue("limit_chdel"));
+    const chDel = isNaN(rawChDel) ? 2 : rawChDel;
+    const rawNick = parseInt(interaction.fields.getTextInputValue("limit_nick"));
+    const nick = isNaN(rawNick) ? 3 : rawNick;
+    const rawMsgDel = parseInt(interaction.fields.getTextInputValue("limit_msgdel"));
+    const msgDel = isNaN(rawMsgDel) ? 3 : rawMsgDel;
+    
     await updateConfig({
       limits: {
         messageSpam: msg,
@@ -506,6 +617,7 @@ export async function handleDashboardModal(interaction) {
     return;
   }
   if (interaction.customId === "shantha_private_vc_modal") {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const members = [];
     for (let i = 1; i <= 5; i++) {
       const val = interaction.fields.getTextInputValue(`member${i}`)?.trim();
@@ -528,20 +640,22 @@ export async function handleDashboardModal(interaction) {
     return;
   }
   if (interaction.customId === "shantha_vc_add_modal") {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const raw = interaction.fields.getTextInputValue("member")?.trim();
     const member = raw ? await resolveMemberFromInput(interaction.guild, raw) : null;
     if (!member) {
-      return interaction.reply(eReply("Notice", "Member not found."));
+      return interaction.editReply(eReply("Notice", "Member not found."));
     }
     interaction.options = { getUser: () => member.user };
     await privateVCAdd.execute(interaction);
     return;
   }
   if (interaction.customId === "shantha_vc_remove_modal") {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const raw = interaction.fields.getTextInputValue("member")?.trim();
     const member = raw ? await resolveMemberFromInput(interaction.guild, raw) : null;
     if (!member) {
-      return interaction.reply(eReply("Notice", "Member not found."));
+      return interaction.editReply(eReply("Notice", "Member not found."));
     }
     interaction.options = { getUser: () => member.user };
     await privateVCRemove.execute(interaction);
@@ -549,13 +663,20 @@ export async function handleDashboardModal(interaction) {
   }
   if (interaction.customId.endsWith("_modal") && interaction.customId.startsWith("shantha_mod_")) {
     const action = interaction.customId.replace("_modal", "");
-    const targetId = tempSelections.get(`${interaction.user.id}_mod_target`);
+    const cacheKey = `${interaction.user.id}_mod_target`;
+    const targetId = tempSelections.get(cacheKey);
     if (!targetId) return interaction.reply(eReply("Error", "Target lost from cache."));
+    tempSelections.delete(cacheKey);
+    
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const targetMember = await interaction.guild.members.fetch(targetId).catch(() => null);
-    if (!targetMember) return interaction.reply(eReply("Error", "Target member no longer found."));
+    if (!targetMember) return interaction.editReply(eReply("Error", "Target member no longer found."));
     
     let reason = "No reason provided.";
-    try { reason = interaction.fields.getTextInputValue("mod_reason") || reason; } catch {}
+    try { 
+      const inputReason = interaction.fields.getTextInputValue("mod_reason");
+      if (inputReason) reason = inputReason;
+    } catch {}
     
     let resultStr = "";
     try {
@@ -589,13 +710,14 @@ export async function handleDashboardModal(interaction) {
           break;
         }
       }
-      return interaction.reply(eReply("Moderation Action", resultStr));
+      return interaction.editReply(eReply("Moderation Action", resultStr));
     } catch (err) {
-      return interaction.reply(eReply("Error", err.message || "Action failed."));
+      return interaction.editReply(eReply("Error", err.message || "Action failed."));
     }
   }
   
   if (interaction.customId.startsWith("shantha_purge_")) {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const getVal = (id) => {
       try { return interaction.fields.getTextInputValue(id)?.trim(); }
       catch { return null; }
@@ -603,21 +725,25 @@ export async function handleDashboardModal(interaction) {
     const channelRaw = getVal("purge_channel");
     const channel = channelRaw ? resolveChannelFromInput(interaction.guild, channelRaw) : null;
     if (!channel) {
-      return interaction.reply(eReply("Notice", "Channel not found."));
+      return interaction.editReply(eReply("Notice", "Channel not found."));
     }
     const userRaw = getVal("purge_user");
     let user = userRaw ? await resolveMemberFromInput(interaction.guild, userRaw) : null;
-    if (!user && tempSelections.has(interaction.user.id)) {
-      const sel = tempSelections.get(interaction.user.id);
+    
+    const isTrail = interaction.customId === "shantha_purge_trail_user_modal";
+    const targetCacheKey = `${interaction.user.id}_${isTrail ? 'purge_trail_target' : 'purge_user_target'}`;
+    
+    if (!user && tempSelections.has(targetCacheKey)) {
+      const sel = tempSelections.get(targetCacheKey);
       try {
         user = await interaction.guild.members.fetch(sel.purgeUserId);
       } catch {
         user = null;
       }
-      tempSelections.delete(interaction.user.id);
+      tempSelections.delete(targetCacheKey);
     }
     if (userRaw && !user) {
-      return interaction.reply(eReply("Notice", "User not found."));
+      return interaction.editReply(eReply("Notice", "User not found."));
     }
     const messageId = getVal("purge_message");
     const mode = {

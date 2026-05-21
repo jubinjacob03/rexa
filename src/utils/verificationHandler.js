@@ -110,6 +110,15 @@ export async function hasPendingRequest(userId) {
   return userId in data.pendingRequests;
 }
 
+/**
+ * Creates a new verification request.
+ * @param {string} userId - The ID of the user.
+ * @param {string} username - The username of the user.
+ * @param {string} requestedRole - The name of the requested role.
+ * @param {string} requestedRoleId - The ID of the requested role.
+ * @param {string} approvalMessageId - The ID of the approval message.
+ * @returns {Promise<void>}
+ */
 export async function createRequest(
   userId,
   username,
@@ -140,6 +149,17 @@ export async function removeRequest(userId) {
   await saveData(data);
 }
 
+/**
+ * Logs an approval or rejection action.
+ * @param {string} userId - The ID of the user.
+ * @param {string} username - The username of the user.
+ * @param {string} requestedRole - The requested role.
+ * @param {string} approvedBy - The username of the approver.
+ * @param {string} approvedById - The ID of the approver.
+ * @param {string|null} nickname - The assigned nickname, if any.
+ * @param {string} status - The status (approved/rejected).
+ * @returns {Promise<void>}
+ */
 export async function logApproval(
   userId,
   username,
@@ -173,12 +193,21 @@ export async function getAutoDmEnabled() {
   return data.autoDmEnabled ?? false;
 }
 
+/**
+ * Sets the auto DM enabled status.
+ * @param {boolean} value - The new status.
+ * @returns {Promise<void>}
+ */
 export async function setAutoDmEnabled(value) {
   const data = await loadData();
   data.autoDmEnabled = value;
   await saveData(data);
 }
 
+/**
+ * Gets the auto approve status.
+ * @returns {Promise<boolean>} True if auto approve is enabled.
+ */
 export async function getAutoApprove() {
   const data = await loadData();
   return data.autoApprove ?? false;
@@ -607,6 +636,11 @@ export async function handleApprovalAction(interaction) {
   }
 }
 
+/**
+ * Handles the nickname modal submission.
+ * @param {import('discord.js').Interaction} interaction - The interaction object.
+ * @returns {Promise<void>}
+ */
 export async function handleNicknameModal(interaction) {
   try {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });

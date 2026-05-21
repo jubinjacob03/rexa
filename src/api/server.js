@@ -18,12 +18,16 @@ import verificationRoute from "./routes/verification.js";
 import musicRoute from "./routes/music.js";
 import { attachWsServer } from "./wsServer.js";
 
+/**
+ * Creates and configures the Express API server.
+ * @param {import('discord.js').Client} discordClient - The Discord client instance.
+ * @returns {import('express').Express} The configured Express application.
+ */
 export function createApiServer(discordClient) {
   const app = express();
 
   app.set("discordClient", discordClient);
 
-  // Trust Railway's reverse proxy so express-rate-limit can read X-Forwarded-For
   app.set("trust proxy", 1);
 
   app.use(helmet());

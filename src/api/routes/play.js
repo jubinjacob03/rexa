@@ -57,7 +57,6 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // Use sound data from request if provided, otherwise fetch from DB
     let sound;
     if (soundUrl && soundName) {
       sound = { id: soundId, file_url: soundUrl, name: soundName };

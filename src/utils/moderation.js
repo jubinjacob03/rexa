@@ -45,7 +45,11 @@ export function resolveRoleByName(guild, roleName) {
   return guild.roles.cache.find((r) => r.name.toLowerCase().includes(rq));
 }
 
-// Ensure the bot does not moderate itself
+/**
+ * Validates that the target member is valid and not the bot itself.
+ * @param {import('discord.js').GuildMember} member - The target member.
+ * @throws {Error} If the member is invalid or is the bot.
+ */
 function validateTarget(member) {
   if (!member) throw new Error("Target member not found in this server.");
   if (client && member.id === client.user.id) {
@@ -53,6 +57,12 @@ function validateTarget(member) {
   }
 }
 
+/**
+ * Server-mutes a member in voice channels.
+ * @param {import('discord.js').GuildMember} member - The member to mute.
+ * @param {string} [reason="Requested via Shantha"] - The reason for muting.
+ * @returns {Promise<string>} A success message.
+ */
 export async function voiceMute(member, reason = "Requested via Shantha") {
   validateTarget(member);
   if (!member.voice?.channel) {
@@ -80,6 +90,12 @@ export async function voiceDeafen(member, reason = "Requested via Shantha") {
   return `${member.displayName} has been server-deafened.`;
 }
 
+/**
+ * Server-undeafens a member in voice channels.
+ * @param {import('discord.js').GuildMember} member - The member to undeafen.
+ * @param {string} [reason="Requested via Shantha"] - The reason for undeafening.
+ * @returns {Promise<string>} A success message.
+ */
 export async function voiceUndeafen(member, reason = "Requested via Shantha") {
   validateTarget(member);
   if (!member.voice?.channel) {
@@ -89,6 +105,13 @@ export async function voiceUndeafen(member, reason = "Requested via Shantha") {
   return `${member.displayName} has been server-undeafened.`;
 }
 
+/**
+ * Times out a member.
+ * @param {import('discord.js').GuildMember} member - The member to timeout.
+ * @param {number} [durationMinutes=5] - The duration of the timeout in minutes.
+ * @param {string} [reason="Requested via Shantha"] - The reason for the timeout.
+ * @returns {Promise<string>} A success message.
+ */
 export async function timeout(member, durationMinutes = 5, reason = "Requested via Shantha") {
   validateTarget(member);
   const ms = Math.min(durationMinutes, 40320) * 60 * 1000;
@@ -108,6 +131,13 @@ export async function kick(member, reason = "Requested via Shantha") {
   return `${member.displayName} has been kicked from the server.`;
 }
 
+/**
+ * Bans a member from the server.
+ * @param {import('discord.js').GuildMember} member - The member to ban.
+ * @param {number} [deleteDays=0] - The number of days of messages to delete.
+ * @param {string} [reason="Requested via Shantha"] - The reason for banning.
+ * @returns {Promise<string>} A success message.
+ */
 export async function ban(member, deleteDays = 0, reason = "Requested via Shantha") {
   validateTarget(member);
   await member.ban({
@@ -125,6 +155,13 @@ export async function changeNickname(member, nickname, reason = "Requested via S
     : `${member.displayName}'s nickname has been reset.`;
 }
 
+/**
+ * Changes the bot's nickname in the server.
+ * @param {import('discord.js').Guild} guild - The Discord guild.
+ * @param {string|null} nickname - The new nickname, or null to reset.
+ * @param {string} [reason="Requested via Shantha"] - The reason for changing the nickname.
+ * @returns {Promise<string>} A success message.
+ */
 export async function changeBotNickname(guild, nickname, reason = "Requested via Shantha") {
   const me = await guild.members.fetchMe();
   await me.setNickname(nickname ?? null, reason);
@@ -133,6 +170,14 @@ export async function changeBotNickname(guild, nickname, reason = "Requested via
     : "My nickname has been reset.";
 }
 
+/**
+ * Adds a role to a member.
+ * @param {import('discord.js').Guild} guild - The Discord guild.
+ * @param {import('discord.js').GuildMember} member - The member to add the role to.
+ * @param {string} roleName - The name of the role to add.
+ * @param {string} [reason="Requested via Shantha"] - The reason for adding the role.
+ * @returns {Promise<string>} A success message.
+ */
 export async function addRole(guild, member, roleName, reason = "Requested via Shantha") {
   validateTarget(member);
   if (!roleName) throw new Error("roleName is required for add-role.");

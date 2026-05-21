@@ -5,7 +5,7 @@ import {
 } from "@discordjs/voice";
 import { AudioPlayerManager } from "./AudioPlayer.js";
 import { Queue } from "./Queue.js";
-import { DISCONNECT_TIMEOUT, RECONNECT_TIMEOUT } from "./constants.js";
+import { RECONNECT_TIMEOUT } from "./constants.js";
 
 export class VoiceManager {
   constructor() {
@@ -15,7 +15,12 @@ export class VoiceManager {
     this.lastActivity = new Map();
   }
 
-  /** Join a voice channel, wait for Ready + DAVE epoch, then return the connection. */
+  /**
+   * Joins a voice channel, waits for Ready + DAVE epoch, then returns the connection.
+   * @param {import("discord.js").Guild} guild - The guild to join.
+   * @param {import("discord.js").VoiceBasedChannel} channel - The voice channel to join.
+   * @returns {Promise<import("@discordjs/voice").VoiceConnection>} The voice connection.
+   */
   async joinChannel(guild, channel) {
     try {
       const guildId = guild.id;
@@ -104,7 +109,12 @@ export class VoiceManager {
     }
   }
 
-  /** @private */
+  /**
+   * Sets up event listeners for a voice connection.
+   * @param {import("@discordjs/voice").VoiceConnection} connection - The voice connection.
+   * @param {string} guildId - The ID of the guild.
+   * @private
+   */
   setupConnectionEvents(connection, guildId) {
     connection.on(VoiceConnectionStatus.Disconnected, async () => {
       try {
@@ -148,7 +158,10 @@ export class VoiceManager {
     });
   }
 
-  /** Destroy the connection and clean up all resources for a guild. */
+  /**
+   * Destroys the connection and cleans up all resources for a guild.
+   * @param {string} guildId - The ID of the guild.
+   */
   leaveChannel(guildId) {
     const connection = this.connections.get(guildId);
 
@@ -164,7 +177,12 @@ export class VoiceManager {
     console.log(`[INFO] Left voice channel for guild ${guildId}`);
   }
 
-  /** Stop any current playback and immediately play the requested sound. */
+  /**
+   * Stops any current playback and immediately plays the requested sound.
+   * @param {string} guildId - The ID of the guild.
+   * @param {Object} soundData - The sound data to play.
+   * @returns {Promise<{queued: boolean, playing: boolean}>} The playback status.
+   */
   async playSound(guildId, soundData) {
     const connection = this.connections.get(guildId);
     const player = this.players.get(guildId);
@@ -249,7 +267,11 @@ export class VoiceManager {
     return this.queues.get(guildId);
   }
 
-  /** @returns {AudioPlayerManager} */
+  /**
+   * Gets the audio player for a guild.
+   * @param {string} guildId - The ID of the guild.
+   * @returns {AudioPlayerManager|undefined} The audio player manager.
+   */
   getPlayer(guildId) {
     return this.players.get(guildId);
   }
@@ -317,7 +339,9 @@ export class VoiceManager {
     return Array.from(this.connections.keys());
   }
 
-  /** Disconnect from every voice channel (e.g. on shutdown). */
+  /**
+   * Disconnects from every voice channel (e.g., on shutdown).
+   */
   disconnectAll() {
     console.log("[INFO] Disconnecting from all voice channels");
     const guildIds = Array.from(this.connections.keys());

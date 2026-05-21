@@ -47,7 +47,7 @@ export async function createStatusContainer(guild) {
   const container = new ContainerBuilder().setAccentColor(EMBED_COLOR);
   const updatedAt = Math.floor(Date.now() / 1000);
 
-  const content = `## sᴇʀᴠᴇʀ sᴛᴀᴛs\n\n• **${humanCount}** ᴍᴇᴍʙᴇʀs • **${botCount}** ʙᴏᴛs • **${guild.roles.cache.size}** ʀᴏʟᴇs\n• **${guild.channels.cache.size}** ᴄʜᴀɴɴᴇʟs\n\n\`\`\`ansi\n\u001b[1;32m ${onlineMembers} ᴏɴʟɪɴᴇ \u001b[0m\`\`\`\`\`\`ansi\n\u001b[1;31m ${totalMembers - onlineMembers} ᴏғғʟɪɴᴇ \u001b[0m\`\`\`\nLast updated <t:${updatedAt}:R>`;
+  const content = `## sᴇʀᴠᴇʀ sᴛᴀᴛs\n\n\n• **${humanCount}** ᴍᴇᴍʙᴇʀs • **${botCount}** ʙᴏᴛs • **${guild.roles.cache.size}** ʀᴏʟᴇs\n\n• **${guild.channels.cache.size}** ᴄʜᴀɴɴᴇʟs\n\n\`\`\`ansi\n\u001b[1;32m ${onlineMembers} ᴏɴʟɪɴᴇ \u001b[0m\`\`\`\`\`\`ansi\n\u001b[1;31m ${totalMembers - onlineMembers} ᴏғғʟɪɴᴇ \u001b[0m\`\`\`\nLast updated <t:${updatedAt}:R>`;
   const iconUrl = guild.iconURL({ dynamic: true, size: 256 });
 
   if (iconUrl) {
@@ -220,10 +220,18 @@ export function stopStatusUpdater() {
   }
 }
 
+/**
+ * Retrieves the current status message instance.
+ * @returns {import('discord.js').Message|null} The status message.
+ */
 export function getStatusMessage() {
   return statusMessage;
 }
 
+/**
+ * Sets the current status message instance.
+ * @param {import('discord.js').Message} message - The status message to set.
+ */
 export function setStatusMessage(message) {
   statusMessage = message;
 }

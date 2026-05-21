@@ -21,6 +21,10 @@ import { eReply, addFooter } from "../utils/embed.js";
 import { i, icon } from "../utils/icons.js";
 import { checkModerationPermission } from "../utils/moderation.js";
 
+/**
+ * Command to set up verification embeds in the verification channel.
+ * @module setupVerificationCommand
+ */
 export default {
   data: new SlashCommandBuilder()
     .setName("setup-verification")
@@ -48,24 +52,35 @@ export default {
         ),
     ),
 
+  /**
+   * Executes the setup-verification command.
+   * @param {import("discord.js").ChatInputCommandInteraction} interaction - The interaction object.
+   * @returns {Promise<void>}
+   */
   async execute(interaction) {
+    // Check if the user has moderation permissions
     if (!(await checkModerationPermission(interaction.guild, interaction.user.id, "mod"))) {
       return interaction.reply(eReply("Notice", "Admins only."));
     }
+    
     try {
       if (!interaction.deferred && !interaction.replied) {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       }
 
+      // Update auto-DM setting if provided
       const autoOption = interaction.options.getString("auto");
       if (autoOption !== null) {
         const enabled = autoOption === "on";
         await setAutoDmEnabled(enabled);
       }
+      
+      // Update auto-approve setting if provided
       const approveOption = interaction.options.getString("approve");
       if (approveOption !== null) {
         await setAutoApprove(approveOption === "auto");
       }
+      
       const currentAutoDm = await getAutoDmEnabled();
       const currentAutoApprove = await getAutoApprove();
 
@@ -79,6 +94,7 @@ export default {
         );
       }
 
+      // Build the verification buttons
       const buttonRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId("dev_check")
@@ -93,6 +109,8 @@ export default {
           .setLabel("ɢᴜɪʟᴅ-ᴍᴇᴍʙᴇʀ")
           .setStyle(ButtonStyle.Success),
       );
+      
+      // Build the self-role buttons
       const selfRoleRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId("selfrole_pc")
@@ -116,6 +134,7 @@ export default {
           .setStyle(ButtonStyle.Secondary)
       );
 
+      // Build the verification container
       const verificationContainer = new ContainerBuilder()
         .setAccentColor(0x00ddff)
         .addTextDisplayComponents(
@@ -146,6 +165,7 @@ export default {
         flags: MessageFlags.IsComponentsV2,
       };
 
+      // Fetch recent messages to find existing verification embeds
       const messages = await verificationChannel.messages.fetch({ limit: 10 });
       let existingMessage = null;
 
@@ -157,12 +177,14 @@ export default {
         "member verification",
         "ᴍᴇᴍʙᴇʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ",
       ];
+      
       const matchesVerif = (haystack) => {
         if (!haystack) return false;
         const lc = haystack.toLowerCase();
         return VERIF_NEEDLES.some((n) => lc.includes(n));
       };
 
+      // Find the existing verification message
       messages.forEach((msg) => {
         if (msg.author.id !== interaction.client.user.id) return;
         if (
@@ -190,13 +212,16 @@ export default {
       if (existingMessage) {
         const isLegacy = existingMessage.embeds?.length > 0;
         if (isLegacy) {
+          // Replace legacy embed with new container
           await existingMessage.delete().catch(() => {});
           await verificationChannel.send(payload);
         } else {
+          // Update existing container
           await existingMessage.edit(payload);
         }
         console.log("[INFO] Updated existing verification message");
 
+        // Delete any other stale verification messages
         const stale = messages.filter(
           (msg) =>
             msg.id !== existingMessage.id &&
@@ -218,6 +243,7 @@ export default {
           ),
         );
       } else {
+        // Create new verification embed
         await verificationChannel.send(payload);
         console.log("[INFO] Created new verification embed");
         await interaction.editReply(

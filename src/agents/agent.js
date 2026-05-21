@@ -1,6 +1,10 @@
+/**
+ * @file agent.js
+ * @description Core agent logic for processing messages, executing tools, and managing prompts.
+ */
+
 import { generateText } from "ai";
 import fs from "fs/promises";
-import fsSync from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import config, { getLanguageModel } from "./config.js";
@@ -33,13 +37,18 @@ const __dirname = path.dirname(__filename);
 
 const promptCache = new Map();
 
-// Assembled prompt caches — avoids re-concatenating 6+ strings on every message
 let _cachedBasePrompt = null;
 let _cachedFullPrompt = null;
 let _cachedPass1Base = null;
 let _cachedPass2Base = null;
 let _model = null;
 
+/**
+ * Loads a prompt from the file system, utilizing a cache to avoid repeated reads.
+ * @param {string} promptName - The name of the prompt file (without extension).
+ * @param {boolean} [useCache=true] - Whether to use the cached prompt if available.
+ * @returns {Promise<string>} The content of the prompt.
+ */
 async function loadPrompt(promptName, useCache = true) {
   if (useCache && promptCache.has(promptName)) {
     return promptCache.get(promptName);
@@ -49,20 +58,25 @@ async function loadPrompt(promptName, useCache = true) {
   let content = await fs.readFile(promptPath, "utf-8");
 
   if (promptName === "tools" || promptName === "master") {
-    content = filterToolsContext(content);
+    content = await filterToolsContext(content);
   }
 
   promptCache.set(promptName, content);
   return content;
 }
 
-function filterToolsContext(content) {
+/**
+ * Filters out disabled tools from the prompt context based on tools.json configuration.
+ * @param {string} content - The raw prompt content.
+ * @returns {Promise<string>} The filtered prompt content.
+ */
+async function filterToolsContext(content) {
   let toolsConfig;
   try {
     const configPath = path.join(__dirname, "tools.json");
-    toolsConfig = JSON.parse(fsSync.readFileSync(configPath, "utf-8"));
+    const fileContent = await fs.readFile(configPath, "utf-8");
+    toolsConfig = JSON.parse(fileContent);
   } catch (err) {
-    // Fallback if file doesn't exist
     return content;
   }
 
@@ -70,14 +84,12 @@ function filterToolsContext(content) {
 
   for (const [toolName, isEnabled] of Object.entries(toolsConfig)) {
     if (isEnabled === false) {
-      // Remove RULE blocks
       const ruleRegex = new RegExp(
         `<!-- RULE:${toolName} -->[\\s\\S]*?<!-- END_RULE:${toolName} -->\\n?`,
         "g",
       );
       filteredContent = filteredContent.replace(ruleRegex, "");
 
-      // Remove DEF blocks
       const defRegex = new RegExp(
         `<!-- DEF:${toolName} -->[\\s\\S]*?<!-- END_DEF:${toolName} -->\\n?`,
         "g",
@@ -89,6 +101,10 @@ function filterToolsContext(content) {
   return filteredContent;
 }
 
+/**
+ * Retrieves the base system prompt without tool definitions.
+ * @returns {Promise<string>} The base system prompt.
+ */
 async function getSystemPromptWithoutTools() {
   if (_cachedBasePrompt) return _cachedBasePrompt;
   const [personality, master] = await Promise.all([
@@ -100,6 +116,10 @@ async function getSystemPromptWithoutTools() {
   return _cachedBasePrompt;
 }
 
+/**
+ * Retrieves the full system prompt including tool definitions.
+ * @returns {Promise<string>} The full system prompt.
+ */
 async function getSystemPrompt() {
   if (_cachedFullPrompt) return _cachedFullPrompt;
   const [base, toolsCtx] = await Promise.all([
@@ -110,7 +130,10 @@ async function getSystemPrompt() {
   return _cachedFullPrompt;
 }
 
-// Pass 1: just tools + 2-line instruction
+/**
+ * Retrieves the base prompt for the first pass (tool extraction).
+ * @returns {Promise<string>} The pass 1 base prompt.
+ */
 async function getPass1BasePrompt() {
   if (_cachedPass1Base) return _cachedPass1Base;
   const toolsCtx = await loadPrompt("tools");
@@ -118,7 +141,10 @@ async function getPass1BasePrompt() {
   return _cachedPass1Base;
 }
 
-// Pass 2: personality + short synthesis rule
+/**
+ * Retrieves the base prompt for the second pass (natural language synthesis).
+ * @returns {Promise<string>} The pass 2 base prompt.
+ */
 async function getPass2BasePrompt() {
   if (_cachedPass2Base) return _cachedPass2Base;
   const master = await loadPrompt("personality");
@@ -129,6 +155,11 @@ async function getPass2BasePrompt() {
 
 let agentInitialized = false;
 
+/**
+ * Initializes the agent, tools, and prompts.
+ * @param {object} client - The Discord client instance.
+ * @returns {Promise<object>} The initialized agent methods.
+ */
 export async function initializeAgent(client) {
   if (agentInitialized) {
     console.log("[AGENT] Already initialized, skipping");
@@ -145,24 +176,24 @@ export async function initializeAgent(client) {
   ]);
   _model = getLanguageModel();
 
-  await Promise.all([
-    getSystemPrompt(),
-    getPass1BasePrompt(),
-    getPass2BasePrompt(),
-  ]);
-  _model = getLanguageModel();
-
   agentInitialized = true;
   console.log("[AGENT] Initialized successfully");
   return { processMessage, executeCommand, getStats };
 }
 
+/**
+ * Executes a tool by its name with the provided parameters.
+ * @param {string} toolName - The name of the tool to execute.
+ * @param {object} params - The parameters for the tool.
+ * @returns {Promise<object>} The result of the tool execution.
+ */
 async function executeToolByName(toolName, params) {
   try {
     let toolsConfig = {};
     try {
       const configPath = path.join(__dirname, "tools.json");
-      toolsConfig = JSON.parse(fsSync.readFileSync(configPath, "utf-8"));
+      const fileContent = await fs.readFile(configPath, "utf-8");
+      toolsConfig = JSON.parse(fileContent);
     } catch (err) {}
 
     if (toolsConfig[toolName] === false) {
@@ -183,6 +214,14 @@ async function executeToolByName(toolName, params) {
   }
 }
 
+/**
+ * Processes a user message, potentially executing tools and generating a response.
+ * @param {string} userId - The ID of the user sending the message.
+ * @param {string} guildId - The ID of the guild where the message was sent.
+ * @param {string} message - The content of the user's message.
+ * @param {string} [username="Unknown"] - The username of the user.
+ * @returns {Promise<object>} The result of processing the message, including the response.
+ */
 export async function processMessage(userId, guildId, message, username = "Unknown") {
   console.log(`[AGENT] Processing message from user ${userId} (${username})`);
 
@@ -558,6 +597,14 @@ export async function processMessage(userId, guildId, message, username = "Unkno
   }
 }
 
+/**
+ * Executes a command using the executeCommand tool.
+ * @param {string} command - The command to execute.
+ * @param {object} params - The parameters for the command.
+ * @param {string} userId - The ID of the user executing the command.
+ * @param {string} guildId - The ID of the guild where the command is executed.
+ * @returns {Promise<object>} The result of the command execution.
+ */
 export async function executeCommand(command, params, userId, guildId) {
   return await tools.executeCommand.execute({
     command,
@@ -567,6 +614,10 @@ export async function executeCommand(command, params, userId, guildId) {
   });
 }
 
+/**
+ * Retrieves statistics for the agent's components.
+ * @returns {object} The statistics object.
+ */
 export function getStats() {
   return {
     knowledgeBase: knowledgeBase.getStats(),
@@ -579,6 +630,11 @@ export function getStats() {
   };
 }
 
+/**
+ * Initializes the entire agent system.
+ * @param {object} discordClient - The Discord client instance.
+ * @returns {Promise<object>} The initialized agent.
+ */
 export async function initializeAgentSystem(discordClient) {
   console.log("[AGENT SYSTEM] Initializing...");
 

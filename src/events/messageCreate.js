@@ -3,6 +3,8 @@ import config from "../../config.js";
 import { checkSpam, checkToxicity, checkHackedAccountSpam } from "../utils/automodRunner.js";
 import { eSend } from "../utils/embed.js";
 import { i } from "../utils/icons.js";
+import { handleVerificationDM, getAutoApprove } from "../utils/verificationHandler.js";
+import { processMessage } from "../agents/agent.js";
 
 const ANNOUNCEMENTS_CHANNEL = "1473075468805738540";
 const NO_MENTION_CHANNELS = new Set([
@@ -12,8 +14,18 @@ const NO_MENTION_CHANNELS = new Set([
 
 const processedMessages = new Set();
 
-// Per-user queue: prevents concurrent processing for the same user
+/**
+ * Per-user queue: prevents concurrent processing for the same user
+ * @type {Map<string, Promise<void>>}
+ */
 const userQueues = new Map();
+
+/**
+ * Enqueues a function for a specific user.
+ * @param {string} userId - The ID of the user.
+ * @param {Function} fn - The function to enqueue.
+ * @returns {Promise<void>}
+ */
 function enqueueForUser(userId, fn) {
   const prev = userQueues.get(userId) || Promise.resolve();
   const next = prev.then(fn, fn);
@@ -24,8 +36,17 @@ function enqueueForUser(userId, fn) {
   return next;
 }
 
+/**
+ * Handles the MessageCreate event.
+ * @module events/messageCreate
+ */
 export default {
   name: Events.MessageCreate,
+  /**
+   * Executes the event handler.
+   * @param {import("discord.js").Message} message - The created message.
+   * @returns {Promise<void>}
+   */
   async execute(message) {
     if (message.channel.id === ANNOUNCEMENTS_CHANNEL) {
       const isOwner = message.guild?.ownerId === message.author.id;
@@ -41,18 +62,14 @@ export default {
     if (message.author.bot) return;
 
     if (!message.guild) {
-      const { handleVerificationDM, getAutoApprove } =
-        await import("../utils/verificationHandler.js");
       if (await getAutoApprove()) {
         const fromVerification = await handleVerificationDM(message);
         if (fromVerification) return;
       }
     }
-    // Trigger AutoMod
     await checkSpam(message);
     await checkToxicity(message);
     
-    // Trigger Multi-image Spam Scrutiny (Async)
     if (message.attachments.size >= 2) {
       const imageUrls = [];
       message.attachments.forEach(att => {
@@ -72,10 +89,9 @@ export default {
       ignoreEveryone: true,
     });
     const isNoMentionChannel = NO_MENTION_CHANNELS.has(message.channel.id);
-    const isBroadcastMention = message.mentions.everyone; // true for both @everyone and @here
+    const isBroadcastMention = message.mentions.everyone;
     const isAITicketChannel = message.channel.topic === "ticket_ai_enabled";
 
-    // Ignore @everyone / @here pings unless the bot is explicitly mentioned by ID
     if (isBroadcastMention && !isMentioned) return;
 
     if (isMentioned || isNoMentionChannel || isAITicketChannel) {
@@ -95,12 +111,9 @@ export default {
         processedMessages.delete(firstId);
       }
 
-      // Fire typing immediately — outside the queue so user sees it right away,
-      // even if a previous message from this user is still being processed.
       message.channel.sendTyping().catch(() => {});
 
       enqueueForUser(message.author.id, async () => {
-        // Keep typing indicator alive (expires after 10s) for the duration of processing
         let typingDone = false;
         const keepTyping = () => {
           if (typingDone) return;
@@ -124,7 +137,6 @@ export default {
 
           console.log(`[AI] Question from ${message.author.tag}: ${question}`);
 
-          const { processMessage } = await import("../agents/agent.js");
           const result = await processMessage(
             message.author.id,
             message.guild?.id || "dm",
@@ -207,7 +219,7 @@ export default {
                 .catch(() => {}),
             );
         } finally {
-          typingDone = true; // Stop the keep-typing loop
+          typingDone = true;
         }
       });
       return;

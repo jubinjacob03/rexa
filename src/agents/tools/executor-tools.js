@@ -1,18 +1,17 @@
 /**
- * Executor Tools - Predefined Flows, HTTP Calls, Web Fetch & Search
- * Handles external interactions and automated workflows
+ * @file executor-tools.js
+ * @description Executor Tools - Predefined Flows, HTTP Calls, Web Fetch & Search. Handles external interactions and automated workflows.
  */
 
 import { tool } from "ai";
 import { z } from "zod";
-import config from "../config.js";
 
 const HTTP_CONFIG = {
   timeout: 10000,
-  maxResponseSize: 5242880, // 5MB
+  maxResponseSize: 5242880,
   maxRetries: 3,
   retryDelay: 1000,
-  allowAllDomains: true, // Allow fetching from any URL
+  allowAllDomains: true,
   blockedDomains: process.env.HTTP_TOOL_BLOCKED_DOMAINS?.split(",") || [],
   rateLimit: 60,
 };
@@ -22,7 +21,8 @@ const rateLimitTracker = new Map();
 let discordClient = null;
 
 /**
- * Initialize with Discord client
+ * Initializes the executor with the Discord client.
+ * @param {object} client - The Discord client instance.
  */
 export function initializeExecutor(client) {
   discordClient = client;
@@ -30,7 +30,7 @@ export function initializeExecutor(client) {
 }
 
 /**
- * Predefined workflow definitions
+ * Predefined workflow definitions.
  */
 const WORKFLOWS = {
   "welcome-new-member": {
@@ -88,7 +88,9 @@ const WORKFLOWS = {
 };
 
 /**
- * Check if domain is allowed
+ * Checks if a domain is allowed based on configuration.
+ * @param {string} url - The URL to check.
+ * @returns {boolean} True if the domain is allowed, false otherwise.
  */
 function isAllowedDomain(url) {
   try {
@@ -123,7 +125,9 @@ function isAllowedDomain(url) {
 }
 
 /**
- * Check rate limit
+ * Checks the rate limit for a given URL.
+ * @param {string} url - The URL to check.
+ * @returns {object} An object indicating if the request is allowed and the reset time if not.
  */
 function checkRateLimit(url) {
   try {
@@ -155,7 +159,11 @@ function checkRateLimit(url) {
 }
 
 /**
- * Fetch with timeout
+ * Fetches a URL with a timeout.
+ * @param {string} url - The URL to fetch.
+ * @param {object} options - Fetch options.
+ * @param {number} timeout - The timeout in milliseconds.
+ * @returns {Promise<Response>} The fetch response.
  */
 async function fetchWithTimeout(url, options, timeout) {
   const controller = new AbortController();
@@ -178,7 +186,10 @@ async function fetchWithTimeout(url, options, timeout) {
 }
 
 /**
- * Execute HTTP request
+ * Executes an HTTP request.
+ * @param {object} options - The request options.
+ * @param {number} [retryCount=0] - The current retry count.
+ * @returns {Promise<object>} The result of the HTTP request.
  */
 export async function executeHttpRequest(options, retryCount = 0) {
   const {
@@ -297,7 +308,9 @@ export async function executeHttpRequest(options, retryCount = 0) {
 }
 
 /**
- * Fetch and parse a web page
+ * Fetches and parses a web page.
+ * @param {string} url - The URL of the web page to fetch.
+ * @returns {Promise<object>} The parsed web page content.
  */
 export async function fetchWebPage(url) {
   try {
@@ -367,11 +380,18 @@ export async function fetchWebPage(url) {
     };
   }
 }
+
+/**
+ * Performs a web search using Tavily or DuckDuckGo.
+ * @param {string} query - The search query.
+ * @param {object} [options={}] - Search options.
+ * @param {number} [options.maxResults=5] - Maximum number of results.
+ * @returns {Promise<object>} The search results.
+ */
 export async function webSearch(query, options = {}) {
   const { maxResults = 5 } = options;
   const tavilyKey = process.env.TAVILY_API_KEY;
 
-  // --- Tavily Search (preferred — real web results, free 1k/month) ---
   if (tavilyKey) {
     try {
       const result = await executeHttpRequest({
@@ -416,7 +436,6 @@ export async function webSearch(query, options = {}) {
     }
   }
 
-  // --- DuckDuckGo fallback (instant answers only) ---
   try {
     const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1`;
 
@@ -457,7 +476,10 @@ export async function webSearch(query, options = {}) {
 }
 
 /**
- * Execute predefined workflow
+ * Executes a predefined workflow.
+ * @param {string} workflowName - The name of the workflow to execute.
+ * @param {object} [context={}] - Context data for the workflow.
+ * @returns {Promise<object>} The result of the workflow execution.
  */
 export async function executeWorkflow(workflowName, context = {}) {
   const workflow = WORKFLOWS[workflowName];
@@ -526,7 +548,7 @@ export async function executeWorkflow(workflowName, context = {}) {
 }
 
 /**
- * HTTP Request Tool for AI agent
+ * HTTP Request Tool for AI agent.
  */
 export const httpRequestTool = tool({
   description: `Make HTTP API requests to any external service or website. Supports GET, POST, PUT, DELETE, PATCH.
@@ -559,7 +581,7 @@ Use for: fetching data, accessing APIs, retrieving web content, and more.`,
 });
 
 /**
- * Web Fetch Tool for AI agent
+ * Web Fetch Tool for AI agent.
  */
 export const webFetchTool = tool({
   description: `Fetch and extract text content from any web page or API endpoint. Returns cleaned text without HTML tags.
@@ -579,7 +601,7 @@ Automatically handles both HTML pages and JSON responses.`,
 });
 
 /**
- * Web Search Tool for AI agent
+ * Web Search Tool for AI agent.
  */
 export const webSearchTool = tool({
   description: `Search the web using DuckDuckGo. Get instant answers and related topics.
@@ -599,7 +621,7 @@ Use when you need current information or facts not in your knowledge base.`,
 });
 
 /**
- * Workflow Executor Tool for AI agent
+ * Workflow Executor Tool for AI agent.
  */
 export const workflowTool = tool({
   description: `Execute predefined workflows for common tasks.
@@ -622,7 +644,8 @@ Each workflow runs a sequence of automated steps.`,
 });
 
 /**
- * Get available workflows
+ * Gets available workflows.
+ * @returns {Array<object>} The available workflows.
  */
 export function getWorkflows() {
   return Object.entries(WORKFLOWS).map(([name, workflow]) => ({
@@ -633,14 +656,16 @@ export function getWorkflows() {
 }
 
 /**
- * Get allowed domains
+ * Gets allowed domains.
+ * @returns {Array<string>} The allowed domains.
  */
 export function getAllowedDomains() {
   return HTTP_CONFIG.allowedDomains;
 }
 
 /**
- * Add allowed domain
+ * Adds an allowed domain.
+ * @param {string} domain - The domain to add.
  */
 export function addAllowedDomain(domain) {
   if (!HTTP_CONFIG.allowedDomains.includes(domain)) {

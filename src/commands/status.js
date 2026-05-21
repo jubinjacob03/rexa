@@ -10,7 +10,7 @@ import {
   MessageFlags,
 } from "discord.js";
 import voiceManager from "../voice/VoiceManager.js";
-import { readFileSync } from "fs";
+import { readFile } from "fs/promises";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { i, icon } from "../utils/icons.js";
@@ -19,11 +19,20 @@ import { EPHEMERAL_COLOR, addFooter } from "../utils/embed.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+/**
+ * Command to show the overall bot status.
+ * @module statusCommand
+ */
 export default {
   data: new SlashCommandBuilder()
     .setName("status")
     .setDescription("Show overall bot status"),
 
+  /**
+   * Executes the status command.
+   * @param {import("discord.js").ChatInputCommandInteraction} interaction - The interaction object.
+   * @returns {Promise<void>}
+   */
   async execute(interaction) {
     const payload = await buildStatusPayload(interaction.client, interaction.guild);
     await interaction.reply({
@@ -33,11 +42,19 @@ export default {
   },
 };
 
+/**
+ * Builds the payload for the status message.
+ * @param {import("discord.js").Client} client - The Discord client.
+ * @param {import("discord.js").Guild} guild - The Discord guild.
+ * @returns {Promise<Object>} The message payload.
+ */
 export async function buildStatusPayload(client, guild) {
+  // Build bot statistics
   let botStats = `${icon("UPTIME")} **ᴜᴘᴛɪᴍᴇ:** ${formatUptime(client.uptime)}\n`;
   botStats += `${icon("MEMBERS")} **ᴜsᴇʀs:** ${client.users.cache.size}\n`;
   botStats += `${icon("CHANNELS")} **ᴄʜᴀɴɴᴇʟs:** ${client.channels.cache.size}`;
 
+  // Build voice statistics
   let voiceStats = "";
   const voiceStatus = voiceManager.getStatus(guild.id);
   if (voiceStatus.connected) {
@@ -56,6 +73,7 @@ export async function buildStatusPayload(client, guild) {
     voiceStats += `${icon("OFFLINE")} **ᴠᴏɪᴄᴇ:** ɴᴏᴛ ᴄᴏɴɴᴇᴄᴛᴇᴅ`;
   }
 
+  // Build verification statistics
   let verifStats = "";
   try {
     const verificationPath = join(
@@ -65,7 +83,8 @@ export async function buildStatusPayload(client, guild) {
       "data",
       "verification.json",
     );
-    const verificationData = JSON.parse(readFileSync(verificationPath, "utf8"));
+    const fileContent = await readFile(verificationPath, "utf8");
+    const verificationData = JSON.parse(fileContent);
     if (verificationData[guild.id]) {
       const cfg = verificationData[guild.id];
       verifStats += `${icon("SUCCESS")} **ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ:** ᴀᴄᴛɪᴠᴇ`;
@@ -73,8 +92,10 @@ export async function buildStatusPayload(client, guild) {
         verifStats += ` (<#${cfg.verificationChannelId}>)`;
     }
   } catch {
+    // Ignore errors if verification data is not found or invalid
   }
 
+  // Build the refresh button
   const refreshRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("refresh_bot_status")
@@ -82,6 +103,7 @@ export async function buildStatusPayload(client, guild) {
       .setStyle(ButtonStyle.Secondary),
   );
 
+  // Build the container
   const container = new ContainerBuilder()
     .setAccentColor(EPHEMERAL_COLOR)
     .addTextDisplayComponents(
@@ -105,7 +127,6 @@ export async function buildStatusPayload(client, guild) {
   }
 
   container.addActionRowComponents(refreshRow);
-
   addFooter(container);
 
   return {
@@ -114,6 +135,11 @@ export async function buildStatusPayload(client, guild) {
   };
 }
 
+/**
+ * Formats uptime in milliseconds to a readable string.
+ * @param {number} ms - Uptime in milliseconds.
+ * @returns {string} Formatted uptime string.
+ */
 function formatUptime(ms) {
   const seconds = Math.floor(ms / 1000);
   const minutes = Math.floor(seconds / 60);

@@ -12,7 +12,7 @@ import {
   StringSelectMenuOptionBuilder,
   MessageFlags,
 } from "discord.js";
-import { readFileSync } from "fs";
+import { readFile } from "fs/promises";
 import { join } from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
@@ -21,16 +21,29 @@ import { i, icon } from "./icons.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+let cachedRolesData = null;
+
+/**
+ * Handles the roles info interaction.
+ * @param {import('discord.js').Interaction} interaction - The interaction object.
+ * @param {string} [selectedCategory="home"] - The selected category.
+ * @returns {Promise<void>}
+ */
 export async function handleRolesInfo(interaction, selectedCategory = "home") {
   const rolesPath = join(__dirname, "..", "..", "data", "roles-info.json");
-  let rolesData;
-  try {
-    rolesData = JSON.parse(readFileSync(rolesPath, "utf8"));
-  } catch {
-    const errPayload = eReply(`${i("ERROR")} ᴇʀʀᴏʀ`, "ʀᴏʟᴇs ɪɴғᴏ ɴᴏᴛ ᴄᴏɴғɪɢᴜʀᴇᴅ.");
-    return interaction.isStringSelectMenu() 
-      ? await interaction.update(errPayload) 
-      : await interaction.reply(errPayload);
+  let rolesData = cachedRolesData;
+  
+  if (!rolesData) {
+    try {
+      const fileContent = await readFile(rolesPath, "utf8");
+      rolesData = JSON.parse(fileContent);
+      cachedRolesData = rolesData;
+    } catch {
+      const errPayload = eReply(`${i("ERROR")} ᴇʀʀᴏʀ`, "ʀᴏʟᴇs ɪɴғᴏ ɴᴏᴛ ᴄᴏɴғɪɢᴜʀᴇᴅ.");
+      return interaction.isStringSelectMenu() 
+        ? await interaction.update(errPayload) 
+        : await interaction.reply(errPayload);
+    }
   }
 
   const resolveEmoji = (value) =>
@@ -61,7 +74,6 @@ export async function handleRolesInfo(interaction, selectedCategory = "home") {
       );
     }
   } else {
-    // RENDER SPECIFIC CATEGORY WITH BUTTON PILLS
     const sectionIndex = parseInt(selectedCategory, 10);
     const section = rolesData.sections[sectionIndex];
     if (section) {
@@ -83,14 +95,12 @@ export async function handleRolesInfo(interaction, selectedCategory = "home") {
             .setLabel(r.name)
             .setEmoji(r.emoji)
             .setStyle(ButtonStyle.Secondary)
-            // Left out .setDisabled(true) so they remain bright and clickable
         );
       });
       container.addActionRowComponents(row);
     }
   }
 
-  // CREATE FLUID NAVIGATION DROPDOWN
   const navRow = new ActionRowBuilder();
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId("roles_nav_dropdown")

@@ -14,7 +14,6 @@ const resolved = {};
  * @param {import('discord.js').Client} client
  */
 export function initIcons(client) {
-  // Build a flat name→emoji lookup across all guilds
   const emojiByName = new Map();
   for (const guild of client.guilds.cache.values()) {
     for (const emoji of guild.emojis.cache.values()) {
@@ -24,7 +23,7 @@ export function initIcons(client) {
 
   let loaded = 0;
   for (const [key, entry] of Object.entries(iconMap)) {
-    if (key.startsWith("_")) continue; // skip comment keys
+    if (key.startsWith("_")) continue;
     const emoji = emojiByName.get(entry.serverEmojiName);
     if (emoji) {
       resolved[key] =

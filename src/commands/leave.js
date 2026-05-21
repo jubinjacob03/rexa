@@ -1,17 +1,27 @@
-import { SlashCommandBuilder, MessageFlags } from "discord.js";
+import { SlashCommandBuilder } from "discord.js";
 import voiceManager from "../voice/VoiceManager.js";
 import { eReply } from "../utils/embed.js";
 import { i } from "../utils/icons.js";
 
+/**
+ * Command to stop playback and leave the voice channel.
+ * @module leaveCommand
+ */
 export default {
   data: new SlashCommandBuilder()
     .setName("leave")
     .setDescription("Stop and leave voice channel"),
 
+  /**
+   * Executes the leave command.
+   * @param {import("discord.js").ChatInputCommandInteraction} interaction - The interaction object.
+   * @returns {Promise<void>}
+   */
   async execute(interaction) {
     const guildId = interaction.guild.id;
     const connection = voiceManager.getConnection(guildId);
 
+    // Check if the bot is currently connected to a voice channel
     if (!connection) {
       return interaction.reply(
         eReply(
@@ -21,6 +31,7 @@ export default {
       );
     }
 
+    // Stop playback and leave the channel
     voiceManager.stop(guildId);
     voiceManager.leaveChannel(guildId);
 

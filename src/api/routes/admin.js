@@ -16,6 +16,10 @@ import { addFooter } from "../../utils/embed.js";
 
 const router = Router();
 
+/**
+ * POST /api/admin/refresh
+ * Refreshes the status message.
+ */
 router.post("/refresh", async (req, res) => {
   try {
     const client = req.app.get("discordClient");

@@ -5,8 +5,11 @@ import axios from "axios";
 
 const router = Router();
 
-// ── Persistent keep-alive singleton — one TCP connection reused for all calls.
-// Eliminates the ~100–300 ms TCP handshake overhead on each music command.
+/**
+ * Creates a persistent keep-alive agent for HTTP/HTTPS requests.
+ * @param {string} url - The base URL to determine the protocol.
+ * @returns {http.Agent|https.Agent} The configured agent.
+ */
 const makeAgent = (url) =>
   url?.startsWith("https")
     ? new https.Agent({ keepAlive: true, maxSockets: 10 })
@@ -33,6 +36,12 @@ const remani = () => {
 
 const CMD_TIMEOUT = 8_000;
 
+/**
+ * Creates a proxy middleware for POST requests to the Remani API.
+ * @param {string} remaniPath - The path to proxy to.
+ * @param {number} [timeout=CMD_TIMEOUT] - The request timeout in milliseconds.
+ * @returns {import('express').RequestHandler} The Express request handler.
+ */
 const proxyPost =
   (remaniPath, timeout = CMD_TIMEOUT) =>
   async (req, res) => {
@@ -78,28 +87,22 @@ const proxyDelete = (remaniPath) => async (req, res) => {
   }
 };
 
-// ── Play (long timeout — Lavalink search + load)
 router.post("/play", proxyPost("/play", 35_000));
 
-// ── Status (polled every 2 s, must be fast)
 router.get(
   "/status",
   proxyGet("/status", (req) => ({ guildId: req.query.guildId })),
 );
 
-// ── Queue details
 router.get(
   "/queue",
   proxyGet("/queue", (req) => ({ guildId: req.query.guildId })),
 );
 
-// ── Health passthrough
 router.get("/health", proxyGet("/health"));
 
-// ── Search
 router.post("/search", proxyPost("/search", 12_000));
 
-// ── Direct per-action commands (no switch dispatch, minimal payload)
 router.post("/skip", proxyPost("/skip"));
 router.post("/pause", proxyPost("/pause"));
 router.post("/resume", proxyPost("/resume"));
@@ -110,7 +113,6 @@ router.post("/loop", proxyPost("/loop"));
 router.post("/volume", proxyPost("/volume"));
 router.post("/remove", proxyPost("/remove"));
 
-// ── Legacy generic control (backward compat)
 router.post("/control", proxyPost("/control"));
 
 export default router;

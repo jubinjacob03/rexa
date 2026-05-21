@@ -6,19 +6,12 @@ import {
   GatewayIntentBits,
   Collection,
   Events,
-  MessageFlags,
-  ContainerBuilder,
-  TextDisplayBuilder,
-  SectionBuilder,
-  ThumbnailBuilder,
-  SeparatorBuilder,
-  SeparatorSpacingSize,
 } from "discord.js";
-import { eReply, EMBED_COLOR, EPHEMERAL_COLOR, addFooter } from "./utils/embed.js";
-import { i, icon } from "./utils/icons.js";
+import { eReply } from "./utils/embed.js";
+import { i } from "./utils/icons.js";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
-import { readdirSync, readFileSync } from "fs";
+import { readdirSync } from "fs";
 import ffmpegPath from "ffmpeg-static";
 import config from "../config.js";
 import { updateStatusMessage } from "./utils/statusUpdater.js";

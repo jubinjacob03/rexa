@@ -53,6 +53,8 @@
     "zod": "^3.22.0"
   },
   "devDependencies": {
+    "eslint": "^10.4.0",
+    "eslint-plugin-unused-imports": "^4.4.1",
     "nodemon": "^3.0.0"
   }
 }

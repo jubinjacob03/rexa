@@ -7,7 +7,6 @@ import {
   SeparatorSpacingSize,
   MessageFlags,
 } from "discord.js";
-import config from "../../config.js";
 import { EMBED_COLOR, eReply, eSend } from "../utils/embed.js";
 import { i } from "../utils/icons.js";
 import { checkModerationPermission } from "../utils/moderation.js";
@@ -15,6 +14,12 @@ import { checkModerationPermission } from "../utils/moderation.js";
 const BULK_DELETE_MAX_AGE_MS = 13 * 24 * 60 * 60 * 1000;
 const BATCH_SIZE = 100;
 
+/**
+ * Fetches all messages in a channel, optionally after a specific message ID.
+ * @param {import("discord.js").TextBasedChannel} channel - The channel to fetch messages from.
+ * @param {string|null} afterId - The message ID to fetch messages after.
+ * @returns {Promise<import("discord.js").Message[]>}
+ */
 async function fetchAllMessages(channel, afterId = null) {
   const all = [];
   let lastId = null;
@@ -30,6 +35,7 @@ async function fetchAllMessages(channel, afterId = null) {
     lastId = batch.last().id;
   }
 
+  // Sort messages by creation time (oldest first)
   all.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
 
   if (afterId) {
@@ -41,11 +47,18 @@ async function fetchAllMessages(channel, afterId = null) {
   return all;
 }
 
+/**
+ * Deletes a list of messages from a channel.
+ * @param {import("discord.js").TextBasedChannel} channel - The channel to delete messages from.
+ * @param {import("discord.js").Message[]} messages - The messages to delete.
+ * @returns {Promise<{deleted: number, failed: number}>}
+ */
 async function deleteMessages(channel, messages) {
   let deleted = 0;
   let failed = 0;
   const now = Date.now();
 
+  // Separate messages into recent (can be bulk deleted) and old (must be deleted individually)
   const recent = messages.filter(
     (m) => now - m.createdTimestamp <= BULK_DELETE_MAX_AGE_MS,
   );
@@ -53,12 +66,14 @@ async function deleteMessages(channel, messages) {
     (m) => now - m.createdTimestamp > BULK_DELETE_MAX_AGE_MS,
   );
 
+  // Bulk delete recent messages in batches
   for (let i = 0; i < recent.length; i += BATCH_SIZE) {
     const chunk = recent.slice(i, i + BATCH_SIZE);
     try {
       await channel.bulkDelete(chunk, true);
       deleted += chunk.length;
     } catch {
+      // Fallback to individual deletion if bulk delete fails
       for (const msg of chunk) {
         try {
           await msg.delete();
@@ -68,11 +83,13 @@ async function deleteMessages(channel, messages) {
         }
       }
     }
+    // Add a small delay between batches to avoid rate limits
     if (i + BATCH_SIZE < recent.length) {
       await new Promise((r) => setTimeout(r, 1000));
     }
   }
 
+  // Delete old messages individually
   for (const msg of old) {
     try {
       await msg.delete();
@@ -80,6 +97,7 @@ async function deleteMessages(channel, messages) {
     } catch {
       failed++;
     }
+    // Add a small delay every 5 messages to avoid rate limits
     if (deleted % 5 === 0) {
       await new Promise((r) => setTimeout(r, 500));
     }
@@ -88,6 +106,10 @@ async function deleteMessages(channel, messages) {
   return { deleted, failed };
 }
 
+/**
+ * Command to purge messages in a channel.
+ * @module purgeCommand
+ */
 export default {
   data: new SlashCommandBuilder()
     .setName("purge")
@@ -134,7 +156,13 @@ export default {
         .setRequired(false),
     ),
 
+  /**
+   * Executes the purge command.
+   * @param {import("discord.js").ChatInputCommandInteraction} interaction - The interaction object.
+   * @returns {Promise<void>}
+   */
   async execute(interaction) {
+    // Check if the user has moderation permissions
     if (!(await checkModerationPermission(interaction.guild, interaction.user.id, "mod"))) {
       return interaction.reply(
         eReply(
@@ -151,6 +179,7 @@ export default {
     const targetUser = interaction.options.getUser("user");
     const messageId = interaction.options.getString("message_id");
 
+    // Ensure the channel supports messages
     if (!channel.isTextBased()) {
       return interaction.editReply(
         eSend(
@@ -160,6 +189,7 @@ export default {
       );
     }
 
+    // Validate required options based on the selected mode
     if ((mode === "user" || mode === "trail_user") && !targetUser) {
       return interaction.editReply(
         eSend(
@@ -178,6 +208,7 @@ export default {
       );
     }
 
+    // Verify the starting message exists for trail modes
     if (mode === "trail" || mode === "trail_user") {
       try {
         await channel.messages.fetch(messageId);
@@ -201,6 +232,7 @@ export default {
     let toDelete = [];
 
     try {
+      // Fetch messages based on the selected mode
       switch (mode) {
         case "user": {
           const all = await fetchAllMessages(channel);
@@ -246,6 +278,7 @@ export default {
       ),
     );
 
+    // Perform the deletion
     const { deleted, failed } = await deleteMessages(channel, toDelete);
 
     const modeLabel = {
@@ -255,6 +288,7 @@ export default {
       trail_user: `ᴀʟʟ ᴍᴇssᴀɢᴇs ғʀᴏᴍ <@${targetUser?.id}> ғʀᴏᴍ ᴍᴇssᴀɢᴇ \`${messageId}\` ᴏɴᴡᴀʀᴅ`,
     }[mode];
 
+    // Build the completion embed
     const container = new ContainerBuilder().setAccentColor(EMBED_COLOR);
     container.addTextDisplayComponents(
       new TextDisplayBuilder().setContent(

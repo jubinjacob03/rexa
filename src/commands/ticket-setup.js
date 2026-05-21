@@ -19,6 +19,10 @@ import { checkModerationPermission } from "../utils/moderation.js";
 
 export const setupSessions = new Map();
 
+/**
+ * Command to launch the Advanced Ticket Setup Dashboard.
+ * @module setupTicketCommand
+ */
 export default {
   data: new SlashCommandBuilder()
     .setName("setup-ticket")
@@ -37,18 +41,27 @@ export default {
         .setRequired(false),
     ),
 
+  /**
+   * Executes the setup-ticket command.
+   * @param {import("discord.js").ChatInputCommandInteraction} interaction - The interaction object.
+   * @returns {Promise<void>}
+   */
   async execute(interaction) {
+    // Check if the user has moderation permissions
     if (!(await checkModerationPermission(interaction.guild, interaction.user.id, "mod"))) {
       return interaction.reply(eReply("Notice", "Admins only."));
     }
+    
     const targetChannel = interaction.options.getChannel("channel");
     const advanced = interaction.options.getBoolean("advanced") || false;
 
+    // If not advanced, publish the simple ticket panel directly
     if (!advanced) {
       await publishSimpleTicketPanel(interaction, targetChannel);
       return;
     }
 
+    // Fetch ticket mods configuration from Supabase
     let ticketMods = [];
     if (supabase) {
       const { data } = await supabase
@@ -56,13 +69,17 @@ export default {
         .select("content")
         .eq("action_id", "ticket_mods_config")
         .single();
+        
       if (data?.content) {
         try {
           ticketMods = JSON.parse(data.content);
-        } catch {}
+        } catch {
+          // Ignore parsing errors
+        }
       }
     }
 
+    // Initialize the setup session for the user
     setupSessions.set(interaction.user.id, {
       title: "🎟️ sᴜᴘᴘᴏʀᴛ ᴛɪᴄᴋᴇᴛs",
       description:
@@ -78,17 +95,18 @@ export default {
   },
 };
 
+/**
+ * Publishes a simple ticket panel to the target channel.
+ * @param {import("discord.js").ChatInputCommandInteraction} interaction - The interaction object.
+ * @param {import("discord.js").TextBasedChannel} targetChannel - The channel to publish the panel to.
+ * @returns {Promise<void>}
+ */
 async function publishSimpleTicketPanel(interaction, targetChannel) {
-  const botUser = interaction.client.user;
-  const botAvatar = botUser.displayAvatarURL({ size: 128 });
-  const year = new Date().getFullYear();
-  const startYear = year - 1;
-  const ts = Math.floor(Date.now() / 1000);
-
   const serverIcon = interaction.guild.iconURL({ size: 128 });
   const panelContainer = new ContainerBuilder()
     .setAccentColor(EMBED_COLOR);
 
+  // Add server icon as thumbnail if available
   if (serverIcon) {
     panelContainer.addSectionComponents(
       new SectionBuilder()
@@ -107,6 +125,7 @@ async function publishSimpleTicketPanel(interaction, targetChannel) {
     );
   }
 
+  // Add the create ticket button
   panelContainer.addActionRowComponents(
       new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -132,6 +151,12 @@ async function publishSimpleTicketPanel(interaction, targetChannel) {
   );
 }
 
+/**
+ * Renders the advanced ticket setup dashboard.
+ * @param {import("discord.js").ChatInputCommandInteraction|import("discord.js").ButtonInteraction} interaction - The interaction object.
+ * @param {boolean} [isUpdate=false] - Whether this is an update to an existing message.
+ * @returns {Promise<void>}
+ */
 export async function renderTicketDashboard(interaction, isUpdate = false) {
   const config = setupSessions.get(interaction.user.id);
   if (!config) return;
@@ -140,6 +165,7 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
   const iconUrl = interaction.guild?.iconURL({ size: 256, dynamic: true });
   const headerContent = `## ${icon("EDITOR")} ᴛɪᴄᴋᴇᴛ ᴇᴅɪᴛᴏʀ\nᴜsᴇ ᴛʜᴇ ᴄᴏɴᴛʀᴏʟs ʙᴇʟᴏᴡ ᴛᴏ ᴄᴏɴғɪɢᴜʀᴇ ᴀɴᴅ ᴘᴜʙʟɪsʜ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ ᴘᴀɴᴇʟ.\n\n**ᴛᴀʀɢᴇᴛ:** <#${config.targetChannelId}>`;
 
+  // Add header with optional server icon
   if (iconUrl) {
     const headerSection = new SectionBuilder()
       .addTextDisplayComponents(new TextDisplayBuilder().setContent(headerContent))
@@ -151,6 +177,7 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
     );
   }
 
+  // Calculate button statistics
   const buttonCount = config.buttons.length;
   const maxButtons = 3;
   const ticketCount = config.buttons.filter((b) => b.type === "ticket").length;
@@ -171,6 +198,7 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
       new TextDisplayBuilder().setContent("### sᴇᴛᴜᴘ ᴀᴄᴛɪᴏɴs"),
     );
 
+  // Determine button states based on current configuration
   const hasTextTicket = config.buttons.some(
     (b) => b.type === "ticket" && b.ticketType === "text",
   );
@@ -180,6 +208,7 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
   const hasTicketBtn = hasTextTicket || hasVcTicket;
   const full = config.buttons.length >= 3;
 
+  // Build setup action buttons
   const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("tsetup_edit_embed")
@@ -207,6 +236,7 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
       .setDisabled(!hasTicketBtn || full),
   );
 
+  // Build publish and preview buttons
   const row2 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("tsetup_clear_buttons")
@@ -244,6 +274,7 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
     flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
   };
 
+  // Send or update the dashboard message
   if (isUpdate) {
     try {
       await interaction.editReply(payload);
