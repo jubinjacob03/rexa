@@ -48,6 +48,9 @@ export default {
     ),
 
   async execute(interaction) {
+    if (!(await checkModerationPermission(interaction.guild, interaction.user.id, "mod"))) {
+      return interaction.reply(eReply("Notice", "Admins only."));
+    }
     try {
       if (!interaction.deferred && !interaction.replied) {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });

@@ -19,18 +19,11 @@ import {
   logApproval,
 } from "../../utils/verificationHandler.js";
 import { broadcastWs } from "../wsServer.js";
+import { checkModerationPermission } from "../../utils/moderation.js";
 
 const router = Router();
 
-const MOD_ROLES = new Set([
-  config.moderatorRoleId,
-  config.managerRoleId,
-  config.ownerRoleId,
-]);
 
-function isModerator(member) {
-  return [...MOD_ROLES].some((r) => member.roles.cache.has(r));
-}
 
 async function broadcastVerification(guild) {
   const pending = await getAllPendingRequests();
@@ -232,7 +225,7 @@ router.post("/approve", async (req, res) => {
       return res
         .status(404)
         .json({ success: false, error: "Requester not found." });
-    if (!isModerator(requester))
+    if (!(await checkModerationPermission(guild, requesterId, "mod")))
       return res
         .status(403)
         .json({ success: false, error: "Moderator+ required." });
@@ -354,7 +347,7 @@ router.post("/reject", async (req, res) => {
       return res
         .status(404)
         .json({ success: false, error: "Requester not found." });
-    if (!isModerator(requester))
+    if (!(await checkModerationPermission(guild, requesterId, "mod")))
       return res
         .status(403)
         .json({ success: false, error: "Moderator+ required." });

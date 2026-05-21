@@ -19,14 +19,14 @@ export default {
   unverifiedRoleId: process.env.UNVERIFIED_ROLE_ID,
   friendsRoleId: process.env.FRIENDS_ROLE_ID,
   memberRoleId: process.env.MEMBER_ROLE_ID,
-  moderatorRoleId: process.env.MODERATOR_ROLE_ID,
-  managerRoleId: process.env.MANAGER_ROLE_ID,
+  moderatorRoleId: process.env.MODERATOR_ROLE_ID || "1473075468088377349",
+  managerRoleId: process.env.MANAGER_ROLE_ID || "1473075468088377350",
   ticketModeratorRoles: ["1020316661070438430"],
-  ownerRoleId: process.env.OWNER_ROLE_ID,
+  ownerRoleId: process.env.OWNER_ROLE_ID || "1473075468088377352",
   botRoleId: process.env.BOT_ROLE_ID,
 
   // Image-only channels
-  imageOnlyChannels: ["1473075469028167811", "1473075469028167814"],
+  imageOnlyChannels: ["1473075469028167811"],
 
   // External services integration
   supabase: {

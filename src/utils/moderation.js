@@ -1,9 +1,5 @@
-const OWNER_ROLE_ID = "1473075468088377352";
-const MOD_ROLE_IDS = new Set([
-  "1473075468088377349",
-  "1473075468088377350",
-  "1473075468088377352",
-]);
+import config from "../../config.js";
+import { PermissionFlagsBits } from "discord.js";
 
 let client = null;
 
@@ -13,14 +9,22 @@ export function setupModerationTools(discordClient) {
 
 export async function checkModerationPermission(guild, userId, level) {
   if (!userId) return false;
-  const invoker = await guild.members
-    .fetch({ user: userId, force: false })
-    .catch(() => null);
-  if (!invoker) return false;
-  const roleIds = invoker.roles.cache.map((r) => r.id);
-  if (level === "owner") return roleIds.includes(OWNER_ROLE_ID);
-  if (level === "mod") return roleIds.some((id) => MOD_ROLE_IDS.has(id));
-  return true;
+  const member = await guild.members.fetch({ user: userId, force: false }).catch(() => null);
+  if (!member) return false;
+
+  const isServerOwner = member.id === guild.ownerId;
+  const hasOwnerRole = member.roles.cache.has(config.ownerRoleId);
+  const isOwner = isServerOwner || hasOwnerRole;
+
+  if (level === "owner") return isOwner;
+
+  if (level === "mod") {
+    if (isOwner) return true;
+    if (member.permissions.has(PermissionFlagsBits.Administrator)) return true;
+    if (config.managerRoleId && member.roles.cache.has(config.managerRoleId)) return true;
+    if (config.moderatorRoleId && member.roles.cache.has(config.moderatorRoleId)) return true;
+  }
+  return false;
 }
 
 export function resolveMemberByName(guild, targetName) {

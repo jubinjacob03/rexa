@@ -20,46 +20,47 @@ export const EPHEMERAL_COLOR = 0x2b2d31;
 function buildV2Container(title, description = null, opts = {}, color = EMBED_COLOR) {
   const container = new ContainerBuilder().setAccentColor(color);
 
-  if (title) {
-    const titleContent = `## ${title}`;
+  // Combine title and description to eliminate awkward vertical gaps
+  let bodyContent = "";
+  if (title) bodyContent += `### ${title}\n`;
+  if (description) {
+    const descLines = description.split("\n").filter(l => l.trim());
+    bodyContent += descLines.length > 1 ? descLines.map(l => l.trim()).join("\n") : description.trim();
+  }
+  bodyContent = bodyContent.trim();
+
+  if (bodyContent) {
     if (opts.thumbnail) {
       const section = new SectionBuilder()
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent(titleContent))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(bodyContent))
         .setThumbnailAccessory(new ThumbnailBuilder().setURL(opts.thumbnail));
       container.addSectionComponents(section);
     } else {
-      container.addTextDisplayComponents(new TextDisplayBuilder().setContent(titleContent));
+      container.addTextDisplayComponents(new TextDisplayBuilder().setContent(bodyContent));
     }
   }
 
-  if (description) {
-    if (title) {
+  // Add fields with a subtle divider
+  if (opts.fields && opts.fields.length > 0) {
+    if (bodyContent) {
       container.addSeparatorComponents(
         new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
       );
     }
-    const descLines = description.split("\n").filter(l => l.trim());
-    const formatted = descLines.length > 1
-      ? descLines.map(l => l.trim()).join("\n")
-      : description;
-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(formatted));
-  }
-
-  if (opts.fields && opts.fields.length > 0) {
-    container.addSeparatorComponents(
-      new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
-    );
     const fieldLines = opts.fields.map((f) => `**${f.name}**\n${f.value}`).join("\n\n");
     container.addTextDisplayComponents(
       new TextDisplayBuilder().setContent(fieldLines)
     );
   }
 
+  // Clean, consistent footer
   const ts = Math.floor(Date.now() / 1000);
   const footerCustom = opts.footer?.text ? `${opts.footer.text} · ` : "";
-  container.addSeparatorComponents(
-    new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
-  );
+  if (bodyContent || (opts.fields && opts.fields.length > 0)) {
+    container.addSeparatorComponents(
+      new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+    );
+  }
   container.addTextDisplayComponents(
     new TextDisplayBuilder().setContent(`-# ${footerCustom}Shantha · <t:${ts}:f>`)
   );

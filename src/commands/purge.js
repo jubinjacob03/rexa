@@ -10,6 +10,7 @@ import {
 import config from "../../config.js";
 import { EMBED_COLOR, eReply, eSend } from "../utils/embed.js";
 import { i } from "../utils/icons.js";
+import { checkModerationPermission } from "../utils/moderation.js";
 
 const BULK_DELETE_MAX_AGE_MS = 13 * 24 * 60 * 60 * 1000;
 const BATCH_SIZE = 100;
@@ -134,7 +135,7 @@ export default {
     ),
 
   async execute(interaction) {
-    if (!interaction.member.roles.cache.has(config.ownerRoleId)) {
+    if (!(await checkModerationPermission(interaction.guild, interaction.user.id, "mod"))) {
       return interaction.reply(
         eReply(
           `${i("ERROR")} ᴀᴄᴄᴇss ᴅᴇɴɪᴇᴅ`,

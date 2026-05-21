@@ -37,6 +37,9 @@ export default {
     ),
 
   async execute(interaction) {
+    if (!(await checkModerationPermission(interaction.guild, interaction.user.id, "mod"))) {
+      return interaction.reply(eReply("Notice", "Admins only."));
+    }
     const targetChannel = interaction.options.getChannel("channel");
     const advanced = interaction.options.getBoolean("advanced") || false;
 
@@ -83,8 +86,10 @@ async function publishSimpleTicketPanel(interaction, targetChannel) {
 
   const serverIcon = interaction.guild.iconURL({ size: 128 });
   const panelContainer = new ContainerBuilder()
-    .setAccentColor(EMBED_COLOR)
-    .addSectionComponents(
+    .setAccentColor(EMBED_COLOR);
+
+  if (serverIcon) {
+    panelContainer.addSectionComponents(
       new SectionBuilder()
         .addTextDisplayComponents(
           new TextDisplayBuilder().setContent(
@@ -92,8 +97,16 @@ async function publishSimpleTicketPanel(interaction, targetChannel) {
           )
         )
         .setThumbnailAccessory(new ThumbnailBuilder().setURL(serverIcon))
-    )
-    .addActionRowComponents(
+    );
+  } else {
+    panelContainer.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(
+        `## ᴛɪᴄᴋᴇᴛ sᴜᴘᴘᴏʀᴛ\nᴄʟɪᴄᴋ ᴛʜᴇ ʙᴜᴛᴛᴏɴ ʙᴇʟᴏᴡ ᴀɴᴅ ᴇɴᴛᴇʀ ʏᴏᴜʀ ǫᴜᴇʀʏ ᴛᴏ \nᴏᴘᴇɴ ᴀ ᴘʀɪᴠᴀᴛᴇ ᴛɪᴄᴋᴇᴛ.`
+      )
+    );
+  }
+
+  panelContainer.addActionRowComponents(
       new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId("tkt_open_simple")
@@ -110,10 +123,12 @@ async function publishSimpleTicketPanel(interaction, targetChannel) {
     flags: MessageFlags.IsComponentsV2,
   });
 
-  await interaction.reply({
-    content: `✅ ᴛɪᴄᴋᴇᴛ ᴘᴀɴᴇʟ ᴄʀᴇᴀᴛᴇᴅ ɪɴ <#${targetChannel.id}>.`,
-    flags: MessageFlags.Ephemeral,
-  });
+  await interaction.reply(
+    eReply(
+      `${icon("SUCCESS")} sᴜᴄᴄᴇss`,
+      `ᴛɪᴄᴋᴇᴛ ᴘᴀɴᴇʟ ᴄʀᴇᴀᴛᴇᴅ ɪɴ <#${targetChannel.id}>.`
+    )
+  );
 }
 
 export async function renderTicketDashboard(interaction, isUpdate = false) {

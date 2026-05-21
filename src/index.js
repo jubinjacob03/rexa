@@ -28,10 +28,9 @@ import {
   handleNicknameModal,
   handleSelfRoleToggle,
 } from "./utils/verificationHandler.js";
-import { handleAutomodInteraction } from "./commands/automod.js";
 import { handleTicketInteraction } from "./utils/ticketHandler.js";
 import { buildStatusPayload } from "./commands/status.js";
-import { postDashboard, handleDashboardInteraction, handleDashboardModal } from "./dashboard/dashboard.js";
+import { postDashboard, handleDashboardInteraction, handleDashboardModal, handleDashboardSelect } from "./dashboard/dashboard.js";
 
 if (ffmpegPath) {
   process.env.FFMPEG_PATH = ffmpegPath;
@@ -121,16 +120,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 
   if (interaction.isButton()) {
-    if (
-      interaction.customId === "automod_toggle_master" ||
-      interaction.customId === "automod_edit_limits" ||
-      interaction.customId === "automod_toggle_spam" ||
-      interaction.customId === "automod_toggle_raid" ||
-      interaction.customId === "automod_toggle_toxicity"
-    ) {
-      await handleAutomodInteraction(interaction);
-      return;
-    }
+
 
     if (interaction.customId === "refresh_stats") {
       try {
@@ -182,35 +172,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
           .setThumbnailAccessory(new ThumbnailBuilder().setURL(guildIcon));
         container.addSectionComponents(header);
       } else {
-        const header = new SectionBuilder()
-          .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(`## ${title}`),
-          )
-          .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(
-              "**How Roles Work:**\n• Staff roles are assigned by bot, leaders, or moderators.\n• Self roles can be assigned automatically via the verification channel.",
-            ),
-          );
-        container.addSectionComponents(header);
+        container.addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(`## ${title}`),
+        );
+        container.addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(
+            "**How Roles Work:**\n• Staff roles are assigned by bot, leaders, or moderators.\n• Self roles can be assigned automatically via the verification channel.",
+          ),
+        );
       }
-
-      const formatColumns = (roles) => {
-        if (!roles || roles.length === 0) return "";
-        const totalWidth = 92;
-        const out = [];
-        for (const r of roles) {
-          const label = `${resolveEmoji(r.emoji)} ${r.name}`.trim();
-          const desc = r.description ? ` — ${r.description}` : "";
-          const line = (label + desc).slice(0, totalWidth).trim();
-          out.push(line);
-          out.push("");
-        }
-        return out.join("\n");
-      };
 
       for (const section of rolesData.sections) {
         const sectionTitle = resolveEmoji(section.name);
-        const roleLines = formatColumns(section.roles);
+        
+        let roleLines = section.roles
+          .map((r) => `${resolveEmoji(r.emoji)} **${r.name}** — ${r.description}`)
+          .join("\n");
 
         container.addSeparatorComponents(
           new SeparatorBuilder()
@@ -219,7 +196,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         );
         container.addTextDisplayComponents(
           new TextDisplayBuilder().setContent(
-            `### ${sectionTitle}\n\`\`\`\n${roleLines}\n\`\`\``,
+            `### ${sectionTitle}\n${roleLines}`
           ),
         );
       }
@@ -274,6 +251,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 
   if (interaction.isUserSelectMenu()) {
+    if (interaction.customId === "shantha_private_vc_select") {
+      await handleDashboardSelect(interaction);
+      return;
+    }
     if (interaction.customId.startsWith("tsetup_")) {
       await handleTicketInteraction(interaction);
       return;
@@ -316,10 +297,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.isModalSubmit()) {
     if (interaction.customId.startsWith("nickname_modal_")) {
       await handleNicknameModal(interaction);
-      return;
-    }
-    if (interaction.customId === "automod_limits_modal") {
-      await handleAutomodInteraction(interaction);
       return;
     }
   }

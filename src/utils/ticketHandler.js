@@ -448,15 +448,13 @@ export async function handleTicketInteraction(interaction) {
 
     if (actionData) {
       if (actionData.type === "text") {
-        await interaction.reply({
-          content: actionData.content,
-          flags: MessageFlags.Ephemeral,
-        });
+        await interaction.reply(
+          eReply("Action Response", actionData.content)
+        );
       } else if (actionData.type === "image") {
-        await interaction.reply({
-          content: actionData.content,
-          flags: MessageFlags.Ephemeral,
-        });
+        await interaction.reply(
+          eReply("Action Response", actionData.content)
+        );
       }
     } else {
       await interaction.reply(
