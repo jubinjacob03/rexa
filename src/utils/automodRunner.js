@@ -6,6 +6,7 @@ import { loadConfig } from "./automodManager.js";
 import { eSend, EMBED_COLOR, addFooter } from "./embed.js";
 import { i } from "./icons.js";
 import { ContainerBuilder, TextDisplayBuilder, SectionBuilder, ThumbnailBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } from "discord.js";
+import { ignoredDeletes } from "../events/messageDelete.js";
 /**
  * Sends an action embed to the specified channel.
  * @param {import('discord.js').TextChannel} channel - The channel to send the embed to.
@@ -105,9 +106,9 @@ export async function checkSpam(message) {
   const msgSpamLimit = cfg.limits?.messageSpam || 5;
 
   if (tracker.messageCount > msgSpamLimit) {
-    // Attempt immediate bulk deletion of spam
     try {
       for (const msgData of tracker.recentMessageIds) {
+        ignoredDeletes.add(msgData.id);
         await msgData.channel.messages.delete(msgData.id).catch(() => {});
       }
     } catch (err) {
@@ -120,7 +121,6 @@ export async function checkSpam(message) {
       message,
       "You are sending too many messages too quickly!",
       async () => {
-        // Anomaly detected - defer to AI for punishment length or default to timeout
         await triggerAIModeration(
           message.guild,
           message.author.id,
@@ -130,12 +130,9 @@ export async function checkSpam(message) {
         );
       },
     );
-    userTrackers.delete(message.author.id); // Reset after trigger
+    userTrackers.delete(message.author.id);
   }
 }
-
-// ── Deterministic Anti-Nuke Measures (Instant Execution) ──────────────
-// No AI overhead. This directly prevents rogue mods from destroying the server.
 
 /**
  * Triggers a warning or an action if the user has already been warned recently.
@@ -156,10 +153,8 @@ async function triggerWarningOrAction(
   const hasBeenWarned = UserWarnings.has(userId);
 
   if (hasBeenWarned) {
-    // Second offense within 20 minutes — escalate to server action
     await actionCallback();
   } else {
-    // First offense: timeout + warning embed
     UserWarnings.set(userId, Date.now());
 
     const member = await guild.members.fetch(userId).catch(() => null);
@@ -317,7 +312,7 @@ export async function checkMemberUpdate(oldMember, newMember) {
 export async function checkMessageDelete(message, executor) {
   const cfg = await loadConfig();
   if (!cfg.enabled || !cfg.raid) return;
-  if (!executor) return;
+  if (!executor || executor.bot) return;
 
   const tracker = getTracker(executor.id);
   tracker.messageDeleteCount++;
@@ -329,7 +324,7 @@ export async function checkMessageDelete(message, executor) {
     await triggerWarningOrAction(
       message.guild,
       executor.id,
-      message, // pass message to reply in channel
+      message,
       "You are rapid-deleting messages! Stop immediately.",
       async () => {
         await instantAntiNuke(
@@ -549,6 +544,7 @@ export async function checkHackedAccountSpam(message, imageUrls) {
     if (isHackedPromo) {
       console.log(`[AutoMod] Hacked account scam detected for ${member.user.tag}: ${reason}`);
 
+      ignoredDeletes.add(message.id);
       await message.delete().catch(err => console.error("[AutoMod] Failed to delete scam message:", err));
 
       await modTools.timeout(member, 40320, "[AutoMod] Hacked Account Scam Promotion").catch(err => console.error("[AutoMod] Failed to timeout user:", err));

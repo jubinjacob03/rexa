@@ -10,6 +10,7 @@ import {
 import { EMBED_COLOR, eReply, eSend } from "../utils/embed.js";
 import { i } from "../utils/icons.js";
 import { checkModerationPermission } from "../utils/moderation.js";
+import { ignoredDeletes } from "../events/messageDelete.js";
 
 const BULK_DELETE_MAX_AGE_MS = 13 * 24 * 60 * 60 * 1000;
 const BATCH_SIZE = 100;
@@ -35,7 +36,6 @@ async function fetchAllMessages(channel, afterId = null) {
     lastId = batch.last().id;
   }
 
-  // Sort messages by creation time (oldest first)
   all.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
 
   if (afterId) {
@@ -58,7 +58,6 @@ async function deleteMessages(channel, messages) {
   let failed = 0;
   const now = Date.now();
 
-  // Separate messages into recent (can be bulk deleted) and old (must be deleted individually)
   const recent = messages.filter(
     (m) => now - m.createdTimestamp <= BULK_DELETE_MAX_AGE_MS,
   );
@@ -66,14 +65,13 @@ async function deleteMessages(channel, messages) {
     (m) => now - m.createdTimestamp > BULK_DELETE_MAX_AGE_MS,
   );
 
-  // Bulk delete recent messages in batches
   for (let i = 0; i < recent.length; i += BATCH_SIZE) {
     const chunk = recent.slice(i, i + BATCH_SIZE);
+    chunk.forEach(m => ignoredDeletes.add(m.id));
     try {
       await channel.bulkDelete(chunk, true);
       deleted += chunk.length;
     } catch {
-      // Fallback to individual deletion if bulk delete fails
       for (const msg of chunk) {
         try {
           await msg.delete();
@@ -83,21 +81,19 @@ async function deleteMessages(channel, messages) {
         }
       }
     }
-    // Add a small delay between batches to avoid rate limits
     if (i + BATCH_SIZE < recent.length) {
       await new Promise((r) => setTimeout(r, 1000));
     }
   }
 
-  // Delete old messages individually
   for (const msg of old) {
+    ignoredDeletes.add(msg.id);
     try {
       await msg.delete();
       deleted++;
     } catch {
       failed++;
     }
-    // Add a small delay every 5 messages to avoid rate limits
     if (deleted % 5 === 0) {
       await new Promise((r) => setTimeout(r, 500));
     }

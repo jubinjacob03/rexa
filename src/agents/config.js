@@ -41,10 +41,10 @@ const config = {
   },
 
   tunnel: {
-    enabled: process.env.USE_GEMINI_TUNNEL === "true",
-    email: process.env.GEMINI_EMAIL,
-    password: process.env.GEMINI_PASSWORD,
-    headless: process.env.GEMINI_HEADLESS !== "false",
+    enabled: false,
+    email: "",
+    password: "",
+    headless: true,
   },
 
   model: {

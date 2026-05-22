@@ -272,7 +272,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
-// Graceful shutdown handlers for conversation persistence
 import contextManager from "./agents/tools/context-manager.js";
 
 async function gracefulShutdown(signal) {
