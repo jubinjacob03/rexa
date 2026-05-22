@@ -91,184 +91,183 @@ client.once(Events.ClientReady, async () => {
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
-  if (interaction.isButton() && interaction.customId.startsWith("shantha_")) {
-    await handleDashboardInteraction(interaction);
-    return;
-  }
-  if (interaction.isModalSubmit() && interaction.customId.startsWith("shantha_")) {
-    await handleDashboardModal(interaction);
-    return;
-  }
-
-  if (
-    interaction.isModalSubmit() &&
-    interaction.customId.startsWith("tsetup_modal_")
-  ) {
-    await handleTicketInteraction(interaction);
-    return;
-  }
-
-  if (interaction.isModalSubmit() && interaction.customId.startsWith("tkt_")) {
-    await handleTicketInteraction(interaction);
-    return;
-  }
-
-  if (interaction.isButton()) {
-
-
-    if (interaction.customId === "refresh_stats") {
-      try {
-        await interaction.deferUpdate();
-      } catch {}
-      await updateStatusMessage(interaction.client);
-      return;
-    }
-
-    if (interaction.customId === "refresh_bot_status") {
-      await interaction.update(
-        await buildStatusPayload(interaction.client, interaction.guild),
-      );
-      return;
-    }
-
-    if (interaction.customId === "dismiss_roles_info") {
-      await interaction.deferUpdate().catch(() => {});
-      return await interaction.deleteReply().catch(() => {});
-    }
-
-    if (interaction.customId === "status_roles_info") {
-      await handleRolesInfo(interaction);
-      return;
-    }
-
-    if (interaction.customId.startsWith("dummy_role_")) {
-      await interaction.deferUpdate().catch(() => {});
-      return;
-    }
-
-    if (interaction.customId === "status_whatsapp") {
-      const memberRoles = [
-        config.memberRoleId,
-        config.moderatorRoleId,
-        config.managerRoleId,
-        config.ownerRoleId,
-      ].filter(Boolean);
-      const hasAccess = interaction.member.roles.cache.some((r) =>
-        memberRoles.includes(r.id),
-      );
-      if (!hasAccess) {
-        return await interaction.reply(
-          eReply(
-            `${i("LOCK")} ᴀᴄᴄᴇss ᴅᴇɴɪᴇᴅ`,
-            "ᴛʜɪs ʟɪɴᴋ ɪs ᴏɴʟʏ ᴀᴠᴀɪʟᴀʙʟᴇ ᴛᴏ **ᴍᴇᴍʙᴇʀs** ᴀɴᴅ ᴀʙᴏᴠᴇ.",
-          ),
-        );
-      }
-      if (!config.whatsappUrl) {
-        return await interaction.reply(
-          eReply(
-            `${i("ERROR")} ɴᴏᴛ sᴇᴛ`,
-            "ᴡʜᴀᴛsᴀᴘᴘ ʟɪɴᴋ ʜᴀs ɴᴏᴛ ʙᴇᴇɴ ᴄᴏɴғɪɢᴜʀᴇᴅ.",
-          ),
-        );
-      }
-      return await interaction.reply(
-        eReply("ᴡʜᴀᴛsᴀᴘᴘ", `[ᴊᴏɪɴ ᴏᴜʀ ᴡʜᴀᴛsᴀᴘᴘ ɢʀᴏᴜᴘ](${config.whatsappUrl})`),
-      );
-    }
-
-    if (
-      interaction.customId.startsWith("ticket_") ||
-      interaction.customId.startsWith("tsetup_") ||
-      interaction.customId.startsWith("tkt_")
-    ) {
-      await handleTicketInteraction(interaction);
-      return;
-    }
-  }
-
-  if (interaction.isUserSelectMenu()) {
-    if (interaction.customId === "shantha_private_vc_select") {
-      await handleDashboardSelect(interaction);
-      return;
-    }
-    if (interaction.customId.startsWith("tsetup_")) {
-      await handleTicketInteraction(interaction);
-      return;
-    }
-  }
-
-  if (interaction.isButton()) {
-    if (interaction.customId === "dev_check") {
-      await interaction.reply(
-        eReply(
-          `${i("SUCCESS")} ᴅᴇᴠɪᴄᴇ ᴄʜᴇᴄᴋ`,
-          "ʏᴏᴜ'ʀᴇ ᴀʟʟ sᴇᴛ! ғᴇᴇʟ ғʀᴇᴇ ᴛᴏ ᴇxᴘʟᴏʀᴇ.",
-        ),
-      );
-      return;
-    }
-
-    if (
-      interaction.customId === "verify_friends" ||
-      interaction.customId === "verify_member"
-    ) {
-      await handleVerificationApply(interaction);
-      return;
-    }
-
-    if (interaction.customId.startsWith("selfrole_")) {
-      await handleSelfRoleToggle(interaction);
-      return;
-    }
-
-    if (
-      interaction.customId.startsWith("approve_") ||
-      interaction.customId.startsWith("reject_")
-    ) {
-      await handleApprovalAction(interaction);
-      return;
-    }
-  }
-
-  if (interaction.isModalSubmit()) {
-    if (interaction.customId.startsWith("nickname_modal_")) {
-      await handleNicknameModal(interaction);
-      return;
-    }
-  }
-
-  if (interaction.isStringSelectMenu()) {
-    if (interaction.customId === "roles_nav_dropdown") {
-      await handleRolesInfo(interaction, interaction.values[0]);
-      return;
-    }
-  }
-
-  if (!interaction.isChatInputCommand()) return;
-
-  const command = client.commands.get(interaction.commandName);
-
-  if (!command) {
-    console.error(`No command matching ${interaction.commandName} was found.`);
-    return;
-  }
-
   try {
+    if (interaction.isButton() && interaction.customId.startsWith("shantha_")) {
+      await handleDashboardInteraction(interaction);
+      return;
+    }
+    if (interaction.isModalSubmit() && interaction.customId.startsWith("shantha_")) {
+      await handleDashboardModal(interaction);
+      return;
+    }
+
+    if (
+      interaction.isModalSubmit() &&
+      interaction.customId.startsWith("tsetup_modal_")
+    ) {
+      await handleTicketInteraction(interaction);
+      return;
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId.startsWith("tkt_")) {
+      await handleTicketInteraction(interaction);
+      return;
+    }
+
+    if (interaction.isButton()) {
+      if (interaction.customId === "refresh_stats") {
+        try {
+          await interaction.deferUpdate();
+        } catch {}
+        await updateStatusMessage(interaction.client);
+        return;
+      }
+
+      if (interaction.customId === "refresh_bot_status") {
+        await interaction.update(
+          await buildStatusPayload(interaction.client, interaction.guild),
+        );
+        return;
+      }
+
+      if (interaction.customId === "dismiss_roles_info") {
+        await interaction.deferUpdate().catch(() => {});
+        return await interaction.deleteReply().catch(() => {});
+      }
+
+      if (interaction.customId === "status_roles_info") {
+        await handleRolesInfo(interaction);
+        return;
+      }
+
+      if (interaction.customId.startsWith("dummy_role_")) {
+        await interaction.deferUpdate().catch(() => {});
+        return;
+      }
+
+      if (interaction.customId === "status_whatsapp") {
+        const memberRoles = [
+          config.memberRoleId,
+          config.moderatorRoleId,
+          config.managerRoleId,
+          config.ownerRoleId,
+        ].filter(Boolean);
+        const hasAccess = interaction.member.roles.cache.some((r) =>
+          memberRoles.includes(r.id),
+        );
+        if (!hasAccess) {
+          return await interaction.reply(
+            eReply(
+              `${i("LOCK")} ᴀᴄᴄᴇss ᴅᴇɴɪᴇᴅ`,
+              "ᴛʜɪs ʟɪɴᴋ ɪs ᴏɴʟʏ ᴀᴠᴀɪʟᴀʙʟᴇ ᴛᴏ **ᴍᴇᴍʙᴇʀs** ᴀɴᴅ ᴀʙᴏᴠᴇ.",
+            ),
+          );
+        }
+        if (!config.whatsappUrl) {
+          return await interaction.reply(
+            eReply(
+              `${i("ERROR")} ɴᴏᴛ sᴇᴛ`,
+              "ᴡʜᴀᴛsᴀᴘᴘ ʟɪɴᴋ ʜᴀs ɴᴏᴛ ʙᴇᴇɴ ᴄᴏɴғɪɢᴜʀᴇᴅ.",
+            ),
+          );
+        }
+        return await interaction.reply(
+          eReply("ᴡʜᴀᴛsᴀᴘᴘ", `[ᴊᴏɪɴ ᴏᴜʀ ᴡʜᴀᴛsᴀᴘᴘ ɢʀᴏᴜᴘ](${config.whatsappUrl})`),
+        );
+      }
+
+      if (
+        interaction.customId.startsWith("ticket_") ||
+        interaction.customId.startsWith("tsetup_") ||
+        interaction.customId.startsWith("tkt_")
+      ) {
+        await handleTicketInteraction(interaction);
+        return;
+      }
+    }
+
+    if (interaction.isUserSelectMenu()) {
+      if (interaction.customId.startsWith("shantha_")) {
+        await handleDashboardSelect(interaction);
+        return;
+      }
+      if (interaction.customId.startsWith("tsetup_")) {
+        await handleTicketInteraction(interaction);
+        return;
+      }
+    }
+
+    if (interaction.isButton()) {
+      if (interaction.customId === "dev_check") {
+        await interaction.reply(
+          eReply(
+            `${i("SUCCESS")} ᴅᴇᴠɪᴄᴇ ᴄʜᴇᴄᴋ`,
+            "ʏᴏᴜ'ʀᴇ ᴀʟʟ sᴇᴛ! ғᴇᴇʟ ғʀᴇᴇ ᴛᴏ ᴇxᴘʟᴏʀᴇ.",
+          ),
+        );
+        return;
+      }
+
+      if (
+        interaction.customId === "verify_friends" ||
+        interaction.customId === "verify_member"
+      ) {
+        await handleVerificationApply(interaction);
+        return;
+      }
+
+      if (interaction.customId.startsWith("selfrole_")) {
+        await handleSelfRoleToggle(interaction);
+        return;
+      }
+
+      if (
+        interaction.customId.startsWith("approve_") ||
+        interaction.customId.startsWith("reject_")
+      ) {
+        await handleApprovalAction(interaction);
+        return;
+      }
+    }
+
+    if (interaction.isModalSubmit()) {
+      if (interaction.customId.startsWith("nickname_modal_")) {
+        await handleNicknameModal(interaction);
+        return;
+      }
+    }
+
+    if (interaction.isStringSelectMenu()) {
+      if (interaction.customId === "roles_nav_dropdown") {
+        await handleRolesInfo(interaction, interaction.values[0]);
+        return;
+      }
+    }
+
+    if (!interaction.isChatInputCommand()) return;
+
+    const command = client.commands.get(interaction.commandName);
+
+    if (!command) {
+      console.error(`No command matching ${interaction.commandName} was found.`);
+      return;
+    }
+
     await command.execute(interaction);
   } catch (error) {
-    console.error(`Error executing ${interaction.commandName}`);
-    console.error(error);
-
+    console.error(`[ERROR] Unhandled error in interaction ${interaction.customId || interaction.commandName}:`, error);
     const errorMessage = eReply(
       `${i("ERROR")} ᴇʀʀᴏʀ`,
-      "ᴛʜᴇʀᴇ ᴡᴀs ᴀɴ ᴇʀʀᴏʀ ᴡʜɪʟᴇ ᴇxᴇᴄᴜᴛɪɴɢ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ!",
+      "ᴀɴ ᴜɴᴇxᴘᴇᴄᴛᴇᴅ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ ᴡʜɪʟᴇ ᴘʀᴏᴄᴇssɪɴɢ ᴛʜɪs ɪɴᴛᴇʀᴀᴄᴛɪᴏɴ."
     );
-
-    if (interaction.replied || interaction.deferred) {
-      await interaction.followUp(errorMessage);
-    } else {
-      await interaction.reply(errorMessage);
+    try {
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp(errorMessage).catch(() => {});
+      } else {
+        await interaction.reply(errorMessage).catch(() => {});
+      }
+    } catch (replyError) {
+      console.error("[ERROR] Failed to send error message to user:", replyError);
     }
   }
 });

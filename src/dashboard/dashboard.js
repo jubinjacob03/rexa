@@ -280,7 +280,15 @@ export async function handleDashboardSelect(interaction) {
     "shantha_vc_add_select",
     "shantha_vc_remove_select",
     "shantha_purge_user_select",
-    "shantha_purge_trail_user_select"
+    "shantha_purge_trail_user_select",
+    "shantha_mod_timeout_select",
+    "shantha_mod_remtimeout_select",
+    "shantha_mod_mute_select",
+    "shantha_mod_unmute_select",
+    "shantha_mod_deafen_select",
+    "shantha_mod_undeafen_select",
+    "shantha_mod_kick_select",
+    "shantha_mod_ban_select"
   ].includes(interaction.customId)) {
     setTempSelection(`${interaction.user.id}_${interaction.customId}`, interaction.values);
     return interaction.deferUpdate();

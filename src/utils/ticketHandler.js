@@ -915,5 +915,8 @@ async function escalateTicket(interaction) {
     );
   } catch (error) {
     console.error("[TICKETS] Error escalating ticket:", error);
+    if (!interaction.replied && !interaction.deferred) {
+      await interaction.reply(eReply(`${i("ERROR")} ᴇʀʀᴏʀ`, "ғᴀɪʟᴇᴅ ᴛᴏ ᴇsᴄᴀʟᴀᴛᴇ ᴛɪᴄᴋᴇᴛ.")).catch(() => {});
+    }
   }
 }
