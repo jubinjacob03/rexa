@@ -449,26 +449,34 @@ export async function checkHackedAccountSpam(message, imageUrls) {
   activeModerationLocks.add(member.id);
 
   try {
-    console.log(`[AutoMod] Running proactive image spam scrutiny on ${member.user.tag}...`);
+    console.log(`[AutoMod] Running proactive scam scrutiny on ${member.user.tag}...`);
 
     const promptText = `
-      You are a strict Discord Trust & Safety AI. Analyze these images uploaded by a user.
-      A common hacked account scam involves posting images of Discord profiles alongside fake crypto exchanges, fake Nitro giveaways, or fake server promotions.
-      Look closely at the images. Does this contain clear indicators of a hacked account scam (e.g. 'I won 0.5 BTC', 'Free Discord Nitro', 'Join this server to claim', fake withdrawal screenshots)?
-      Return true ONLY if you are absolutely confident it is a malicious scam/promotion. If they are just normal gaming screenshots, memes, or casual chat, return false.
+      You are a strict Discord Trust & Safety AI. Analyze this message (and any attached images) uploaded by a user.
+      A common hacked account scam involves posting fake crypto exchanges, fake Nitro giveaways, or fake server promotions, often accompanied by an @everyone or @here ping and a suspicious link.
+      Look closely at the text and images. Does this contain clear indicators of a hacked account scam (e.g. 'I won 0.5 BTC', 'Free Discord Nitro', 'Join this server to claim', fake withdrawal screenshots)?
+      Return true ONLY if you are absolutely confident it is a malicious scam/promotion. If it is just normal chat, memes, or a legitimate announcement, return false.
     `;
 
     const modelObj = getLanguageModel(config.model.provider, config.model.name);
+
+    const contentArray = [
+      { type: "text", text: promptText },
+      { type: "text", text: `Message Content: "${message.content}"` }
+    ];
+
+    if (imageUrls && imageUrls.length > 0) {
+      imageUrls.forEach(url => {
+        contentArray.push({ type: "image", image: new URL(url) });
+      });
+    }
 
     const result = await generateObject({
       model: modelObj,
       messages: [
         {
           role: "user",
-          content: [
-            { type: "text", text: promptText },
-            ...imageUrls.map(url => ({ type: "image", image: new URL(url) }))
-          ]
+          content: contentArray
         }
       ],
       schema: z.object({
@@ -481,6 +489,8 @@ export async function checkHackedAccountSpam(message, imageUrls) {
 
     if (isHackedPromo) {
       console.log(`[AutoMod] Hacked account scam detected for ${member.user.tag}: ${reason}`);
+
+      await message.delete().catch(err => console.error("[AutoMod] Failed to delete scam message:", err));
 
       await modTools.timeout(member, 40320, "[AutoMod] Hacked Account Scam Promotion").catch(err => console.error("[AutoMod] Failed to timeout user:", err));
 
@@ -505,7 +515,7 @@ export async function checkHackedAccountSpam(message, imageUrls) {
           .setColor(EMBED_COLOR)
           .setTitle(`${i("WARNING")} ʜᴀᴄᴋᴇᴅ ᴀᴄᴄᴏᴜɴᴛ sᴘᴀᴍ ᴅᴇᴛᴇᴄᴛᴇᴅ`)
           .setDescription(`**ᴜsᴇʀ:** <@${member.id}> (${member.user.tag})\n**ᴀᴄᴛɪᴏɴ ᴛᴀᴋᴇɴ:** ᴍᴇssᴀɢᴇ ᴅᴇʟᴇᴛᴇᴅ, 28-ᴅᴀʏ ᴛɪᴍᴇᴏᴜᴛ, ʀᴏʟᴇs sᴛʀɪᴘᴘᴇᴅ`)
-          .addFields({ name: "Reason", value: `${reason}\n\n*[AutoMod] Proactive AI Scrutiny triggered on multiple image upload.*` });
+          .addFields({ name: "Reason", value: `${reason}\n\n*[AutoMod] Proactive AI Scrutiny triggered on suspicious message/image.*` });
 
         await logChannel.send({ embeds: [logEmbed] }).catch(err => console.error("[AutoMod] Failed to send log:", err));
       } else {

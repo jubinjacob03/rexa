@@ -72,7 +72,7 @@ const proxyGet = (remaniPath, getParams) => async (req, res) => {
   }
 };
 
-const proxyDelete = (remaniPath) => async (req, res) => {
+const _proxyDelete = (remaniPath) => async (req, res) => {
   try {
     const { data } = await remani().delete(remaniPath, {
       data: req.body,

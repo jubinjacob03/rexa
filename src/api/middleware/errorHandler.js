@@ -1,7 +1,7 @@
 /**
  * Global error handler middleware
  */
-export function errorHandler(err, req, res, next) {
+export function errorHandler(err, req, res, _next) {
   console.error("[API ERROR]", err);
 
   if (err.name === "ValidationError") {

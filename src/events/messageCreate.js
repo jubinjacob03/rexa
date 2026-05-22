@@ -70,7 +70,7 @@ export default {
     await checkSpam(message);
     await checkToxicity(message);
     
-    if (message.attachments.size >= 2) {
+    if (message.attachments.size >= 1) {
       const imageUrls = [];
       message.attachments.forEach(att => {
         if (att.contentType && att.contentType.startsWith("image/")) {
@@ -78,11 +78,15 @@ export default {
         }
       });
       
-      if (imageUrls.length >= 2) {
+      if (imageUrls.length >= 1) {
         checkHackedAccountSpam(message, imageUrls).catch(err => {
           console.error("[AutoMod] Async Image Scrutiny Error:", err);
         });
       }
+    } else if (message.content.match(/(https?:\/\/[^\s]+)/g) && (message.content.includes("@everyone") || message.content.includes("@here"))) {
+      checkHackedAccountSpam(message, []).catch(err => {
+        console.error("[AutoMod] Async Text Scrutiny Error:", err);
+      });
     }
 
     const isMentioned = message.mentions.has(message.client.user.id, {
@@ -149,8 +153,6 @@ export default {
               return await message.reply(payload);
             } catch (err) {
               if (err.code === 50035) {
-                const content =
-                  typeof payload === "string" ? payload : payload.content;
                 return await message.channel.send(
                   typeof payload === "string" ? payload : payload,
                 );

@@ -76,7 +76,7 @@ async function filterToolsContext(content) {
     const configPath = path.join(__dirname, "tools.json");
     const fileContent = await fs.readFile(configPath, "utf-8");
     toolsConfig = JSON.parse(fileContent);
-  } catch (err) {
+  } catch {
     return content;
   }
 
@@ -194,7 +194,7 @@ async function executeToolByName(toolName, params) {
       const configPath = path.join(__dirname, "tools.json");
       const fileContent = await fs.readFile(configPath, "utf-8");
       toolsConfig = JSON.parse(fileContent);
-    } catch (err) {}
+    } catch {}
 
     if (toolsConfig[toolName] === false) {
       return {

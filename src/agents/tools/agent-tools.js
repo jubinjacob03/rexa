@@ -58,8 +58,6 @@ export function createDiscordEmbed(options) {
     image = null,
     footer = null,
     author = null,
-    url = null,
-    timestamp = true,
   } = options;
 
   try {

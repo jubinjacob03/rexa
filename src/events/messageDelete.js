@@ -26,7 +26,7 @@ export default {
             const { executor } = deletionLog;
             await checkMessageDelete(message, executor);
             
-        } catch (error) {
+        } catch {
            // Ignore lacking permissions to fetch audit log silently 
         }
     }

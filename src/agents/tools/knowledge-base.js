@@ -184,7 +184,7 @@ $$;
  * Loads default knowledge about Shantha and Remani.
  * @returns {Promise<void>}
  */
-async function loadDefaultKnowledge() {
+async function _loadDefaultKnowledge() {
   console.log("[KNOWLEDGE BASE] Loading default knowledge...");
 
   const defaultDocs = [

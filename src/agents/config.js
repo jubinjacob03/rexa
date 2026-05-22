@@ -21,7 +21,7 @@ try {
   parsedToolsConfig = JSON.parse(
     fs.readFileSync(path.join(__dirname, "tools.json"), "utf-8"),
   );
-} catch (e) {
+} catch {
   console.warn("Could not parse tools.json");
 }
 

@@ -11,7 +11,7 @@ router.get("/", async (req, res) => {
   try {
     const client = req.app.get("discordClient");
 
-    const guilds = client.guilds.cache.map((guild) => {
+    const _guilds = client.guilds.cache.map((guild) => {
       const voiceStatus = voiceManager.getStatus(guild.id);
       return {
         id: guild.id,

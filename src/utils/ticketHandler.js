@@ -416,7 +416,7 @@ export async function handleTicketInteraction(interaction) {
         });
         await waitingMsg.delete().catch(() => null);
         return await renderTicketDashboard(interaction, true);
-      } catch (err) {
+      } catch {
         return interaction.editReply(eReply(
             `${i("ERROR")} ᴛɪᴍᴇ ᴇxᴘɪʀᴇᴅ`,
             "ʏᴏᴜ ᴅɪᴅɴ'ᴛ ᴜᴘʟᴏᴀᴅ ᴀɴ ɪᴍᴀɢᴇ ɪɴ ᴛɪᴍᴇ. ʀᴜɴ `/setup-ticket` ᴛᴏ ʀᴇsᴜᴍᴇ ᴏʀ ᴛʀʏ ᴀɢᴀɪɴ.",
@@ -630,7 +630,7 @@ async function createTicketInstance(interaction, options = {}) {
       mentionText += ` ${pingStr} **ᴀ ɴᴇᴡ ᴛɪᴄᴋᴇᴛ (ᴀɪ-ᴀssɪsᴛᴇᴅ) ʜᴀs ʙᴇᴇɴ ᴄʀᴇᴀᴛᴇᴅ.**`;
     }
 
-    const reasonLine = ticketReason ? `\n> ${ticketReason}` : "";
+    const _reasonLine = ticketReason ? `\n> ${ticketReason}` : "";
 
     const ticketContainer = new ContainerBuilder()
       .setAccentColor(EMBED_COLOR)
@@ -652,8 +652,9 @@ async function createTicketInstance(interaction, options = {}) {
           .setDivider(true)
           .setSpacing(SeparatorSpacingSize.Small)
       );
+      
       ticketContainer.addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(`### 📝 ʀᴇᴀsᴏɴ\n${ticketReason}`)
+        new TextDisplayBuilder().setContent(`\`\`\`ansi\n\u001b[1;37m ʀᴇᴀsᴏɴ\u001b[0m\n\n\u001b[0m${ticketReason}\u001b[0m\`\`\``)
       );
     }
     

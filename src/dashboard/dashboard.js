@@ -33,7 +33,7 @@ const tempSelections = new Map();
 export async function buildDashboardContainer(member) {
   const guild = member.guild;
   const isMod = await checkModerationPermission(guild, member.user.id, "mod");
-  const isOwner = await checkModerationPermission(guild, member.user.id, "owner");
+  const _isOwner = await checkModerationPermission(guild, member.user.id, "owner");
 
   const automodConfig = await loadConfig();
   const automodOn = automodConfig.enabled;
@@ -172,7 +172,7 @@ function resolveChannelFromInput(guild, value) {
  * @param {import("discord.js").GuildMember} member - The guild member.
  * @returns {Promise<Array>} An array of components.
  */
-export async function getDashboardComponents(member) {
+export async function getDashboardComponents(_member) {
   return [];
 }
 

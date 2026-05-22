@@ -18,14 +18,14 @@ const HTTP_CONFIG = {
 
 const rateLimitTracker = new Map();
 
-let discordClient = null;
+let _discordClient = null;
 
 /**
  * Initializes the executor with the Discord client.
  * @param {object} client - The Discord client instance.
  */
 export function initializeExecutor(client) {
-  discordClient = client;
+  _discordClient = client;
   console.log("[EXECUTOR] Initialized with Discord client");
 }
 
