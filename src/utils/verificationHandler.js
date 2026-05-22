@@ -364,7 +364,16 @@ export async function handleVerificationApply(interaction) {
     const approvalMessage = await approvalsChannel.send({
       components: [approvalContainer],
       flags: MessageFlags.IsComponentsV2,
-    });
+    }).catch(() => null);
+
+    if (!approvalMessage) {
+      return interaction.reply(
+        eReply(
+          `${i("ERROR")} ᴇʀʀᴏʀ`,
+          "ғᴀɪʟᴇᴅ ᴛᴏ sᴇɴᴅ ᴀᴘᴘʀᴏᴠᴀʟ ʀᴇǫᴜᴇsᴛ ᴛᴏ ᴛʜᴇ ᴀᴘᴘʀᴏᴠᴀʟs ᴄʜᴀɴɴᴇʟ.",
+        ),
+      );
+    }
 
     await createRequest(
       userId,

@@ -19,6 +19,16 @@ import { checkModerationPermission } from "../utils/moderation.js";
 
 export const setupSessions = new Map();
 
+// Cleanup abandoned setup sessions every 30 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [userId, session] of setupSessions.entries()) {
+    if (now - session.timestamp > 30 * 60 * 1000) {
+      setupSessions.delete(userId);
+    }
+  }
+}, 30 * 60 * 1000);
+
 /**
  * Command to launch the Advanced Ticket Setup Dashboard.
  * @module setupTicketCommand
@@ -89,6 +99,7 @@ export default {
       targetChannelName: targetChannel.name,
       buttons: [],
       ticketMods,
+      timestamp: Date.now(),
     });
 
     await renderTicketDashboard(interaction);
@@ -141,14 +152,14 @@ async function publishSimpleTicketPanel(interaction, targetChannel) {
   await targetChannel.send({
     components: [panelContainer],
     flags: MessageFlags.IsComponentsV2,
-  });
+  }).catch(err => console.error("[TicketSetup] Failed to send simple ticket panel:", err));
 
   await interaction.reply(
     eReply(
       `${icon("SUCCESS")} sᴜᴄᴄᴇss`,
       `ᴛɪᴄᴋᴇᴛ ᴘᴀɴᴇʟ ᴄʀᴇᴀᴛᴇᴅ ɪɴ <#${targetChannel.id}>.`
     )
-  );
+  ).catch(() => {});
 }
 
 /**

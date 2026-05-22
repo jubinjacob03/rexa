@@ -189,7 +189,11 @@ router.post("/apply", async (req, res) => {
     const approvalMessage = await approvalsChannel.send({
       components: [approvalContainer],
       flags: MessageFlags.IsComponentsV2,
-    });
+    }).catch(() => null);
+
+    if (!approvalMessage) {
+      return res.status(500).json({ error: "Failed to send approval request to the approvals channel." });
+    }
 
     await createRequest(
       userId,
@@ -315,12 +319,10 @@ router.post("/approve", async (req, res) => {
             .setSpacing(SeparatorSpacingSize.Small),
         );
 
-      await user
-        .send({
-          components: [approvalContainer],
-          flags: MessageFlags.IsComponentsV2,
-        })
-        .catch(() => {});
+      await user.send({
+        components: [approvalContainer],
+        flags: MessageFlags.IsComponentsV2,
+      }).catch(() => {});
     }
 
     await broadcastVerification(guild);

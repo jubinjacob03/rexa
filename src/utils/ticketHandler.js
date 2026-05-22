@@ -697,12 +697,12 @@ async function createTicketInstance(interaction, options = {}) {
 
     addFooter(ticketContainer);
 
-    await ticketChannel.send(mentionText);
+    await ticketChannel.send(mentionText).catch(() => {});
     
     await ticketChannel.send({
       components: [ticketContainer],
       flags: MessageFlags.IsComponentsV2,
-    });
+    }).catch(() => {});
 
     await interaction.editReply(eReply(
         `${i("DONE")} ᴛɪᴄᴋᴇᴛ ᴄʀᴇᴀᴛᴇᴅ`,

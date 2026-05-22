@@ -214,10 +214,10 @@ export default {
         if (isLegacy) {
           // Replace legacy embed with new container
           await existingMessage.delete().catch(() => {});
-          await verificationChannel.send(payload);
+          await verificationChannel.send(payload).catch(err => console.error("[SetupVerification] Failed to send new embed:", err));
         } else {
           // Update existing container
-          await existingMessage.edit(payload);
+          await existingMessage.edit(payload).catch(err => console.error("[SetupVerification] Failed to edit existing embed:", err));
         }
         console.log("[INFO] Updated existing verification message");
 
@@ -244,7 +244,7 @@ export default {
         );
       } else {
         // Create new verification embed
-        await verificationChannel.send(payload);
+        await verificationChannel.send(payload).catch(err => console.error("[SetupVerification] Failed to send new embed:", err));
         console.log("[INFO] Created new verification embed");
         await interaction.editReply(
           eReply(

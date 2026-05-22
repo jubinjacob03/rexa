@@ -178,18 +178,24 @@ export async function updateStatusMessage(client) {
       statusMessage = await channel.send({
         components: [container],
         flags: MessageFlags.IsComponentsV2,
+      }).catch(err => {
+        console.error("[ERROR] Failed to send status message:", err);
+        return null;
       });
-      await statusMessage.pin();
-      console.log("[INFO] New server info message created and pinned!");
-      try {
-        await supabase
-          .from("bot_settings")
-          .upsert(
-            { key: "stats_message_id", value: statusMessage.id },
-            { onConflict: "key" },
-          );
-      } catch (err) {
-        console.error("[WARN] Could not save stats message ID:", err.message);
+      
+      if (statusMessage) {
+        await statusMessage.pin().catch(() => {});
+        console.log("[INFO] New server info message created and pinned!");
+        try {
+          await supabase
+            .from("bot_settings")
+            .upsert(
+              { key: "stats_message_id", value: statusMessage.id },
+              { onConflict: "key" },
+            );
+        } catch (err) {
+          console.error("[WARN] Could not save stats message ID:", err.message);
+        }
       }
     }
   } catch (error) {

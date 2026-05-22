@@ -10,7 +10,7 @@ import status from "../commands/status.js";
 import purge from "../commands/purge.js";
 import refresh from "../commands/refresh.js";
 import { eReply, addFooter } from "../utils/embed.js";
-import { getVCByMember, removeMember } from "../utils/privateVCManager.js";
+import { getVCByMember, removeMember, getVCData } from "../utils/privateVCManager.js";
 import { icon } from "../utils/icons.js";
 
 /**
@@ -41,6 +41,19 @@ function setTempSelection(key, value) {
 
 function getTempSelection(key) {
   return tempSelections.get(key)?.value;
+}
+
+/**
+ * Checks if a member has access to VC features.
+ * @param {import("discord.js").Guild} guild - The guild.
+ * @param {import("discord.js").GuildMember} member - The member.
+ * @returns {Promise<boolean>} True if the member has access.
+ */
+async function hasVCAccess(guild, member) {
+  if (await checkModerationPermission(guild, member.id, "mod")) return true;
+  if (config.memberRoleId && member.roles.cache.has(config.memberRoleId)) return true;
+  if (config.friendsRoleId && member.roles.cache.has(config.friendsRoleId)) return true;
+  return false;
 }
 
 /**
@@ -87,14 +100,16 @@ export async function buildDashboardContainer(member) {
 
   container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
 
-  container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### ${icon("BOT")} AutoMOD\n**Master :** ${onOff(automodOn)} • **Spam :** ${onOff(spamOn)} • **Raid :** ${onOff(raidOn)} • **Toxicity :** ${onOff(toxicityOn)}`));
+  container.addTextDisplayComponents(new TextDisplayBuilder().setContent(
+    isMod ? `### ${icon("BOT")} AutoMOD\n**Master :** ${onOff(automodOn)} • **Spam :** ${onOff(spamOn)} • **Raid :** ${onOff(raidOn)} • **Toxicity :** ${onOff(toxicityOn)}` : `### ${icon("BOT")} AutoMOD\n🔒 *Requires moderator permissions*`
+  ));
   container.addActionRowComponents(
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId("shantha_automod_master").setLabel(`Automod: ${onOff(automodOn)}`).setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId("shantha_automod_limits").setLabel("Edit Limits").setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId("shantha_automod_spam").setLabel(`Spam: ${onOff(spamOn)}`).setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId("shantha_automod_raid").setLabel(`Raid: ${onOff(raidOn)}`).setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId("shantha_automod_toxicity").setLabel(`Toxicity: ${onOff(toxicityOn)}`).setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId("shantha_automod_master").setLabel(`Automod: ${onOff(automodOn)}`).setStyle(ButtonStyle.Secondary).setDisabled(!isMod),
+      new ButtonBuilder().setCustomId("shantha_automod_limits").setLabel("Edit Limits").setStyle(ButtonStyle.Secondary).setDisabled(!isMod),
+      new ButtonBuilder().setCustomId("shantha_automod_spam").setLabel(`Spam: ${onOff(spamOn)}`).setStyle(ButtonStyle.Secondary).setDisabled(!isMod),
+      new ButtonBuilder().setCustomId("shantha_automod_raid").setLabel(`Raid: ${onOff(raidOn)}`).setStyle(ButtonStyle.Secondary).setDisabled(!isMod),
+      new ButtonBuilder().setCustomId("shantha_automod_toxicity").setLabel(`Toxicity: ${onOff(toxicityOn)}`).setStyle(ButtonStyle.Secondary).setDisabled(!isMod)
     )
   );
 
@@ -121,20 +136,20 @@ export async function buildDashboardContainer(member) {
 
   container.addActionRowComponents(
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId("shantha_status").setLabel("Status").setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId("shantha_mod_timeout").setLabel("Timeout").setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId("shantha_mod_remtimeout").setLabel("Remove Timeout").setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId("shantha_mod_mute").setLabel("Mute").setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId("shantha_mod_unmute").setLabel("Unmute").setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId("shantha_status").setLabel("Status").setStyle(ButtonStyle.Secondary).setDisabled(!isMod),
+      new ButtonBuilder().setCustomId("shantha_mod_timeout").setLabel("Timeout").setStyle(ButtonStyle.Secondary).setDisabled(!isMod),
+      new ButtonBuilder().setCustomId("shantha_mod_remtimeout").setLabel("Remove Timeout").setStyle(ButtonStyle.Secondary).setDisabled(!isMod),
+      new ButtonBuilder().setCustomId("shantha_mod_mute").setLabel("Mute").setStyle(ButtonStyle.Secondary).setDisabled(!isMod),
+      new ButtonBuilder().setCustomId("shantha_mod_unmute").setLabel("Unmute").setStyle(ButtonStyle.Secondary).setDisabled(!isMod)
     )
   );
 
   container.addActionRowComponents(
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId("shantha_mod_deafen").setLabel("Deafen").setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId("shantha_mod_undeafen").setLabel("Undeafen").setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId("shantha_mod_kick").setLabel("Kick").setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId("shantha_mod_ban").setLabel("Ban").setStyle(ButtonStyle.Danger)
+      new ButtonBuilder().setCustomId("shantha_mod_deafen").setLabel("Deafen").setStyle(ButtonStyle.Secondary).setDisabled(!isMod),
+      new ButtonBuilder().setCustomId("shantha_mod_undeafen").setLabel("Undeafen").setStyle(ButtonStyle.Secondary).setDisabled(!isMod),
+      new ButtonBuilder().setCustomId("shantha_mod_kick").setLabel("Kick").setStyle(ButtonStyle.Danger).setDisabled(!isMod),
+      new ButtonBuilder().setCustomId("shantha_mod_ban").setLabel("Ban").setStyle(ButtonStyle.Danger).setDisabled(!isMod)
     )
   );
 
@@ -306,12 +321,12 @@ export async function postDashboard(client) {
     const isLegacy = !!existing.embeds[0]?.title;
     if (isLegacy) {
       await existing.delete().catch(() => {});
-      await channel.send(payload);
+      await channel.send(payload).catch(err => console.error("[Dashboard] Failed to send new dashboard:", err));
     } else {
-      await existing.edit(payload);
+      await existing.edit(payload).catch(err => console.error("[Dashboard] Failed to edit existing dashboard:", err));
     }
   } else {
-    await channel.send(payload);
+    await channel.send(payload).catch(err => console.error("[Dashboard] Failed to send dashboard:", err));
   }
 }
 
@@ -324,10 +339,26 @@ export async function handleDashboardInteraction(interaction) {
   if (!interaction.isButton()) return;
   const { member } = interaction;
   switch (interaction.customId) {
-    case "shantha_vc_create": return showSelectWithConfirm(interaction, "Create Private VC", "Select up to 5 members to invite using the dropdown below, then click Create.", "shantha_private_vc_select", "shantha_private_vc_confirm", "Create VC", 5);
-    case "shantha_vc_add": return showSelectWithConfirm(interaction, "Add Member", "Select a member from the dropdown, then click Add.", "shantha_vc_add_select", "shantha_vc_add_confirm", "Add Member", 1);
-    case "shantha_vc_remove": return showSelectWithConfirm(interaction, "Remove Member", "Select a member from the dropdown, then click Remove.", "shantha_vc_remove_select", "shantha_vc_remove_confirm", "Remove Member", 1);
+    case "shantha_vc_create": {
+      if (!(await hasVCAccess(interaction.guild, member))) return interaction.reply(eReply("Access denied", "You need the Member or Friends role to use this."));
+      return showSelectWithConfirm(interaction, "Create Private VC", "Select up to 5 members to invite using the dropdown below, then click Create.", "shantha_private_vc_select", "shantha_private_vc_confirm", "Create VC", 5);
+    }
+    case "shantha_vc_add": {
+      if (!(await hasVCAccess(interaction.guild, member))) return interaction.reply(eReply("Access denied", "You need the Member or Friends role to use this."));
+      return showSelectWithConfirm(interaction, "Add Member", "Select a member from the dropdown, then click Add.", "shantha_vc_add_select", "shantha_vc_add_confirm", "Add Member", 1);
+    }
+    case "shantha_vc_remove": {
+      if (!(await hasVCAccess(interaction.guild, member))) return interaction.reply(eReply("Access denied", "You need the Member or Friends role to use this."));
+      const channelId = getVCByMember(interaction.user.id);
+      if (!channelId) return interaction.reply(eReply("Access denied", "You are not in a private VC."));
+      const vcData = getVCData(channelId);
+      if (vcData && vcData.creatorId !== interaction.user.id && !(await checkModerationPermission(interaction.guild, interaction.user.id, "mod"))) {
+        return interaction.reply(eReply("Access denied", "Only the creator of the VC can remove members."));
+      }
+      return showSelectWithConfirm(interaction, "Remove Member", "Select a member from the dropdown, then click Remove.", "shantha_vc_remove_select", "shantha_vc_remove_confirm", "Remove Member", 1);
+    }
     case "shantha_vc_leave": {
+      if (!(await hasVCAccess(interaction.guild, member))) return interaction.reply(eReply("Access denied", "You need the Member or Friends role to use this."));
       const guild = interaction.guild;
       const invokerId = interaction.user.id;
       const channelId = getVCByMember(invokerId);
@@ -352,9 +383,9 @@ export async function handleDashboardInteraction(interaction) {
     case "shantha_automod_spam":
     case "shantha_automod_raid":
     case "shantha_automod_toxicity": {
-      if (interaction.guild && interaction.user.id !== interaction.guild.ownerId) {
+      if (!(await checkModerationPermission(interaction.guild, interaction.user.id, "mod"))) {
         return interaction.reply(
-          eReply("Access denied", "Only the server owner can modify automod."),
+          eReply("Access denied", "Only moderators can modify automod."),
         );
       }
       const current = await loadConfig();
@@ -522,7 +553,7 @@ export async function handleDashboardInteraction(interaction) {
     case "shantha_mod_ban": {
       const isOwnerReq = interaction.customId === "shantha_mod_kick" || interaction.customId === "shantha_mod_ban";
       const isModReq = !isOwnerReq;
-      const isOwner = member.id === interaction.guild.ownerId;
+      const isOwner = await checkModerationPermission(interaction.guild, member.id, "owner");
       const isMod = isOwner || await checkModerationPermission(interaction.guild, member.id, "mod");
       if (isOwnerReq && !isOwner) return interaction.reply(eReply("Notice", "🔒 Owners only."));
       if (isModReq && !isMod) return interaction.reply(eReply("Notice", "🔒 Moderators only."));
@@ -618,27 +649,27 @@ export async function handleDashboardInteraction(interaction) {
     }
 
     case "shantha_purge_all":
-      if (!member.permissions.has(PermissionFlagsBits.Administrator))
-        return interaction.reply(eReply("Notice", "Admins only."));
+      if (!(await checkModerationPermission(interaction.guild, member.id, "owner")))
+        return interaction.reply(eReply("Notice", "Owners only."));
       return showPurgeModal(interaction, "shantha_purge_all_modal", "Purge All Messages", [
         { customId: "purge_channel", label: "Channel (#channel or ID)", required: true },
       ]);
     case "shantha_purge_user":
-      if (!member.permissions.has(PermissionFlagsBits.Administrator)) return interaction.reply(eReply("Notice", "Admins only."));
+      if (!(await checkModerationPermission(interaction.guild, member.id, "owner"))) return interaction.reply(eReply("Notice", "Owners only."));
       return showSelectWithConfirm(interaction, "Purge User", "Select the user whose messages you want to purge, then click Confirm.", "shantha_purge_user_select", "shantha_purge_user_confirm", "Confirm Target", 1);
     case "shantha_purge_trail":
-      if (!member.permissions.has(PermissionFlagsBits.Administrator))
-        return interaction.reply(eReply("Notice", "Admins only."));
+      if (!(await checkModerationPermission(interaction.guild, member.id, "owner")))
+        return interaction.reply(eReply("Notice", "Owners only."));
       return showPurgeModal(interaction, "shantha_purge_trail_modal", "Purge Trail", [
         { customId: "purge_channel", label: "Channel (#channel or ID)", required: true },
         { customId: "purge_message", label: "Start message ID", required: true },
       ]);
     case "shantha_purge_trail_user":
-      if (!member.permissions.has(PermissionFlagsBits.Administrator)) return interaction.reply(eReply("Notice", "Admins only."));
+      if (!(await checkModerationPermission(interaction.guild, member.id, "owner"))) return interaction.reply(eReply("Notice", "Owners only."));
       return showSelectWithConfirm(interaction, "Purge From Message", "Select the user to purge messages from a starting message, then click Confirm.", "shantha_purge_trail_user_select", "shantha_purge_trail_user_confirm", "Confirm Target", 1);
     case "shantha_refresh":
-      if (!member.permissions.has(PermissionFlagsBits.Administrator))
-        return interaction.reply(eReply("Notice", "Admins only."));
+      if (!(await checkModerationPermission(interaction.guild, member.id, "mod")))
+        return interaction.reply(eReply("Notice", "Moderators only."));
       return await refresh.execute(interaction);
   }
 }
