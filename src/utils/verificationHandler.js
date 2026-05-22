@@ -33,6 +33,17 @@ const SELF_ROLE_MAP = {
 };
 
 export const pendingInterrogations = new Map();
+
+// Cleanup abandoned interrogations every 30 minutes to prevent memory leaks
+setInterval(() => {
+  const now = Date.now();
+  for (const [userId, data] of pendingInterrogations.entries()) {
+    if (now - data.timestamp > 30 * 60 * 1000) {
+      pendingInterrogations.delete(userId);
+    }
+  }
+}, 30 * 60 * 1000);
+
 const VERIFICATION_QUESTIONS = [
   "What brings you to our community today?",
   "Are you looking forward to any specific game or event here?",

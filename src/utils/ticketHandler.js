@@ -27,6 +27,11 @@ import { i, icon } from "./icons.js";
 
 const activeTickets = new Set();
 
+/**
+ * Handles ticket-related interactions (buttons, modals).
+ * @param {import('discord.js').Interaction} interaction - The interaction object.
+ * @returns {Promise<void>}
+ */
 export async function handleTicketInteraction(interaction) {
   if (
     interaction.isModalSubmit() &&
@@ -473,14 +478,35 @@ export async function handleTicketInteraction(interaction) {
   }
 }
 
+/**
+ * Creates a new ticket instance (channel or thread) for a user.
+ * @param {import('discord.js').Interaction} interaction - The interaction object.
+ * @param {Object} [options={}] - Additional options for the ticket.
+ * @param {string} [options.ticketType] - The type of ticket ('text' or 'vc').
+ * @param {boolean} [options.aiEnabled] - Whether AI assistance is enabled for this ticket.
+ * @param {string} [options.reason] - The reason for opening the ticket.
+ * @returns {Promise<void>}
+ */
 async function createTicketInstance(interaction, options = {}) {
   if (activeTickets.has(interaction.user.id)) {
-    return interaction.reply(
-      eReply(
-        `${i("ERROR")} ᴀᴄᴛɪᴠᴇ ᴛɪᴄᴋᴇᴛ`,
-        "ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀɴ ᴀᴄᴛɪᴠᴇ ᴛɪᴄᴋᴇᴛ.",
-      ),
-    );
+    // Verify the channel actually still exists before rejecting
+    const guild = interaction.guild;
+    const existingChannel = guild.channels.cache.find(c => c.name.includes(interaction.user.username.toLowerCase()) && (c.name.startsWith("ticket-") || c.name.endsWith("s-ᴛɪᴄᴋᴇᴛ")));
+    
+    if (!existingChannel) {
+      // Channel was manually deleted, auto-heal the state
+      activeTickets.delete(interaction.user.id);
+      if (supabase) {
+        await supabase.from("active_tickets").delete().eq("user_id", interaction.user.id).catch(() => {});
+      }
+    } else {
+      return interaction.reply(
+        eReply(
+          `${i("ERROR")} ᴀᴄᴛɪᴠᴇ ᴛɪᴄᴋᴇᴛ`,
+          "ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀɴ ᴀᴄᴛɪᴠᴇ ᴛɪᴄᴋᴇᴛ.",
+        ),
+      );
+    }
   }
 
   if (supabase) {
@@ -490,13 +516,20 @@ async function createTicketInstance(interaction, options = {}) {
       .eq("user_id", interaction.user.id)
       .single();
     if (data) {
-      activeTickets.add(interaction.user.id);
-      return interaction.reply(
-        eReply(
-          `${i("ERROR")} ᴀᴄᴛɪᴠᴇ ᴛɪᴄᴋᴇᴛ`,
-          "ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀɴ ᴀᴄᴛɪᴠᴇ ᴛɪᴄᴋᴇᴛ.",
-        ),
-      );
+      const guild = interaction.guild;
+      const existingChannel = guild.channels.cache.find(c => c.name.includes(interaction.user.username.toLowerCase()) && (c.name.startsWith("ticket-") || c.name.endsWith("s-ᴛɪᴄᴋᴇᴛ")));
+      
+      if (!existingChannel) {
+        await supabase.from("active_tickets").delete().eq("user_id", interaction.user.id).catch(() => {});
+      } else {
+        activeTickets.add(interaction.user.id);
+        return interaction.reply(
+          eReply(
+            `${i("ERROR")} ᴀᴄᴛɪᴠᴇ ᴛɪᴄᴋᴇᴛ`,
+            "ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀɴ ᴀᴄᴛɪᴠᴇ ᴛɪᴄᴋᴇᴛ.",
+          ),
+        );
+      }
     }
   }
 

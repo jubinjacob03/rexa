@@ -3,10 +3,18 @@ import { z } from "zod";
 import config, { getLanguageModel } from "../agents/config.js";
 import * as modTools from "./moderation.js";
 import { loadConfig } from "./automodManager.js";
-import { eSend, EMBED_COLOR } from "./embed.js";
+import { eSend, EMBED_COLOR, addFooter } from "./embed.js";
 import { i } from "./icons.js";
-import { EmbedBuilder } from "discord.js";
-
+import { ContainerBuilder, TextDisplayBuilder, SectionBuilder, ThumbnailBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } from "discord.js";
+/**
+ * Sends an action embed to the specified channel.
+ * @param {import('discord.js').TextChannel} channel - The channel to send the embed to.
+ * @param {string} userId - The ID of the user the action was taken against.
+ * @param {string} action - The action taken (e.g., 'timeout', 'kick', 'ban').
+ * @param {string} reason - The reason for the action.
+ * @param {number} [durationMinutes] - The duration of the timeout in minutes, if applicable.
+ * @returns {Promise<void>}
+ */
 async function sendActionEmbed(
   channel,
   userId,
@@ -23,10 +31,20 @@ async function sendActionEmbed(
   };
   const label = actionLabels[action] || action;
   const desc = durationMinutes
-    ? `<@${userId}> ʜᴀs ʙᴇᴇɴ **${action}** ғᴏʀ **${durationMinutes}ᴍ**.\n\n${i("LABEL")} ${reason}`
-    : `<@${userId}> ʜᴀs ʙᴇᴇɴ **${action}**.\n\n${i("LABEL")} ${reason}`;
+    ? `<@${userId}> ʜᴀs ʙᴇᴇɴ **${action}** ғᴏʀ **${durationMinutes}ᴍ**.\n\n\`\`\`ansi\n\u001b[1;37m📝 ʀᴇᴀsᴏɴ\u001b[0m\n\n\u001b[0m${reason}\u001b[0m\`\`\``
+    : `<@${userId}> ʜᴀs ʙᴇᴇɴ **${action}**.\n\n\`\`\`ansi\n\u001b[1;37m ʀᴇᴀsᴏɴ\u001b[0m\n\n\u001b[0m${reason}\u001b[0m\`\`\``;
+  
+  const container = new ContainerBuilder().setAccentColor(EMBED_COLOR);
+  const section = new SectionBuilder()
+    .addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(`-*ᴀᴜᴛᴏᴍᴏᴅ ᴀᴄᴛɪᴏɴ*-\n## ${label}\n${desc}`)
+    );
+  
+  container.addSectionComponents(section);
+  addFooter(container);
+
   await channel
-    .send(eSend(`ᴀᴜᴛᴏᴍᴏᴅ — ${label}`, desc, { timestamp: true }))
+    .send({ components: [container], flags: MessageFlags.IsComponentsV2 })
     .catch(() => {});
 }
 
@@ -119,6 +137,15 @@ export async function checkSpam(message) {
 // ── Deterministic Anti-Nuke Measures (Instant Execution) ──────────────
 // No AI overhead. This directly prevents rogue mods from destroying the server.
 
+/**
+ * Triggers a warning or an action if the user has already been warned recently.
+ * @param {import('discord.js').Guild} guild - The guild where the action is taking place.
+ * @param {string} userId - The ID of the user to warn or take action against.
+ * @param {import('discord.js').Message|null} message - The message that triggered the warning, if any.
+ * @param {string} warningText - The text to include in the warning.
+ * @param {Function} actionCallback - The callback to execute if the user has already been warned.
+ * @returns {Promise<void>}
+ */
 async function triggerWarningOrAction(
   guild,
   userId,
@@ -146,22 +173,18 @@ async function triggerWarningOrAction(
     }
 
     try {
-      if (channel) {
-        await channel.send(
-          eSend(
-            `${i("WARNING")} ᴀᴜᴛᴏᴍᴏᴅ ᴡᴀʀɴɪɴɢ`,
-            `<@${userId}> ${warningText}\n\n ᴄᴏɴᴛɪɴᴜɪɴɢ ᴛʜɪs ʙᴇʜᴀᴠɪᴏᴜʀ ᴡɪᴛʜɪɴ 20 ᴍɪɴᴜᴛᴇs ᴡɪʟʟ ʀᴇsᴜʟᴛ ɪɴ ᴀ sᴇʀᴠᴇʀ ᴀᴄᴛɪᴏɴ.`,
-          ),
+      const warningContainer = new ContainerBuilder().setAccentColor(EMBED_COLOR);
+      const warningSection = new SectionBuilder()
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(`-*ᴀᴜᴛᴏᴍᴏᴅ ᴀʟᴇʀᴛ*-\n## ${i("WARNING")} ᴡᴀʀɴɪɴɢ\n<@${userId}> ${warningText}\n\n> ᴄᴏɴᴛɪɴᴜɪɴɢ ᴛʜɪs ʙᴇʜᴀᴠɪᴏᴜʀ ᴡɪᴛʜɪɴ 20 ᴍɪɴᴜᴛᴇs ᴡɪʟʟ ʀᴇsᴜʟᴛ ɪɴ ᴀ sᴇʀᴠᴇʀ ᴀᴄᴛɪᴏɴ.`)
         );
+      warningContainer.addSectionComponents(warningSection);
+      addFooter(warningContainer);
+
+      if (channel) {
+        await channel.send({ components: [warningContainer], flags: MessageFlags.IsComponentsV2 });
       } else if (member) {
-        await member
-          .send(
-            eSend(
-              `${i("WARNING")} ᴡᴀʀɴɪɴɢ`,
-              `${warningText}\n\n ᴄᴏɴᴛɪɴᴜɪɴɢ ᴛʜɪs ʙᴇʜᴀᴠɪᴏᴜʀ ᴡɪᴛʜɪɴ 20 ᴍɪɴᴜᴛᴇs ᴡɪʟʟ ʀᴇsᴜʟᴛ ɪɴ ᴀ sᴇʀᴠᴇʀ ᴀᴄᴛɪᴏɴ.`,
-            ),
-          )
-          .catch(() => {});
+        await member.send({ components: [warningContainer], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
       }
     } catch (err) {
       console.error("[AutoMod] Failed sending warning", err);
@@ -169,6 +192,15 @@ async function triggerWarningOrAction(
   }
 }
 
+/**
+ * Instantly executes an anti-nuke lockdown action against a user.
+ * @param {import('discord.js').Guild} guild - The guild where the action is taking place.
+ * @param {string} userId - The ID of the user to lock down.
+ * @param {string} reason - The reason for the lockdown.
+ * @param {string} [actionType="ban"] - The type of action to take ('ban', 'ban-wipe', 'timeout').
+ * @param {import('discord.js').TextChannel|null} [channel=null] - The channel to send the action embed to.
+ * @returns {Promise<void>}
+ */
 async function instantAntiNuke(
   guild,
   userId,
@@ -201,6 +233,12 @@ async function instantAntiNuke(
   }
 }
 
+/**
+ * Checks if a channel deletion is part of a raid and takes appropriate action.
+ * @param {import('discord.js').Channel} channel - The deleted channel.
+ * @param {import('discord.js').User} executor - The user who deleted the channel.
+ * @returns {Promise<void>}
+ */
 export async function checkChannelDelete(channel, executor) {
   const cfg = await loadConfig();
   if (!cfg.enabled || !cfg.raid) return;
@@ -232,6 +270,12 @@ export async function checkChannelDelete(channel, executor) {
   }
 }
 
+/**
+ * Checks if a member update (like nickname change) is part of a raid and takes appropriate action.
+ * @param {import('discord.js').GuildMember} oldMember - The member before the update.
+ * @param {import('discord.js').GuildMember} newMember - The member after the update.
+ * @returns {Promise<void>}
+ */
 export async function checkMemberUpdate(oldMember, newMember) {
   const cfg = await loadConfig();
   if (!cfg.enabled || !cfg.raid) return;
@@ -346,6 +390,15 @@ export async function checkToxicity(message) {
 
 const activeModerationLocks = new Set();
 
+/**
+ * Triggers AI-based moderation to determine the appropriate action for an anomaly.
+ * @param {import('discord.js').Guild} guild - The guild where the anomaly occurred.
+ * @param {string} userId - The ID of the user who caused the anomaly.
+ * @param {string} anomalyType - The type of anomaly detected.
+ * @param {string} contextData - Additional context data for the AI to analyze.
+ * @param {import('discord.js').TextChannel|null} [channel=null] - The channel to send the action embed to.
+ * @returns {Promise<void>}
+ */
 async function triggerAIModeration(
   guild,
   userId,
@@ -435,6 +488,12 @@ async function triggerAIModeration(
   }
 }
 
+/**
+ * Proactively checks if a message and its attachments are part of a hacked account scam.
+ * @param {import('discord.js').Message} message - The message to check.
+ * @param {string[]} [imageUrls] - Array of image URLs attached to the message.
+ * @returns {Promise<void>}
+ */
 export async function checkHackedAccountSpam(message, imageUrls) {
   const cfg = await loadConfig();
   if (!cfg.enabled) return;
@@ -499,11 +558,18 @@ export async function checkHackedAccountSpam(message, imageUrls) {
         await member.roles.remove(rolesToRemove, "[AutoMod] Quarantine Hacked Account").catch(err => console.error("[AutoMod] Failed to remove roles:", err));
       }
 
-      const dmEmbed = new EmbedBuilder()
-        .setColor(EMBED_COLOR)
-        .setTitle(`${i("WARNING")} ᴀᴄᴄᴏᴜɴᴛ ᴄᴏᴍᴘʀᴏᴍɪsᴇᴅ`)
-        .setDescription(`ᴏᴜʀ sʏsᴛᴇᴍ ʜᴀs ғᴏᴜɴᴅ ᴛʜᴀᴛ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ ɪs ᴄᴏᴍᴘʀᴏᴍɪsᴇᴅ ᴀɴᴅ ᴀʟʟ sᴇʀᴠᴇʀ ᴀᴜᴛʜᴏʀɪᴛɪᴇs ʜᴀᴠᴇ ʙᴇᴇɴ ʀᴇᴠᴏᴋᴇᴅ. ᴘʟᴇᴀsᴇ ʀᴇᴀᴄʜ ᴏᴜᴛ ᴛᴏ ᴀɴʏ ᴍᴏᴅᴇʀᴀᴛᴏʀ ᴛᴏ sᴏʟᴠᴇ ᴛʜɪs ᴍᴀɴᴜᴀʟʟʏ.`);
-      await member.send({ embeds: [dmEmbed] }).catch(err => console.error("[AutoMod] Failed to DM user:", err));
+      const dmContainer = new ContainerBuilder().setAccentColor(EMBED_COLOR);
+      
+      const dmHeader = new SectionBuilder()
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(`-*sᴇʀᴠᴇʀ sᴇᴄᴜʀɪᴛʏ*-\n## ${i("WARNING")} ᴀᴄᴄᴏᴜɴᴛ ᴄᴏᴍᴘʀᴏᴍɪsᴇᴅ\nᴏᴜʀ sʏsᴛᴇᴍ ʜᴀs ᴅᴇᴛᴇᴄᴛᴇᴅ ᴛʜᴀᴛ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ ᴍᴀʏ ʙᴇ ᴄᴏᴍᴘʀᴏᴍɪsᴇᴅ.\n\n> ᴀʟʟ sᴇʀᴠᴇʀ ᴀᴜᴛʜᴏʀɪᴛɪᴇs ʜᴀᴠᴇ ʙᴇᴇɴ ʀᴇᴠᴏᴋᴇᴅ ᴀɴᴅ ʏᴏᴜ ʜᴀᴠᴇ ʙᴇᴇɴ ᴘʟᴀᴄᴇᴅ ɪɴ ǫᴜᴀʀᴀɴᴛɪɴᴇ ᴛᴏ ᴘʀᴏᴛᴇᴄᴛ ᴛʜᴇ sᴇʀᴠᴇʀ.\n\nᴘʟᴇᴀsᴇ ʀᴇᴀᴄʜ ᴏᴜᴛ ᴛᴏ ᴀ ᴍᴏᴅᴇʀᴀᴛᴏʀ ᴛᴏ ʀᴇsᴏʟᴠᴇ ᴛʜɪs ᴍᴀɴᴜᴀʟʟʏ ᴏɴᴄᴇ ʏᴏᴜ ʜᴀᴠᴇ sᴇᴄᴜʀᴇᴅ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ.`)
+        )
+        .setThumbnailAccessory(new ThumbnailBuilder().setURL(message.guild.iconURL({ dynamic: true, size: 256 }) || message.client.user.displayAvatarURL()));
+      
+      dmContainer.addSectionComponents(dmHeader);
+      addFooter(dmContainer);
+
+      await member.send({ components: [dmContainer], flags: MessageFlags.IsComponentsV2 }).catch(err => console.error("[AutoMod] Failed to DM user:", err));
 
       const logChannel = await message.guild.channels.fetch("1489967421283369011").catch(err => {
         console.error("[AutoMod] Failed to fetch log channel:", err);
@@ -511,13 +577,22 @@ export async function checkHackedAccountSpam(message, imageUrls) {
       });
       
       if (logChannel) {
-        const logEmbed = new EmbedBuilder()
-          .setColor(EMBED_COLOR)
-          .setTitle(`${i("WARNING")} ʜᴀᴄᴋᴇᴅ ᴀᴄᴄᴏᴜɴᴛ sᴘᴀᴍ ᴅᴇᴛᴇᴄᴛᴇᴅ`)
-          .setDescription(`**ᴜsᴇʀ:** <@${member.id}> (${member.user.tag})\n**ᴀᴄᴛɪᴏɴ ᴛᴀᴋᴇɴ:** ᴍᴇssᴀɢᴇ ᴅᴇʟᴇᴛᴇᴅ, 28-ᴅᴀʏ ᴛɪᴍᴇᴏᴜᴛ, ʀᴏʟᴇs sᴛʀɪᴘᴘᴇᴅ`)
-          .addFields({ name: "Reason", value: `${reason}\n\n*[AutoMod] Proactive AI Scrutiny triggered on suspicious message/image.*` });
+        const logContainer = new ContainerBuilder().setAccentColor(EMBED_COLOR);
+        
+        const logHeader = new SectionBuilder()
+          .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(`-*ᴀᴜᴛᴏᴍᴏᴅ ᴀʟᴇʀᴛ*-\n## ${i("WARNING")} ʜᴀᴄᴋᴇᴅ ᴀᴄᴄᴏᴜɴᴛ sᴘᴀᴍ ᴅᴇᴛᴇᴄᴛᴇᴅ\n**ᴜsᴇʀ:** <@${member.id}> (${member.user.tag})\n**ᴀᴄᴛɪᴏɴ ᴛᴀᴋᴇɴ:** ᴍᴇssᴀɢᴇ ᴅᴇʟᴇᴛᴇᴅ, 28-ᴅᴀʏ ᴛɪᴍᴇᴏᴜᴛ, ʀᴏʟᴇs sᴛʀɪᴘᴘᴇᴅ`)
+          )
+          .setThumbnailAccessory(new ThumbnailBuilder().setURL(member.user.displayAvatarURL({ dynamic: true, size: 256 })));
+        
+        logContainer.addSectionComponents(logHeader);
+        logContainer.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+        logContainer.addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(`\`\`\`ansi\n\u001b[1;37m ᴀɪ ᴀɴᴀʟʏsɪs ʀᴇᴀsᴏɴ\u001b[0m\n\n\u001b[0m${reason}\u001b[0m\`\`\`\n*[AutoMod] Proactive AI Scrutiny triggered on suspicious message/image.*`)
+        );
+        addFooter(logContainer);
 
-        await logChannel.send({ embeds: [logEmbed] }).catch(err => console.error("[AutoMod] Failed to send log:", err));
+        await logChannel.send({ components: [logContainer], flags: MessageFlags.IsComponentsV2 }).catch(err => console.error("[AutoMod] Failed to send log:", err));
       } else {
         console.error("[AutoMod] Could not find log channel 1489967421283369011");
       }

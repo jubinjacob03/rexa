@@ -24,8 +24,7 @@ function buildV2Container(title, description = null, opts = {}, color = EMBED_CO
   let bodyContent = "";
   if (title) bodyContent += `### ${title}\n`;
   if (description) {
-    const descLines = description.split("\n").filter(l => l.trim());
-    bodyContent += descLines.length > 1 ? descLines.map(l => l.trim()).join("\n") : description.trim();
+    bodyContent += description.trim();
   }
   bodyContent = bodyContent.trim();
 

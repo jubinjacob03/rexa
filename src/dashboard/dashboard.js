@@ -25,6 +25,24 @@ export function getBotCmdChannel(client) {
 
 const tempSelections = new Map();
 
+// Cleanup abandoned selections every 15 minutes to prevent memory leaks
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, data] of tempSelections.entries()) {
+    if (now - data.timestamp > 15 * 60 * 1000) {
+      tempSelections.delete(key);
+    }
+  }
+}, 15 * 60 * 1000);
+
+function setTempSelection(key, value) {
+  tempSelections.set(key, { value, timestamp: Date.now() });
+}
+
+function getTempSelection(key) {
+  return tempSelections.get(key)?.value;
+}
+
 /**
  * Builds the dashboard container component for the control center.
  * @param {import("discord.js").GuildMember} member - The guild member requesting the dashboard.
@@ -249,7 +267,7 @@ export async function handleDashboardSelect(interaction) {
     "shantha_purge_user_select",
     "shantha_purge_trail_user_select"
   ].includes(interaction.customId)) {
-    tempSelections.set(`${interaction.user.id}_${interaction.customId}`, interaction.values);
+    setTempSelection(`${interaction.user.id}_${interaction.customId}`, interaction.values);
     return interaction.deferUpdate();
   }
 }
@@ -297,6 +315,11 @@ export async function postDashboard(client) {
   }
 }
 
+/**
+ * Handles button interactions for the dashboard.
+ * @param {import("discord.js").Interaction} interaction - The interaction to handle.
+ * @returns {Promise<void>}
+ */
 export async function handleDashboardInteraction(interaction) {
   if (!interaction.isButton()) return;
   const { member } = interaction;
@@ -388,7 +411,7 @@ export async function handleDashboardInteraction(interaction) {
     
     case "shantha_private_vc_confirm": {
       const cacheKey = `${interaction.user.id}_shantha_private_vc_select`;
-      const values = tempSelections.get(cacheKey) || [];
+      const values = getTempSelection(cacheKey) || [];
       if (!values.length) return interaction.reply(eReply("Notice", "Please select at least 1 member first."));
       tempSelections.delete(cacheKey);
       
@@ -416,7 +439,7 @@ export async function handleDashboardInteraction(interaction) {
     }
     case "shantha_vc_add_confirm": {
       const cacheKey = `${interaction.user.id}_shantha_vc_add_select`;
-      const values = tempSelections.get(cacheKey) || [];
+      const values = getTempSelection(cacheKey) || [];
       if (!values.length) return interaction.reply(eReply("Notice", "Please select 1 member first."));
       tempSelections.delete(cacheKey);
       
@@ -435,7 +458,7 @@ export async function handleDashboardInteraction(interaction) {
     }
     case "shantha_vc_remove_confirm": {
       const cacheKey = `${interaction.user.id}_shantha_vc_remove_select`;
-      const values = tempSelections.get(cacheKey) || [];
+      const values = getTempSelection(cacheKey) || [];
       if (!values.length) return interaction.reply(eReply("Notice", "Please select 1 member first."));
       tempSelections.delete(cacheKey);
       
@@ -457,7 +480,7 @@ export async function handleDashboardInteraction(interaction) {
       const isTrail = interaction.customId === "shantha_purge_trail_user_confirm";
       const selectId = isTrail ? "shantha_purge_trail_user_select" : "shantha_purge_user_select";
       const cacheKey = `${interaction.user.id}_${selectId}`;
-      const values = tempSelections.get(cacheKey) || [];
+      const values = getTempSelection(cacheKey) || [];
       if (!values.length) return interaction.reply(eReply("Notice", "Please select 1 member first."));
       tempSelections.delete(cacheKey);
       
@@ -465,7 +488,7 @@ export async function handleDashboardInteraction(interaction) {
       if (!member) return interaction.reply(eReply("Notice", "Member not found."));
       
       const targetCacheKey = `${interaction.user.id}_${isTrail ? 'purge_trail_target' : 'purge_user_target'}`;
-      tempSelections.set(targetCacheKey, { purgeUserId: member.id });
+      setTempSelection(targetCacheKey, { purgeUserId: member.id });
       
       const modalId = isTrail ? "shantha_purge_trail_user_modal" : "shantha_purge_user_modal";
       const fields = [ { customId: "purge_channel", label: "Channel (#channel or ID)", required: true } ];
@@ -539,14 +562,47 @@ export async function handleDashboardInteraction(interaction) {
       const action = interaction.customId.replace("_confirm", "");
       const selectId = `${action}_select`;
       const cacheKey = `${interaction.user.id}_${selectId}`;
-      const values = tempSelections.get(cacheKey) || [];
+      const values = getTempSelection(cacheKey) || [];
       if (!values.length) return interaction.reply(eReply("Notice", "Please select 1 member first."));
       tempSelections.delete(cacheKey);
       
       const member = await interaction.guild.members.fetch(values[0]).catch(() => null);
       if (!member) return interaction.reply(eReply("Notice", "Member not found."));
       
-      tempSelections.set(`${interaction.user.id}_mod_target`, member.id);
+      setTempSelection(`${interaction.user.id}_mod_target`, member.id);
+      
+      if (action === "shantha_mod_remtimeout") {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        try {
+          await removeTimeout(member, `[Dashboard] Removed by ${interaction.user.tag}`);
+          return interaction.editReply(eReply("Success", `Removed timeout from ${member.user.tag}.`));
+        } catch (err) {
+          console.error(err);
+          return interaction.editReply(eReply("Error", "Failed to remove timeout."));
+        }
+      }
+      
+      if (action === "shantha_mod_unmute") {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        try {
+          await voiceUnmute(member, `[Dashboard] Unmuted by ${interaction.user.tag}`);
+          return interaction.editReply(eReply("Success", `Unmuted ${member.user.tag}.`));
+        } catch (err) {
+          console.error(err);
+          return interaction.editReply(eReply("Error", "Failed to unmute."));
+        }
+      }
+      
+      if (action === "shantha_mod_undeafen") {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        try {
+          await voiceUndeafen(member, `[Dashboard] Undeafened by ${interaction.user.tag}`);
+          return interaction.editReply(eReply("Success", `Undeafened ${member.user.tag}.`));
+        } catch (err) {
+          console.error(err);
+          return interaction.editReply(eReply("Error", "Failed to undeafen."));
+        }
+      }
       
       const modal = new ModalBuilder().setCustomId(`${action}_modal`).setTitle("Moderation Action");
       
@@ -634,7 +690,7 @@ export async function handleDashboardModal(interaction) {
     }
 
     interaction.options = {
-      getUser: (key) => resolvedMembers[key.replace("member", "") - 1] || null
+      getUser: (key) => resolvedMembers[key.replace("member", "") - 1]?.user || null
     };
     await privateVC.execute(interaction);
     return;
@@ -664,7 +720,7 @@ export async function handleDashboardModal(interaction) {
   if (interaction.customId.endsWith("_modal") && interaction.customId.startsWith("shantha_mod_")) {
     const action = interaction.customId.replace("_modal", "");
     const cacheKey = `${interaction.user.id}_mod_target`;
-    const targetId = tempSelections.get(cacheKey);
+    const targetId = getTempSelection(cacheKey);
     if (!targetId) return interaction.reply(eReply("Error", "Target lost from cache."));
     tempSelections.delete(cacheKey);
     
@@ -734,7 +790,7 @@ export async function handleDashboardModal(interaction) {
     const targetCacheKey = `${interaction.user.id}_${isTrail ? 'purge_trail_target' : 'purge_user_target'}`;
     
     if (!user && tempSelections.has(targetCacheKey)) {
-      const sel = tempSelections.get(targetCacheKey);
+      const sel = getTempSelection(targetCacheKey);
       try {
         user = await interaction.guild.members.fetch(sel.purgeUserId);
       } catch {
