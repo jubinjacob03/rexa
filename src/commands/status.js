@@ -67,7 +67,7 @@ export async function buildStatusPayload(client, guild) {
     }
 
     if (voiceStatus.queueLength > 0) {
-      voiceStats += `${icon("CLIPBOARD")} **ǫᴜᴇᴜᴇ:** ${voiceStatus.queueLength} sᴏᴜɴᴅ(s)`;
+      voiceStats += `${icon("MUSIC")} **ǫᴜᴇᴜᴇ:** ${voiceStatus.queueLength} sᴏᴜɴᴅ(s)`;
     }
   } else {
     voiceStats += `${icon("OFFLINE")} **ᴠᴏɪᴄᴇ:** ɴᴏᴛ ᴄᴏɴɴᴇᴄᴛᴇᴅ`;

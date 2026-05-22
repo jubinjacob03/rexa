@@ -286,7 +286,7 @@ export async function handleVerificationApply(interaction) {
       try {
         await interaction.user.send(
           eSend(
-            `${i("SHIELD")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ`,
+            `${i("KEYLOCK")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ`,
             `ᴛᴏ ᴇɴsᴜʀᴇ ʏᴏᴜ'ʀᴇ ᴀ ʜᴜᴍᴀɴ, ᴘʟᴇᴀsᴇ ʀᴇᴘʟʏ ʜᴇʀᴇ ʙʏ ᴀɴsᴡᴇʀɪɴɢ ᴛʜɪs ǫᴜᴇsᴛɪᴏɴ ᴏʀɢᴀɴɪᴄᴀʟʟʏ:\n> *${question}*`,
           ),
         );
