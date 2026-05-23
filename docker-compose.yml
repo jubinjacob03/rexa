@@ -1,12 +1,28 @@
-version: '3.8'
 services:
-  rexa-bot:
+  shantha-bot:
     build:
       context: .
       dockerfile: Dockerfile
-      tags:
-        - rexa-bot:latest
-    image: rexa-bot:latest
-    container_name: rexa-bot
+    image: shantha-bot:latest
+    container_name: shantha-bot
     env_file: .env
     restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - TZ=UTC
+      # Optimize V8 garbage collection for 1GB RAM VPS
+      # 256MB gives Node.js enough room for AI/Voice tasks while leaving RAM for Zyra and OS
+      - NODE_OPTIONS=--max-old-space-size=256
+    # Resource limits to prevent container from crashing the host
+    deploy:
+      resources:
+        limits:
+          memory: 400M
+        reservations:
+          memory: 128M
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
