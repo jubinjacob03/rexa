@@ -861,7 +861,6 @@ export async function handleDashboardModal(interaction) {
     if (userRaw && !user) {
       return interaction.editReply(eReply("Notice", "User not found."));
     }
-    const messageId = getVal("purge_message");
     const mode = {
       shantha_purge_all_modal: "all",
       shantha_purge_user_modal: "user",
