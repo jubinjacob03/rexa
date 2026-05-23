@@ -158,9 +158,13 @@ export default {
    * @returns {Promise<void>}
    */
   async execute(interaction) {
+    const replyFn = interaction.deferred || interaction.replied 
+      ? interaction.editReply.bind(interaction) 
+      : interaction.reply.bind(interaction);
+
     // Check if the user has moderation permissions
     if (!(await checkModerationPermission(interaction.guild, interaction.user.id, "mod"))) {
-      return interaction.reply(
+      return replyFn(
         eReply(
           `${i("ERROR")} ᴀᴄᴄᴇss ᴅᴇɴɪᴇᴅ`,
           "ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ ɪs ʀᴇsᴛʀɪᴄᴛᴇᴅ ᴛᴏ sᴇʀᴠᴇʀ ᴏᴡɴᴇʀs ᴏɴʟʏ.",
@@ -168,7 +172,9 @@ export default {
       );
     }
 
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    }
 
     const channel = interaction.options.getChannel("channel");
     const mode = interaction.options.getString("mode");

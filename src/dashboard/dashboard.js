@@ -530,8 +530,13 @@ export async function handleDashboardInteraction(interaction) {
       setTempSelection(targetCacheKey, { purgeUserId: member.id });
       
       const modalId = isTrail ? "shantha_purge_trail_user_modal" : "shantha_purge_user_modal";
-      const fields = [ { customId: "purge_channel", label: "Channel (#channel or ID)", required: true } ];
-      if (isTrail) fields.push({ customId: "purge_message", label: "Start message ID", required: true });
+      const fields = [];
+      if (isTrail) {
+        fields.push({ customId: "purge_message", label: "Start message ID", required: true });
+        fields.push({ customId: "purge_channel", label: "Channel (Optional if msg ID given)", required: false });
+      } else {
+        fields.push({ customId: "purge_channel", label: "Channel (#channel or ID)", required: true });
+      }
       
       const modal = new ModalBuilder().setCustomId(modalId).setTitle("Purge Confirmation");
       for (const field of fields) {
@@ -669,8 +674,8 @@ export async function handleDashboardInteraction(interaction) {
       if (!(await checkModerationPermission(interaction.guild, member.id, "owner")))
         return interaction.reply(eReply("Notice", "Owners only."));
       return showPurgeModal(interaction, "shantha_purge_trail_modal", "Purge Trail", [
-        { customId: "purge_channel", label: "Channel (#channel or ID)", required: true },
         { customId: "purge_message", label: "Start message ID", required: true },
+        { customId: "purge_channel", label: "Channel (Optional if msg ID given)", required: false },
       ]);
     case "shantha_purge_trail_user":
       if (!(await checkModerationPermission(interaction.guild, member.id, "owner"))) return interaction.reply(eReply("Notice", "Owners only."));
@@ -818,9 +823,25 @@ export async function handleDashboardModal(interaction) {
       catch { return null; }
     };
     const channelRaw = getVal("purge_channel");
-    const channel = channelRaw ? resolveChannelFromInput(interaction.guild, channelRaw) : null;
+    let channel = channelRaw ? resolveChannelFromInput(interaction.guild, channelRaw) : null;
+    const messageId = getVal("purge_message");
+
+    if (!channel && messageId) {
+      for (const ch of interaction.guild.channels.cache.values()) {
+        if (ch.isTextBased()) {
+          try {
+            const msg = await ch.messages.fetch(messageId);
+            if (msg) {
+              channel = ch;
+              break;
+            }
+          } catch (e) {}
+        }
+      }
+    }
+
     if (!channel) {
-      return interaction.editReply(eReply("Notice", "Channel not found."));
+      return interaction.editReply(eReply("Notice", "Channel not found. Please provide a valid channel or ensure the message ID exists."));
     }
     const userRaw = getVal("purge_user");
     let user = userRaw ? await resolveMemberFromInput(interaction.guild, userRaw) : null;
