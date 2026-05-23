@@ -1,3 +1,7 @@
+/**
+ * Main entry point for the Shantha bot.
+ * Initializes the Discord client, loads commands and events, and handles interactions.
+ */
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -274,6 +278,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
 import contextManager from "./agents/tools/context-manager.js";
 
+/**
+ * Gracefully shuts down the bot, ensuring all conversation contexts are saved.
+ * @param {string} signal - The shutdown signal received.
+ */
 async function gracefulShutdown(signal) {
   console.log(
     `\n[${signal}] Received shutdown signal, saving conversations...`,
