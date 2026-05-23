@@ -6,17 +6,17 @@
       "inline": false,
       "roles": [
         {
-          "emoji": "\ud83d\udc51",
+          "emoji": "{OWNER}",
           "name": "Owner",
           "description": "Server owner and highest authority."
         },
         {
-          "emoji": "\ud83d\udd25",
+          "emoji": "{MANAGEMENT}",
           "name": "Management",
           "description": "Senior staff who oversee and manage the server."
         },
         {
-          "emoji": "\ud83d\udee1️",
+          "emoji": "{MODERATOR}",
           "name": "Moderator",
           "description": "Active moderators who enforce rules and maintain order."
         }
@@ -27,22 +27,22 @@
       "inline": false,
       "roles": [
         {
-          "emoji": "✅",
+          "emoji": "{MEMBER}",
           "name": "Member",
           "description": "Verified guild members with full access to the server."
         },
         {
-          "emoji": "\ud83e\udd1d",
+          "emoji": "{FRIENDS}",
           "name": "Friends",
           "description": "Trusted friends of the community with limited access."
         },
         {
-          "emoji": "❗",
+          "emoji": "{UNVERIFIED}",
           "name": "Unverified",
           "description": "New members pending verification."
         },
         {
-          "emoji": "\ud83d\udc8e",
+          "emoji": "{SERVERBOOSTER}",
           "name": "Server Booster",
           "description": "Members actively boosting the server. Thank you!"
         }
@@ -74,11 +74,11 @@
       "inline": true,
       "roles": [
         {
-          "emoji": "🔞",
+          "emoji": "{18PLUS}",
           "name": "18+",
           "description": "18 or above."
         },
-        { "emoji": "🔰", "name": "18-", "description": "Below 18." }
+        { "emoji": "{18MINUS}", "name": "18-", "description": "Below 18." }
       ]
     }
   ]

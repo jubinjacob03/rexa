@@ -6,7 +6,7 @@
   "WARNING": { "serverEmojiName": "", "fallback": "⚠️" },
   "PENDING": { "serverEmojiName": "", "fallback": "⏳" },
   "TIMER": { "serverEmojiName": "", "fallback": "⏱️" },
-  "BOT": { "serverEmojiName": "BOT", "fallback": "🤖" },
+  "BOT": { "serverEmojiName": "bot", "fallback": "🤖" },
   "UPTIME": { "serverEmojiName": "UpTime", "fallback": "📡" },
   "MEMBERS": { "serverEmojiName": "", "fallback": "👥" },
   "CHANNELS": { "serverEmojiName": "Channel", "fallback": "💬" },
@@ -26,5 +26,12 @@
   "INSTAGRAM": { "serverEmojiName": "Instagram_icon", "fallback": "📸" },
   "WHATSAPP": { "serverEmojiName": "Whatsapp_icon", "fallback": "💬" },
   "18PLUS": { "serverEmojiName": "18plus", "fallback": "🔞" },
-  "18MINUS": { "serverEmojiName": "18minus", "fallback": "🧒" }
+  "18MINUS": { "serverEmojiName": "18minus", "fallback": "🧒" },
+  "OWNER": { "serverEmojiName": "owner", "fallback": "👑" },
+  "MANAGEMENT": { "serverEmojiName": "management", "fallback": "🔥" },
+  "MODERATOR": { "serverEmojiName": "moderator", "fallback": "🛡️" },
+  "MEMBER": { "serverEmojiName": "member", "fallback": "✅" },
+  "FRIENDS": { "serverEmojiName": "friends", "fallback": "🤝" },
+  "UNVERIFIED": { "serverEmojiName": "unverified", "fallback": "❗" },
+  "SERVERBOOSTER": { "serverEmojiName": "serverbooster", "fallback": "💎" }
 }

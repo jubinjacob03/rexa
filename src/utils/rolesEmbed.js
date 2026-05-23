@@ -93,7 +93,7 @@ export async function handleRolesInfo(interaction, selectedCategory = "home") {
           new ButtonBuilder()
             .setCustomId(`dummy_role_${sectionIndex}_${rIdx}`)
             .setLabel(r.name)
-            .setEmoji(r.emoji)
+            .setEmoji(resolveEmoji(r.emoji))
             .setStyle(ButtonStyle.Secondary)
         );
       });
