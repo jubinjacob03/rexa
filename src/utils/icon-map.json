@@ -6,7 +6,7 @@
   "WARNING": { "serverEmojiName": "", "fallback": "⚠️" },
   "PENDING": { "serverEmojiName": "", "fallback": "⏳" },
   "TIMER": { "serverEmojiName": "", "fallback": "⏱️" },
-  "BOT": { "serverEmojiName": "bot", "fallback": "🤖" },
+  "BOT": { "serverEmojiName": "BOT", "fallback": "🤖" },
   "UPTIME": { "serverEmojiName": "UpTime", "fallback": "📡" },
   "MEMBERS": { "serverEmojiName": "", "fallback": "👥" },
   "CHANNELS": { "serverEmojiName": "Channel", "fallback": "💬" },
