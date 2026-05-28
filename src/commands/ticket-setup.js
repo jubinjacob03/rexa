@@ -20,14 +20,17 @@ import { checkModerationPermission } from "../utils/moderation.js";
 export const setupSessions = new Map();
 
 // Cleanup abandoned setup sessions every 30 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [userId, session] of setupSessions.entries()) {
-    if (now - session.timestamp > 30 * 60 * 1000) {
-      setupSessions.delete(userId);
+setInterval(
+  () => {
+    const now = Date.now();
+    for (const [userId, session] of setupSessions.entries()) {
+      if (now - session.timestamp > 30 * 60 * 1000) {
+        setupSessions.delete(userId);
+      }
     }
-  }
-}, 30 * 60 * 1000);
+  },
+  30 * 60 * 1000,
+);
 
 /**
  * Command to launch the Advanced Ticket Setup Dashboard.
@@ -58,10 +61,16 @@ export default {
    */
   async execute(interaction) {
     // Check if the user has moderation permissions
-    if (!(await checkModerationPermission(interaction.guild, interaction.user.id, "mod"))) {
+    if (
+      !(await checkModerationPermission(
+        interaction.guild,
+        interaction.user.id,
+        "mod",
+      ))
+    ) {
       return interaction.reply(eReply("Notice", "Admins only."));
     }
-    
+
     const targetChannel = interaction.options.getChannel("channel");
     const advanced = interaction.options.getBoolean("advanced") || false;
 
@@ -79,7 +88,7 @@ export default {
         .select("content")
         .eq("action_id", "ticket_mods_config")
         .single();
-        
+
       if (data?.content) {
         try {
           ticketMods = JSON.parse(data.content);
@@ -91,7 +100,7 @@ export default {
 
     // Initialize the setup session for the user
     setupSessions.set(interaction.user.id, {
-      title: "🎟️ sᴜᴘᴘᴏʀᴛ ᴛɪᴄᴋᴇᴛs",
+      title: `${icon("TICKET")} sᴜᴘᴘᴏʀᴛ ᴛɪᴄᴋᴇᴛs`,
       description:
         "ᴄʟɪᴄᴋ ᴛʜᴇ ʙᴜᴛᴛᴏɴ ʙᴇʟᴏᴡ ᴛᴏ ᴏᴘᴇɴ ᴀ ᴘʀɪᴠᴀᴛᴇ ᴛɪᴄᴋᴇᴛ.\nᴏᴜʀ ᴀɪ ᴀssɪsᴛᴀɴᴛ ᴀɴᴅ sᴛᴀғғ ᴡɪʟʟ ʙᴇ ᴡɪᴛʜ ʏᴏᴜ sʜᴏʀᴛʟʏ.",
       color: EMBED_COLOR,
@@ -114,8 +123,7 @@ export default {
  */
 async function publishSimpleTicketPanel(interaction, targetChannel) {
   const serverIcon = interaction.guild.iconURL({ size: 128 });
-  const panelContainer = new ContainerBuilder()
-    .setAccentColor(EMBED_COLOR);
+  const panelContainer = new ContainerBuilder().setAccentColor(EMBED_COLOR);
 
   // Add server icon as thumbnail if available
   if (serverIcon) {
@@ -123,43 +131,49 @@ async function publishSimpleTicketPanel(interaction, targetChannel) {
       new SectionBuilder()
         .addTextDisplayComponents(
           new TextDisplayBuilder().setContent(
-            `## ᴛɪᴄᴋᴇᴛ sᴜᴘᴘᴏʀᴛ\nᴄʟɪᴄᴋ ᴛʜᴇ ʙᴜᴛᴛᴏɴ ʙᴇʟᴏᴡ ᴀɴᴅ ᴇɴᴛᴇʀ ʏᴏᴜʀ ǫᴜᴇʀʏ ᴛᴏ \nᴏᴘᴇɴ ᴀ ᴘʀɪᴠᴀᴛᴇ ᴛɪᴄᴋᴇᴛ.`
-          )
+            `## ᴛɪᴄᴋᴇᴛ sᴜᴘᴘᴏʀᴛ\nᴄʟɪᴄᴋ ᴛʜᴇ ʙᴜᴛᴛᴏɴ ʙᴇʟᴏᴡ ᴀɴᴅ ᴇɴᴛᴇʀ ʏᴏᴜʀ ǫᴜᴇʀʏ ᴛᴏ \nᴏᴘᴇɴ ᴀ ᴘʀɪᴠᴀᴛᴇ ᴛɪᴄᴋᴇᴛ.`,
+          ),
         )
-        .setThumbnailAccessory(new ThumbnailBuilder().setURL(serverIcon))
+        .setThumbnailAccessory(new ThumbnailBuilder().setURL(serverIcon)),
     );
   } else {
     panelContainer.addTextDisplayComponents(
       new TextDisplayBuilder().setContent(
-        `## ᴛɪᴄᴋᴇᴛ sᴜᴘᴘᴏʀᴛ\nᴄʟɪᴄᴋ ᴛʜᴇ ʙᴜᴛᴛᴏɴ ʙᴇʟᴏᴡ ᴀɴᴅ ᴇɴᴛᴇʀ ʏᴏᴜʀ ǫᴜᴇʀʏ ᴛᴏ \nᴏᴘᴇɴ ᴀ ᴘʀɪᴠᴀᴛᴇ ᴛɪᴄᴋᴇᴛ.`
-      )
+        `## ᴛɪᴄᴋᴇᴛ sᴜᴘᴘᴏʀᴛ\nᴄʟɪᴄᴋ ᴛʜᴇ ʙᴜᴛᴛᴏɴ ʙᴇʟᴏᴡ ᴀɴᴅ ᴇɴᴛᴇʀ ʏᴏᴜʀ ǫᴜᴇʀʏ ᴛᴏ \nᴏᴘᴇɴ ᴀ ᴘʀɪᴠᴀᴛᴇ ᴛɪᴄᴋᴇᴛ.`,
+      ),
     );
   }
 
   // Add the create ticket button
   panelContainer.addActionRowComponents(
-      new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("tkt_open_simple")
-          .setLabel("ᴄʀᴇᴀᴛᴇ ᴛɪᴄᴋᴇᴛ")
-          .setEmoji(icon("TICKET"))
-          .setStyle(ButtonStyle.Secondary),
-      ),
-    );
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("tkt_open_simple")
+        .setLabel("\u200B\u2009ᴄʀᴇᴀᴛᴇ ᴛɪᴄᴋᴇᴛ")
+        .setEmoji(icon("TICKET"))
+        .setStyle(ButtonStyle.Secondary),
+    ),
+  );
 
   addFooter(panelContainer);
 
-  await targetChannel.send({
-    components: [panelContainer],
-    flags: MessageFlags.IsComponentsV2,
-  }).catch(err => console.error("[TicketSetup] Failed to send simple ticket panel:", err));
+  await targetChannel
+    .send({
+      components: [panelContainer],
+      flags: MessageFlags.IsComponentsV2,
+    })
+    .catch((err) =>
+      console.error("[TicketSetup] Failed to send simple ticket panel:", err),
+    );
 
-  await interaction.reply(
-    eReply(
-      `${icon("SUCCESS")} sᴜᴄᴄᴇss`,
-      `ᴛɪᴄᴋᴇᴛ ᴘᴀɴᴇʟ ᴄʀᴇᴀᴛᴇᴅ ɪɴ <#${targetChannel.id}>.`
+  await interaction
+    .reply(
+      eReply(
+        `${icon("SUCCESS")} sᴜᴄᴄᴇss`,
+        `ᴛɪᴄᴋᴇᴛ ᴘᴀɴᴇʟ ᴄʀᴇᴀᴛᴇᴅ ɪɴ <#${targetChannel.id}>.`,
+      ),
     )
-  ).catch(() => {});
+    .catch(() => {});
 }
 
 /**
@@ -179,7 +193,9 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
   // Add header with optional server icon
   if (iconUrl) {
     const headerSection = new SectionBuilder()
-      .addTextDisplayComponents(new TextDisplayBuilder().setContent(headerContent))
+      .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(headerContent),
+      )
       .setThumbnailAccessory(new ThumbnailBuilder().setURL(iconUrl));
     container.addSectionComponents(headerSection);
   } else {

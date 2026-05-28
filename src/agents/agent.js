@@ -8,6 +8,7 @@ import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 import config, { getLanguageModel } from "./config.js";
+import { icon } from "../utils/icons.js";
 import {
   tools,
   initializeTools,
@@ -222,7 +223,12 @@ async function executeToolByName(toolName, params) {
  * @param {string} [username="Unknown"] - The username of the user.
  * @returns {Promise<object>} The result of processing the message, including the response.
  */
-export async function processMessage(userId, guildId, message, username = "Unknown") {
+export async function processMessage(
+  userId,
+  guildId,
+  message,
+  username = "Unknown",
+) {
   console.log(`[AGENT] Processing message from user ${userId} (${username})`);
 
   try {
@@ -449,7 +455,7 @@ export async function processMessage(userId, guildId, message, username = "Unkno
       const finalResp =
         finalToolResult?.success === false
           ? finalToolResult.error || "Sorry, that didn't work."
-          : finalToolResult?.message || "✅ Done!";
+          : finalToolResult?.message || `${icon("SUCCESS")} Done!`;
       await Promise.all([
         contextManager.addMessage(userId, guildId, "user", message),
         contextManager.addMessage(userId, guildId, "assistant", finalResp),
@@ -464,7 +470,8 @@ export async function processMessage(userId, guildId, message, username = "Unkno
       const finalResp =
         finalToolResult?.success === false
           ? finalToolResult.error || "Sorry, that didn't work."
-          : getMusicConfirmation(toolParams.action) || "✅ Done!";
+          : getMusicConfirmation(toolParams.action) ||
+            `${icon("SUCCESS")} Done!`;
       await Promise.all([
         contextManager.addMessage(userId, guildId, "user", message),
         contextManager.addMessage(userId, guildId, "assistant", finalResp),

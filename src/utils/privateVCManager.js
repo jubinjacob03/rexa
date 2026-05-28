@@ -1,6 +1,8 @@
 import { ChannelType, PermissionFlagsBits } from "discord.js";
 import config from "../../config.js";
 
+import { icon } from "./icons.js";
+
 const ROMAN = ["ɪ", "ɪɪ", "ɪɪɪ", "ɪᴠ", "ᴠ"];
 /**
  * Converts a number to a Roman numeral (1-5).
@@ -28,7 +30,7 @@ const {
  * @returns {string} The generated name.
  */
 function vcName(index) {
-  return `🎟️〢・ᴘʀɪᴠᴀᴛᴇ-ᴠᴄ ${toRoman(index)}`;
+  return `${icon("TICKET")}〢・ᴘʀɪᴠᴀᴛᴇ-ᴠᴄ ${toRoman(index)}`;
 }
 
 function memberOverwrite(userId) {

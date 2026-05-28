@@ -15,14 +15,34 @@ const makeAgent = (url) =>
     ? new https.Agent({ keepAlive: true, maxSockets: 10 })
     : new http.Agent({ keepAlive: true, maxSockets: 10 });
 
-let _remani = null;
-const remani = () => {
-  if (!_remani) {
-    const baseURL = process.env.REMANI_API_URL || "http://localhost:8000";
-    _remani = axios.create({
+let remaniInstances = {};
+const getRemaniInstance = (botIndex = 0) => {
+  if (!remaniInstances[botIndex]) {
+    let baseURL = process.env.REMANI_API_URL || "http://localhost:8000";
+    if (botIndex > 0) {
+      const envUrl = process.env[`REMANI_API_URL_${botIndex}`];
+      if (envUrl) {
+        baseURL = envUrl;
+      } else {
+        if (baseURL.includes("localhost") || baseURL.includes("127.0.0.1")) {
+          baseURL = baseURL.replace(/:8000$/, `:${8000 + botIndex}`);
+        } else {
+          try {
+            const urlObj = new URL(baseURL);
+            if (urlObj.port) {
+              urlObj.port = String(8000 + botIndex);
+              baseURL = urlObj.toString();
+            }
+          } catch {
+            baseURL = baseURL.replace(/:8000$/, `:${8000 + botIndex}`);
+          }
+        }
+      }
+    }
+    remaniInstances[botIndex] = axios.create({
       baseURL,
       headers: {
-        Authorization: `Bearer ${process.env.REMANI_API_KEY || ""}`,
+        Authorization: `Bearer ${process.env[`REMANI_API_KEY_${botIndex}`] || process.env.REMANI_API_KEY || ""}`,
         "Content-Type": "application/json",
         Connection: "keep-alive",
       },
@@ -31,22 +51,17 @@ const remani = () => {
       timeout: 35_000,
     });
   }
-  return _remani;
+  return remaniInstances[botIndex];
 };
 
 const CMD_TIMEOUT = 8_000;
 
-/**
- * Creates a proxy middleware for POST requests to the Remani API.
- * @param {string} remaniPath - The path to proxy to.
- * @param {number} [timeout=CMD_TIMEOUT] - The request timeout in milliseconds.
- * @returns {import('express').RequestHandler} The Express request handler.
- */
 const proxyPost =
   (remaniPath, timeout = CMD_TIMEOUT) =>
   async (req, res) => {
     try {
-      const { data } = await remani().post(remaniPath, req.body, { timeout });
+      const botIndex = req.body.botIndex !== undefined ? Number(req.body.botIndex) : 0;
+      const { data } = await getRemaniInstance(botIndex).post(remaniPath, req.body, { timeout });
       res.json(data);
     } catch (err) {
       const status = err.response?.status || 502;
@@ -58,8 +73,9 @@ const proxyPost =
 
 const proxyGet = (remaniPath, getParams) => async (req, res) => {
   try {
+    const botIndex = req.query.botIndex !== undefined ? Number(req.query.botIndex) : 0;
     const params = getParams ? getParams(req) : req.query;
-    const { data } = await remani().get(remaniPath, {
+    const { data } = await getRemaniInstance(botIndex).get(remaniPath, {
       params,
       timeout: CMD_TIMEOUT,
     });
@@ -74,7 +90,8 @@ const proxyGet = (remaniPath, getParams) => async (req, res) => {
 
 const _proxyDelete = (remaniPath) => async (req, res) => {
   try {
-    const { data } = await remani().delete(remaniPath, {
+    const botIndex = req.body.botIndex !== undefined ? Number(req.body.botIndex) : 0;
+    const { data } = await getRemaniInstance(botIndex).delete(remaniPath, {
       data: req.body,
       timeout: CMD_TIMEOUT,
     });

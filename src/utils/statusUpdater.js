@@ -47,7 +47,7 @@ export async function createStatusContainer(guild) {
   const container = new ContainerBuilder().setAccentColor(EMBED_COLOR);
   const updatedAt = Math.floor(Date.now() / 1000);
 
-  const content = `## 🔒 sᴇʀᴠᴇʀ sᴛᴀᴛs \u200B\n\n\n• **${humanCount}** ᴍᴇᴍʙᴇʀs • **${botCount}** ʙᴏᴛs • **${guild.channels.cache.size}** ᴄʜᴀɴɴᴇʟs\n\n\`\`\`ansi\n\u001b[1;32m ${onlineMembers} ᴏɴʟɪɴᴇ \u001b[0m\`\`\`\`\`\`ansi\n\u001b[1;31m ${totalMembers - onlineMembers} ᴏғғʟɪɴᴇ \u001b[0m\`\`\`\nLast updated <t:${updatedAt}:R>`;
+  const content = `## ${icon("LOCK")} sᴇʀᴠᴇʀ sᴛᴀᴛs \u200B\n\n\n• **${humanCount}** ᴍᴇᴍʙᴇʀs • **${botCount}** ʙᴏᴛs • **${guild.channels.cache.size}** ᴄʜᴀɴɴᴇʟs\n\n\`\`\`ansi\n\u001b[1;32m ${onlineMembers} ᴏɴʟɪɴᴇ \u001b[0m\`\`\`\`\`\`ansi\n\u001b[1;31m ${totalMembers - onlineMembers} ᴏғғʟɪɴᴇ \u001b[0m\`\`\`\nLast updated <t:${updatedAt}:R>`;
   const iconUrl = guild.iconURL({ dynamic: true, size: 256 });
 
   if (iconUrl) {
@@ -133,9 +133,6 @@ export async function updateStatusMessage(client) {
             statusMessage = await channel.messages.fetch(data.value);
             console.log("[INFO] Restored stats message from saved ID");
           } catch {
-            console.log(
-              "[INFO] Saved stats message ID no longer valid, will create new",
-            );
             statusMessage = null;
           }
         }
@@ -144,6 +141,29 @@ export async function updateStatusMessage(client) {
           "[WARN] Could not load stats message ID from DB:",
           error.message,
         );
+      }
+
+      if (!statusMessage) {
+        try {
+          const messages = await channel.messages.fetch({ limit: 10 });
+          const existing = messages.find((m) => {
+            if (m.author.id !== client.user.id) return false;
+            const flat = JSON.stringify(m.components ?? []);
+            return (
+              flat.includes("refresh_stats") ||
+              flat.includes("status_roles_info")
+            );
+          });
+          if (existing) {
+            statusMessage = existing;
+            console.log("[INFO] Found existing stats message in channel scan");
+          }
+        } catch (err) {
+          console.error(
+            "[ERROR] Failed to scan channel for stats message:",
+            err.message,
+          );
+        }
       }
     }
 
@@ -175,14 +195,16 @@ export async function updateStatusMessage(client) {
     }
 
     if (!statusMessage) {
-      statusMessage = await channel.send({
-        components: [container],
-        flags: MessageFlags.IsComponentsV2,
-      }).catch(err => {
-        console.error("[ERROR] Failed to send status message:", err);
-        return null;
-      });
-      
+      statusMessage = await channel
+        .send({
+          components: [container],
+          flags: MessageFlags.IsComponentsV2,
+        })
+        .catch((err) => {
+          console.error("[ERROR] Failed to send status message:", err);
+          return null;
+        });
+
       if (statusMessage) {
         console.log("[INFO] New server info message created!");
         try {

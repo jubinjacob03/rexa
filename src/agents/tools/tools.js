@@ -467,9 +467,11 @@ export const embedGeneratorTool = tool({
       .optional(),
     thumbnail: z.string().optional(),
     image: z.string().optional(),
-    footer: z.string().optional(),    userId: z.string().optional().describe("invoking user's Discord ID"),
+    footer: z.string().optional(),
+    userId: z.string().optional().describe("invoking user's Discord ID"),
     guildId: z.string().optional().describe("server ID"),
-    username: z.string().optional().describe("invoking user's username"),  }),
+    username: z.string().optional().describe("invoking user's username"),
+  }),
   execute: async ({
     title,
     description,
@@ -489,7 +491,7 @@ export const embedGeneratorTool = tool({
         gold: "#f1c40f",
         orange: "#e67e22",
       };
-      
+
       let hexColor = colors[color?.toLowerCase()] || color || "#3498db";
       if (typeof hexColor === "string") {
         hexColor = parseInt(hexColor.replace("#", ""), 16);
@@ -504,43 +506,49 @@ export const embedGeneratorTool = tool({
         if (thumbnail) {
           const section = new SectionBuilder()
             .addTextDisplayComponents(
-              new TextDisplayBuilder().setContent(headerText.trim())
+              new TextDisplayBuilder().setContent(headerText.trim()),
             )
             .setThumbnailAccessory(new ThumbnailBuilder().setURL(thumbnail));
           container.addSectionComponents(section);
         } else {
           container.addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(headerText.trim())
+            new TextDisplayBuilder().setContent(headerText.trim()),
           );
         }
       }
 
       if (fields && Array.isArray(fields) && fields.length > 0) {
         container.addSeparatorComponents(
-          new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+          new SeparatorBuilder()
+            .setDivider(true)
+            .setSpacing(SeparatorSpacingSize.Small),
         );
         fields.forEach((f) => {
           container.addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(`**${f.name}**\n${f.value}`)
+            new TextDisplayBuilder().setContent(`**${f.name}**\n${f.value}`),
           );
         });
       }
 
       if (image) {
         container.addSeparatorComponents(
-          new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+          new SeparatorBuilder()
+            .setDivider(true)
+            .setSpacing(SeparatorSpacingSize.Small),
         );
         container.addTextDisplayComponents(
-          new TextDisplayBuilder().setContent(`[Image](${image})`)
+          new TextDisplayBuilder().setContent(`[Image](${image})`),
         );
       }
 
       if (footer) {
         container.addSeparatorComponents(
-          new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+          new SeparatorBuilder()
+            .setDivider(true)
+            .setSpacing(SeparatorSpacingSize.Small),
         );
         container.addTextDisplayComponents(
-          new TextDisplayBuilder().setContent(`-*${footer}*-`)
+          new TextDisplayBuilder().setContent(`-*${footer}*-`),
         );
       }
 
@@ -666,7 +674,7 @@ export const escalateTicketTool = tool({
       if (!channel) return { output: `[SYSTEM] Could not find channel.` };
 
       await channel.send({
-        content: `🔔 <@&${config.moderatorRoleId}> **TICKET ESCALATION!**\n**AI Context Summary:**\n> ${summary}`,
+        content: `${icon("BELL")} <@&${config.moderatorRoleId}> **TICKET ESCALATION!**\n**AI Context Summary:**\n> ${summary}`,
       });
 
       return {

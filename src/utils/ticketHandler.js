@@ -127,7 +127,7 @@ export async function handleTicketInteraction(interaction) {
         .setCustomId("labelBtn")
         .setLabel("ʙᴜᴛᴛᴏɴ ʟᴀʙᴇʟ")
         .setStyle(TextInputStyle.Short)
-        .setValue("🎫 ᴏᴘᴇɴ ᴛɪᴄᴋᴇᴛ")
+        .setValue(`\u200B\u2009ᴏᴘᴇɴ ᴛɪᴄᴋᴇᴛ`)
         .setRequired(true);
 
       modal.addComponents(new ActionRowBuilder().addComponents(labelInput));
@@ -175,7 +175,7 @@ export async function handleTicketInteraction(interaction) {
         .setCustomId("labelBtn")
         .setLabel("ʙᴜᴛᴛᴏɴ ʟᴀʙᴇʟ")
         .setStyle(TextInputStyle.Short)
-        .setValue("💳 ᴘᴀʏᴍᴇɴᴛ")
+        .setValue(`\u200B\u2009ᴘᴀʏᴍᴇɴᴛ`)
         .setRequired(true);
       modal.addComponents(new ActionRowBuilder().addComponents(labelInput));
       return await interaction.showModal(modal);
@@ -422,7 +422,8 @@ export async function handleTicketInteraction(interaction) {
         await waitingMsg.delete().catch(() => null);
         return await renderTicketDashboard(interaction, true);
       } catch {
-        return interaction.editReply(eReply(
+        return interaction.editReply(
+          eReply(
             `${i("ERROR")} ᴛɪᴍᴇ ᴇxᴘɪʀᴇᴅ`,
             "ʏᴏᴜ ᴅɪᴅɴ'ᴛ ᴜᴘʟᴏᴀᴅ ᴀɴ ɪᴍᴀɢᴇ ɪɴ ᴛɪᴍᴇ. ʀᴜɴ `/setup-ticket` ᴛᴏ ʀᴇsᴜᴍᴇ ᴏʀ ᴛʀʏ ᴀɢᴀɪɴ.",
           ),
@@ -455,13 +456,9 @@ export async function handleTicketInteraction(interaction) {
 
     if (actionData) {
       if (actionData.type === "text") {
-        await interaction.reply(
-          eReply("Action Response", actionData.content)
-        );
+        await interaction.reply(eReply("Action Response", actionData.content));
       } else if (actionData.type === "image") {
-        await interaction.reply(
-          eReply("Action Response", actionData.content)
-        );
+        await interaction.reply(eReply("Action Response", actionData.content));
       }
     } else {
       await interaction.reply(
@@ -491,13 +488,21 @@ async function createTicketInstance(interaction, options = {}) {
   if (activeTickets.has(interaction.user.id)) {
     // Verify the channel actually still exists before rejecting
     const guild = interaction.guild;
-    const existingChannel = guild.channels.cache.find(c => c.name.includes(interaction.user.username.toLowerCase()) && (c.name.startsWith("ticket-") || c.name.endsWith("s-ᴛɪᴄᴋᴇᴛ")));
-    
+    const existingChannel = guild.channels.cache.find(
+      (c) =>
+        c.name.includes(interaction.user.username.toLowerCase()) &&
+        (c.name.startsWith("ticket-") || c.name.endsWith("s-ᴛɪᴄᴋᴇᴛ")),
+    );
+
     if (!existingChannel) {
       // Channel was manually deleted, auto-heal the state
       activeTickets.delete(interaction.user.id);
       if (supabase) {
-        await supabase.from("active_tickets").delete().eq("user_id", interaction.user.id).catch(() => {});
+        await supabase
+          .from("active_tickets")
+          .delete()
+          .eq("user_id", interaction.user.id)
+          .catch(() => {});
       }
     } else {
       return interaction.reply(
@@ -517,10 +522,18 @@ async function createTicketInstance(interaction, options = {}) {
       .single();
     if (data) {
       const guild = interaction.guild;
-      const existingChannel = guild.channels.cache.find(c => c.name.includes(interaction.user.username.toLowerCase()) && (c.name.startsWith("ticket-") || c.name.endsWith("s-ᴛɪᴄᴋᴇᴛ")));
-      
+      const existingChannel = guild.channels.cache.find(
+        (c) =>
+          c.name.includes(interaction.user.username.toLowerCase()) &&
+          (c.name.startsWith("ticket-") || c.name.endsWith("s-ᴛɪᴄᴋᴇᴛ")),
+      );
+
       if (!existingChannel) {
-        await supabase.from("active_tickets").delete().eq("user_id", interaction.user.id).catch(() => {});
+        await supabase
+          .from("active_tickets")
+          .delete()
+          .eq("user_id", interaction.user.id)
+          .catch(() => {});
       } else {
         activeTickets.add(interaction.user.id);
         return interaction.reply(
@@ -550,8 +563,13 @@ async function createTicketInstance(interaction, options = {}) {
   try {
     const ticketName = `ticket-${interaction.user.username.toLowerCase()}`;
 
-    const defaultRoles = [config.ownerRoleId, config.managerRoleId].filter(Boolean);
-    let modRoles = defaultRoles.length > 0 ? defaultRoles : [config.moderatorRoleId].filter(Boolean);
+    const defaultRoles = [config.ownerRoleId, config.managerRoleId].filter(
+      Boolean,
+    );
+    let modRoles =
+      defaultRoles.length > 0
+        ? defaultRoles
+        : [config.moderatorRoleId].filter(Boolean);
     const permissionOverwrites = [
       {
         id: guild.id,
@@ -656,7 +674,7 @@ async function createTicketInstance(interaction, options = {}) {
 
     let mentionText = `<@${interaction.user.id}>`;
     const pingStr = config.ownerRoleId ? `<@&${config.ownerRoleId}>` : "";
-    
+
     if (!aiEnabled) {
       mentionText += ` ${pingStr} **ᴀ ɴᴇᴡ ᴛɪᴄᴋᴇᴛ ʀᴇǫᴜɪʀᴇs ᴀᴛᴛᴇɴᴛɪᴏɴ.**`;
     } else {
@@ -671,40 +689,52 @@ async function createTicketInstance(interaction, options = {}) {
         new SectionBuilder()
           .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
-              `## Welcome to your ticket, ${interaction.user.username}\n${descriptionText}`
-            )
+              `## ${icon("TICKET")} ᴛɪᴄᴋᴇᴛ - ${interaction.user.username}\n**Wᴇʟᴄᴏᴍᴇ ᴛᴏ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ.**\n\n${descriptionText}`,
+            ),
           )
           .setThumbnailAccessory(
-            new ThumbnailBuilder().setURL(guild.iconURL({ dynamic: true, size: 256 }) || interaction.user.displayAvatarURL({ dynamic: true, size: 256 }))
-          )
+            new ThumbnailBuilder().setURL(
+              guild.iconURL({ dynamic: true, size: 256 }) ||
+                interaction.user.displayAvatarURL({ dynamic: true, size: 256 }),
+            ),
+          ),
       );
 
     if (ticketReason) {
       ticketContainer.addSeparatorComponents(
         new SeparatorBuilder()
           .setDivider(true)
-          .setSpacing(SeparatorSpacingSize.Small)
+          .setSpacing(SeparatorSpacingSize.Small),
       );
-      
+
       ticketContainer.addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(`\`\`\`ansi\n\u001b[1;37m ʀᴇᴀsᴏɴ\u001b[0m\n\n\u001b[0m${ticketReason}\u001b[0m\`\`\``)
+        new TextDisplayBuilder().setContent(
+          `\`\`\`ansi\n\u001b[1;37m ʀᴇᴀsᴏɴ\u001b[0m\n\n\u001b[0m${ticketReason}\u001b[0m\`\`\``,
+        ),
       );
     }
-    
-    ticketContainer.addSeparatorComponents(
-      new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small),
-    ).addActionRowComponents(row);
+
+    ticketContainer
+      .addSeparatorComponents(
+        new SeparatorBuilder()
+          .setDivider(true)
+          .setSpacing(SeparatorSpacingSize.Small),
+      )
+      .addActionRowComponents(row);
 
     addFooter(ticketContainer);
 
     await ticketChannel.send(mentionText).catch(() => {});
-    
-    await ticketChannel.send({
-      components: [ticketContainer],
-      flags: MessageFlags.IsComponentsV2,
-    }).catch(() => {});
 
-    await interaction.editReply(eReply(
+    await ticketChannel
+      .send({
+        components: [ticketContainer],
+        flags: MessageFlags.IsComponentsV2,
+      })
+      .catch(() => {});
+
+    await interaction.editReply(
+      eReply(
         `${i("DONE")} ᴛɪᴄᴋᴇᴛ ᴄʀᴇᴀᴛᴇᴅ`,
         `ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ ʜᴀs ʙᴇᴇɴ ᴄʀᴇᴀᴛᴇᴅ: <#${ticketChannel.id}>`,
       ),
@@ -723,7 +753,8 @@ async function createTicketInstance(interaction, options = {}) {
     if (ticketChannel) {
       await ticketChannel.delete().catch(() => {});
     }
-    await interaction.editReply(eReply(
+    await interaction.editReply(
+      eReply(
         `${i("ERROR")} ᴇʀʀᴏʀ`,
         "ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ ᴡʜɪʟᴇ ᴄʀᴇᴀᴛɪɴɢ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ. ᴘʟᴇᴀsᴇ ᴛʀʏ ᴀɢᴀɪɴ.",
       ),
@@ -748,7 +779,8 @@ async function closeTicketThread(interaction) {
     thread.type === ChannelType.GuildVoice;
 
   if (!isTextCompatible) {
-    return interaction.editReply(eReply(
+    return interaction.editReply(
+      eReply(
         `${i("ERROR")} ɪɴᴠᴀʟɪᴅ ᴄʜᴀɴɴᴇʟ`,
         "ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ ᴄᴀɴ ᴏɴʟʏ ʙᴇ ᴜsᴇᴅ ɪɴ ᴛᴇxᴛ-ʙᴀsᴇᴅ ᴏʀ ᴠᴏɪᴄᴇ-ʙᴀsᴇᴅ ᴛɪᴄᴋᴇᴛs.",
       ),
@@ -770,7 +802,8 @@ async function closeTicketThread(interaction) {
           content: `${icon("LOCK")} **ᴠᴏɪᴄᴇ ᴛɪᴄᴋᴇᴛ ᴄʟᴏsᴇᴅ:** \`${thread.name}\` ᴄʟᴏsᴇᴅ ʙʏ <@${interaction.user.id}>. (ɴᴏ ᴛʀᴀɴsᴄʀɪᴘᴛ ғᴏʀ ᴠᴏɪᴄᴇ ᴛɪᴄᴋᴇᴛs)`,
         });
       }
-      await interaction.editReply(eReply(`${i("LOCK")} ᴄʟᴏsɪɴɢ`, "ᴠᴏɪᴄᴇ ᴛɪᴄᴋᴇᴛ ɪs ᴄʟᴏsɪɴɢ."),
+      await interaction.editReply(
+        eReply(`${i("LOCK")} ᴄʟᴏsɪɴɢ`, "ᴠᴏɪᴄᴇ ᴛɪᴄᴋᴇᴛ ɪs ᴄʟᴏsɪɴɢ."),
       );
     } else {
       const messages = await thread.messages.fetch({ limit: 100 });
@@ -804,7 +837,8 @@ async function closeTicketThread(interaction) {
         });
       }
 
-      await interaction.editReply(eReply(
+      await interaction.editReply(
+        eReply(
           `${i("LOCK")} ᴄʟᴏsɪɴɢ`,
           "ᴛɪᴄᴋᴇᴛ ɪs ᴄʟᴏsɪɴɢ. ᴛʜᴇ ᴛʀᴀɴsᴄʀɪᴘᴛ ʜᴀs ʙᴇᴇɴ sᴀᴠᴇᴅ ᴛᴏ ᴛʜᴇ ʟᴏɢɢɪɴɢ ᴄʜᴀɴɴᴇʟ.",
         ),
@@ -848,7 +882,8 @@ async function closeTicketThread(interaction) {
   } catch (error) {
     console.error("[TICKETS] Error closing ticket:", error);
     if (!interaction.replied) {
-      await interaction.editReply(eReply(
+      await interaction.editReply(
+        eReply(
           `${i("ERROR")} ᴇʀʀᴏʀ`,
           "ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ ᴡʜɪʟᴇ ᴄʟᴏsɪɴɢ ᴛʜᴇ ᴛɪᴄᴋᴇᴛ.",
         ),
@@ -878,9 +913,9 @@ async function escalateTicket(interaction) {
         ),
       );
     }
-    
+
     if (thread.isTextBased() && thread.topic === "ticket_ai_enabled") {
-        await thread.setTopic("ticket_human").catch(() => {});
+      await thread.setTopic("ticket_human").catch(() => {});
     }
 
     let ticketModIds = [];
@@ -901,7 +936,10 @@ async function escalateTicket(interaction) {
       ticketModIds.length > 0
         ? ticketModIds.map((id) => `<@${id}>`).join(" ")
         : [config.ownerRoleId, config.managerRoleId].filter(Boolean).length > 0
-          ? [config.ownerRoleId, config.managerRoleId].filter(Boolean).map((r) => `<@&${r}>`).join(" ")
+          ? [config.ownerRoleId, config.managerRoleId]
+              .filter(Boolean)
+              .map((r) => `<@&${r}>`)
+              .join(" ")
           : `<@&${config.moderatorRoleId}>`;
 
     await interaction.channel.send({
@@ -916,7 +954,9 @@ async function escalateTicket(interaction) {
   } catch (error) {
     console.error("[TICKETS] Error escalating ticket:", error);
     if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply(eReply(`${i("ERROR")} ᴇʀʀᴏʀ`, "ғᴀɪʟᴇᴅ ᴛᴏ ᴇsᴄᴀʟᴀᴛᴇ ᴛɪᴄᴋᴇᴛ.")).catch(() => {});
+      await interaction
+        .reply(eReply(`${i("ERROR")} ᴇʀʀᴏʀ`, "ғᴀɪʟᴇᴅ ᴛᴏ ᴇsᴄᴀʟᴀᴛᴇ ᴛɪᴄᴋᴇᴛ."))
+        .catch(() => {});
     }
   }
 }
