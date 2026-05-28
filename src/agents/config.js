@@ -144,9 +144,9 @@ export function getLanguageModel(
 
   const geminiModels = {
     fast: "gemini-2.5-flash-lite",
-    balanced: "gemini-2.5-flash",
+    balanced: "gemini-3.5-flash",
     powerful: "gemini-2.5-pro",
-    creative: "gemini-2.5-flash",
+    creative: "gemini-3.5-flash",
   };
 
   const model = preset !== "custom" ? geminiModels[preset] : modelName;
