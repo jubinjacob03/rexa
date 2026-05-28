@@ -376,14 +376,19 @@ export const musicControlTool = tool({
       "queue",
       "volume",
       "nowplaying",
+      "shuffle",
+      "loop",
+      "remove",
     ]),
     query: z.string().optional(),
     volume: z.number().min(0).max(100).optional(),
+    loopMode: z.number().min(0).max(2).optional().describe("0: off, 1: track, 2: queue"),
+    position: z.number().min(0).optional().describe("Index of song to remove"),
     userId: z.string(),
     guildId: z.string(),
     username: z.string().optional().describe("invoking user's username"),
   }),
-  execute: async ({ action, query, volume, userId, guildId }) => {
+  execute: async ({ action, query, volume, loopMode, position, userId, guildId }) => {
     let voiceChannelId = null;
     const guild = client?.guilds.cache.get(guildId);
     const member = guild?.members.cache.get(userId);
@@ -424,7 +429,10 @@ export const musicControlTool = tool({
         method: "GET",
         params: `?guildId=${guildId}`,
       },
-      volume: { path: "/volume", body: { guildId, volume } },
+      volume: { path: "/volume", body: { guildId, value: volume } },
+      shuffle: { path: "/shuffle", body: { guildId } },
+      loop: { path: "/loop", body: { guildId, value: loopMode } },
+      remove: { path: "/remove", body: { guildId, value: position } },
       nowplaying: {
         path: "/status",
         body: null,
