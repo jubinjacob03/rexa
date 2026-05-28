@@ -235,7 +235,6 @@ export const serverInfoTool = tool({
 
         let results = [];
 
-        // Exact ID match
         const exactMatch = fetched.get(searchQuery);
         if (exactMatch && !exactMatch.user.bot) {
           results.push(exactMatch);
@@ -338,7 +337,7 @@ export const serverInfoTool = tool({
         const auditLogs = await guild.fetchAuditLogs({
           limit: limit || 50,
           type: 20,
-        }); // AuditLogEvent.MemberKick = 20
+        });
         const kicks = auditLogs.entries.map((entry) => ({
           action: "Kicked",
           targetId: entry.target?.id,
@@ -385,26 +384,33 @@ export const musicControlTool = tool({
     username: z.string().optional().describe("invoking user's username"),
   }),
   execute: async ({ action, query, volume, userId, guildId }) => {
-    const baseURL = process.env.REMANI_API_URL || "http://localhost:8000";
+    let voiceChannelId = null;
+    const guild = client?.guilds.cache.get(guildId);
+    const member = guild?.members.cache.get(userId);
+    voiceChannelId = member?.voice?.channelId || null;
+
+    if (!voiceChannelId && action === "play") {
+      return {
+        success: false,
+        error: "You must be in a voice channel to play music.",
+      };
+    }
+
+    const channelIndex = [
+      "1496481436377812992",
+      "1496527838226940174",
+      "1496527870598709432"
+    ].indexOf(voiceChannelId);
+
+    const port = channelIndex !== -1 ? 8001 + channelIndex : 8000;
+    const baseURL = `http://localhost:${port}`;
+    
     const headers = {
       "Content-Type": "application/json",
       ...(process.env.REMANI_API_KEY
         ? { Authorization: `Bearer ${process.env.REMANI_API_KEY}` }
         : {}),
     };
-
-    let voiceChannelId = null;
-    if (action === "play") {
-      const guild = client?.guilds.cache.get(guildId);
-      const member = guild?.members.cache.get(userId);
-      voiceChannelId = member?.voice?.channelId || null;
-      if (!voiceChannelId) {
-        return {
-          success: false,
-          error: "You must be in a voice channel to play music.",
-        };
-      }
-    }
 
     const actionMap = {
       play: { path: "/play", body: { guildId, query, userId, voiceChannelId } },

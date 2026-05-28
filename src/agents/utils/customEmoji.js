@@ -3,61 +3,23 @@
  * @description Custom emoji utilities for Shantha Discord bot. Loads custom emojis from Discord server and provides fallback to unicode. Based on the Zyra/Remani implementation.
  */
 
+import path from 'path';
+import fs from 'fs';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+const EMOJI_MAP = require('../../utils/icon-map.json');
+
 /** Maps Discord emoji names to internal keys */
-const EMOJI_NAMES = {
-  r_play: "PLAY",
-  r_pause: "PAUSE",
-  r_stop: "STOP",
-  r_skip: "SKIP",
-  r_previous: "PREVIOUS",
-  r_shuffle: "SHUFFLE",
-  r_loop: "LOOP",
-  r_loopone: "LOOP_ONE",
-  r_volup: "VOLUP",
-  r_voldown: "VOLDOWN",
-  r_queue: "QUEUE",
-  r_music: "MUSIC",
-  r_headphones: "HEADPHONES",
-  r_author: "AUTHOR",
-  r_playlist: "PLAYLIST",
-  r_youtube: "YOUTUBE",
-  r_spotify: "SPOTIFY",
-  r_success: "SUCCESS",
-  r_error: "ERROR",
-  r_warning: "WARNING",
-  r_info: "INFO",
-  r_refresh: "REFRESH",
-  r_user: "USER",
-  r_time: "TIME",
-};
+const EMOJI_NAMES = {};
 
 /** Unicode fallbacks when custom emojis aren't available */
-export const UNICODE = {
-  PLAY: "▶️",
-  PAUSE: "⏸️",
-  STOP: "⏹️",
-  SKIP: "⏭️",
-  PREVIOUS: "⏮️",
-  SHUFFLE: "🔀",
-  LOOP: "🔁",
-  LOOP_ONE: "🔂",
-  VOLUP: "🔊",
-  VOLDOWN: "🔉",
-  QUEUE: "📋",
-  MUSIC: "🎵",
-  HEADPHONES: "🎧",
-  AUTHOR: "🎤",
-  PLAYLIST: "📑",
-  YOUTUBE: "🔴",
-  SPOTIFY: "🟢",
-  SUCCESS: "✅",
-  ERROR: "❌",
-  WARNING: "⚠️",
-  INFO: "ℹ️",
-  REFRESH: "🔄",
-  USER: "👤",
-  TIME: "⏱️",
-};
+export const UNICODE = {};
+
+for (const [key, value] of Object.entries(EMOJI_MAP)) {
+  EMOJI_NAMES[value.serverEmojiName] = key;
+  UNICODE[key] = value.fallback;
+}
 
 /** Resolved custom emojis from Discord server */
 const resolved = {};
