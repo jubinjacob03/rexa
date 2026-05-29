@@ -1,8 +1,35 @@
-import { Events } from "discord.js";
+import { Events, ActivityType } from "discord.js";
 import { startStatusUpdater } from "../utils/statusUpdater.js";
 import { startApiServer } from "../api/server.js";
 import { initIcons } from "../utils/icons.js";
 
+const idlePhrases = [
+  "✨ reading the chat",
+  "🔨 handing out bans",
+  "🍵 sipping the tea",
+  "💅 unbothered",
+  "🛌 rotting in bed",
+  "🧊 silently judging",
+  "🎧 pretending to listen",
+  "🍑 dummy thicc",
+  "📱 scrolling mindlessly",
+  "🥵 down bad for the chat",
+  "😈 absolute menace",
+  "💤 sleeping on the job",
+  "🌿 touching grass",
+  "🔥 watching the drama",
+  "🦋 romanticizing my life",
+  "🦊 plotting my next move",
+  "🍒 serving looks",
+];
+
+const setRandomPresence = (client) => {
+  const phrase = idlePhrases[Math.floor(Math.random() * idlePhrases.length)];
+  client.user.setPresence({
+    activities: [{ name: phrase, type: ActivityType.Custom }],
+    status: "online",
+  });
+};
 
 /**
  * Handles the ClientReady event.
@@ -40,5 +67,8 @@ export default {
 
     startStatusUpdater(client);
     startApiServer(client);
+
+    setRandomPresence(client);
+    setInterval(() => setRandomPresence(client), 300000);
   },
 };
