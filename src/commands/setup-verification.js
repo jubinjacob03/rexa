@@ -59,10 +59,16 @@ export default {
    */
   async execute(interaction) {
     // Check if the user has moderation permissions
-    if (!(await checkModerationPermission(interaction.guild, interaction.user.id, "mod"))) {
+    if (
+      !(await checkModerationPermission(
+        interaction.guild,
+        interaction.user.id,
+        "mod",
+      ))
+    ) {
       return interaction.reply(eReply("Notice", "Admins only."));
     }
-    
+
     try {
       if (!interaction.deferred && !interaction.replied) {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -74,13 +80,13 @@ export default {
         const enabled = autoOption === "on";
         await setAutoDmEnabled(enabled);
       }
-      
+
       // Update auto-approve setting if provided
       const approveOption = interaction.options.getString("approve");
       if (approveOption !== null) {
         await setAutoApprove(approveOption === "auto");
       }
-      
+
       const currentAutoDm = await getAutoDmEnabled();
       const currentAutoApprove = await getAutoApprove();
 
@@ -109,7 +115,7 @@ export default {
           .setLabel("ɢᴜɪʟᴅ-ᴍᴇᴍʙᴇʀ")
           .setStyle(ButtonStyle.Success),
       );
-      
+
       // Build the self-role buttons
       const selfRoleRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -131,7 +137,7 @@ export default {
         new ButtonBuilder()
           .setCustomId("selfrole_18_minus")
           .setEmoji(icon("18MINUS"))
-          .setStyle(ButtonStyle.Secondary)
+          .setStyle(ButtonStyle.Secondary),
       );
 
       // Build the verification container
@@ -177,7 +183,7 @@ export default {
         "member verification",
         "ᴍᴇᴍʙᴇʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ",
       ];
-      
+
       const matchesVerif = (haystack) => {
         if (!haystack) return false;
         const lc = haystack.toLowerCase();
@@ -214,10 +220,24 @@ export default {
         if (isLegacy) {
           // Replace legacy embed with new container
           await existingMessage.delete().catch(() => {});
-          await verificationChannel.send(payload).catch(err => console.error("[SetupVerification] Failed to send new embed:", err));
+          await verificationChannel
+            .send(payload)
+            .catch((err) =>
+              console.error(
+                "[SetupVerification] Failed to send new embed:",
+                err,
+              ),
+            );
         } else {
           // Update existing container
-          await existingMessage.edit(payload).catch(err => console.error("[SetupVerification] Failed to edit existing embed:", err));
+          await existingMessage
+            .edit(payload)
+            .catch((err) =>
+              console.error(
+                "[SetupVerification] Failed to edit existing embed:",
+                err,
+              ),
+            );
         }
         console.log("[INFO] Updated existing verification message");
 
@@ -244,7 +264,11 @@ export default {
         );
       } else {
         // Create new verification embed
-        await verificationChannel.send(payload).catch(err => console.error("[SetupVerification] Failed to send new embed:", err));
+        await verificationChannel
+          .send(payload)
+          .catch((err) =>
+            console.error("[SetupVerification] Failed to send new embed:", err),
+          );
         console.log("[INFO] Created new verification embed");
         await interaction.editReply(
           eReply(
@@ -257,17 +281,11 @@ export default {
       console.error("[ERROR] Error setting up verification:", error);
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply(
-          eReply(
-            `${i("ERROR")} ᴇʀʀᴏʀ`,
-            "ғᴀɪʟᴇᴅ ᴛᴏ sᴇᴛ ᴜᴘ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴇᴍʙᴇᴅ.",
-          ),
+          eReply(`${i("ERROR")} ᴇʀʀᴏʀ`, "ғᴀɪʟᴇᴅ ᴛᴏ sᴇᴛ ᴜᴘ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴇᴍʙᴇᴅ."),
         );
       } else {
         await interaction.reply(
-          eReply(
-            `${i("ERROR")} ᴇʀʀᴏʀ`,
-            "ғᴀɪʟᴇᴅ ᴛᴏ sᴇᴛ ᴜᴘ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴇᴍʙᴇᴅ.",
-          ),
+          eReply(`${i("ERROR")} ᴇʀʀᴏʀ`, "ғᴀɪʟᴇᴅ ᴛᴏ sᴇᴛ ᴜᴘ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴇᴍʙᴇᴅ."),
         );
       }
     }

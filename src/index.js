@@ -5,12 +5,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import {
-  Client,
-  GatewayIntentBits,
-  Collection,
-  Events,
-} from "discord.js";
+import { Client, GatewayIntentBits, Collection, Events } from "discord.js";
 import { eReply } from "./utils/embed.js";
 import { i } from "./utils/icons.js";
 import { fileURLToPath } from "url";
@@ -27,7 +22,12 @@ import {
 } from "./utils/verificationHandler.js";
 import { handleTicketInteraction } from "./utils/ticketHandler.js";
 import { buildStatusPayload } from "./commands/status.js";
-import { postDashboard, handleDashboardInteraction, handleDashboardModal, handleDashboardSelect } from "./dashboard/dashboard.js";
+import {
+  postDashboard,
+  handleDashboardInteraction,
+  handleDashboardModal,
+  handleDashboardSelect,
+} from "./dashboard/dashboard.js";
 import { handleRolesInfo } from "./utils/rolesEmbed.js";
 
 if (ffmpegPath) {
@@ -100,7 +100,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await handleDashboardInteraction(interaction);
       return;
     }
-    if (interaction.isModalSubmit() && interaction.customId.startsWith("shantha_")) {
+    if (
+      interaction.isModalSubmit() &&
+      interaction.customId.startsWith("shantha_")
+    ) {
       await handleDashboardModal(interaction);
       return;
     }
@@ -113,7 +116,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
-    if (interaction.isModalSubmit() && interaction.customId.startsWith("tkt_")) {
+    if (
+      interaction.isModalSubmit() &&
+      interaction.customId.startsWith("tkt_")
+    ) {
       await handleTicketInteraction(interaction);
       return;
     }
@@ -176,7 +182,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
           );
         }
         return await interaction.reply(
-          eReply("ᴡʜᴀᴛsᴀᴘᴘ", `[ᴊᴏɪɴ ᴏᴜʀ ᴡʜᴀᴛsᴀᴘᴘ ɢʀᴏᴜᴘ](${config.whatsappUrl})`),
+          eReply(
+            "ᴡʜᴀᴛsᴀᴘᴘ",
+            `[ᴊᴏɪɴ ᴏᴜʀ ᴡʜᴀᴛsᴀᴘᴘ ɢʀᴏᴜᴘ](${config.whatsappUrl})`,
+          ),
         );
       }
 
@@ -253,16 +262,21 @@ client.on(Events.InteractionCreate, async (interaction) => {
     const command = client.commands.get(interaction.commandName);
 
     if (!command) {
-      console.error(`No command matching ${interaction.commandName} was found.`);
+      console.error(
+        `No command matching ${interaction.commandName} was found.`,
+      );
       return;
     }
 
     await command.execute(interaction);
   } catch (error) {
-    console.error(`[ERROR] Unhandled error in interaction ${interaction.customId || interaction.commandName}:`, error);
+    console.error(
+      `[ERROR] Unhandled error in interaction ${interaction.customId || interaction.commandName}:`,
+      error,
+    );
     const errorMessage = eReply(
       `${i("ERROR")} ᴇʀʀᴏʀ`,
-      "ᴀɴ ᴜɴᴇxᴘᴇᴄᴛᴇᴅ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ ᴡʜɪʟᴇ ᴘʀᴏᴄᴇssɪɴɢ ᴛʜɪs ɪɴᴛᴇʀᴀᴄᴛɪᴏɴ."
+      "ᴀɴ ᴜɴᴇxᴘᴇᴄᴛᴇᴅ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ ᴡʜɪʟᴇ ᴘʀᴏᴄᴇssɪɴɢ ᴛʜɪs ɪɴᴛᴇʀᴀᴄᴛɪᴏɴ.",
     );
     try {
       if (interaction.replied || interaction.deferred) {
@@ -271,7 +285,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await interaction.reply(errorMessage).catch(() => {});
       }
     } catch (replyError) {
-      console.error("[ERROR] Failed to send error message to user:", replyError);
+      console.error(
+        "[ERROR] Failed to send error message to user:",
+        replyError,
+      );
     }
   }
 });

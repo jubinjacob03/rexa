@@ -20,7 +20,9 @@ export function setupModerationTools(discordClient) {
  */
 export async function checkModerationPermission(guild, userId, level) {
   if (!userId) return false;
-  const member = await guild.members.fetch({ user: userId, force: false }).catch(() => null);
+  const member = await guild.members
+    .fetch({ user: userId, force: false })
+    .catch(() => null);
   if (!member) return false;
 
   const isServerOwner = member.id === guild.ownerId;
@@ -32,8 +34,13 @@ export async function checkModerationPermission(guild, userId, level) {
   if (level === "mod") {
     if (isOwner) return true;
     if (member.permissions.has(PermissionFlagsBits.Administrator)) return true;
-    if (config.managerRoleId && member.roles.cache.has(config.managerRoleId)) return true;
-    if (config.moderatorRoleId && member.roles.cache.has(config.moderatorRoleId)) return true;
+    if (config.managerRoleId && member.roles.cache.has(config.managerRoleId))
+      return true;
+    if (
+      config.moderatorRoleId &&
+      member.roles.cache.has(config.moderatorRoleId)
+    )
+      return true;
   }
   return false;
 }
@@ -147,7 +154,11 @@ export async function voiceUndeafen(member, reason = "Requested via Shantha") {
  * @param {string} [reason="Requested via Shantha"] - The reason for the timeout.
  * @returns {Promise<string>} A success message.
  */
-export async function timeout(member, durationMinutes = 5, reason = "Requested via Shantha") {
+export async function timeout(
+  member,
+  durationMinutes = 5,
+  reason = "Requested via Shantha",
+) {
   validateTarget(member);
   const ms = Math.min(durationMinutes, 40320) * 60 * 1000;
   await member.timeout(ms, reason);
@@ -185,7 +196,11 @@ export async function kick(member, reason = "Requested via Shantha") {
  * @param {string} [reason="Requested via Shantha"] - The reason for banning.
  * @returns {Promise<string>} A success message.
  */
-export async function ban(member, deleteDays = 0, reason = "Requested via Shantha") {
+export async function ban(
+  member,
+  deleteDays = 0,
+  reason = "Requested via Shantha",
+) {
   validateTarget(member);
   await member.ban({
     reason,
@@ -201,7 +216,11 @@ export async function ban(member, deleteDays = 0, reason = "Requested via Shanth
  * @param {string} [reason="Requested via Shantha"] - The reason for changing the nickname.
  * @returns {Promise<string>} A success message.
  */
-export async function changeNickname(member, nickname, reason = "Requested via Shantha") {
+export async function changeNickname(
+  member,
+  nickname,
+  reason = "Requested via Shantha",
+) {
   validateTarget(member);
   await member.setNickname(nickname ?? null, reason);
   return nickname
@@ -216,7 +235,11 @@ export async function changeNickname(member, nickname, reason = "Requested via S
  * @param {string} [reason="Requested via Shantha"] - The reason for changing the nickname.
  * @returns {Promise<string>} A success message.
  */
-export async function changeBotNickname(guild, nickname, reason = "Requested via Shantha") {
+export async function changeBotNickname(
+  guild,
+  nickname,
+  reason = "Requested via Shantha",
+) {
   const me = await guild.members.fetchMe();
   await me.setNickname(nickname ?? null, reason);
   return nickname
@@ -232,17 +255,24 @@ export async function changeBotNickname(guild, nickname, reason = "Requested via
  * @param {string} [reason="Requested via Shantha"] - The reason for adding the role.
  * @returns {Promise<string>} A success message.
  */
-export async function addRole(guild, member, roleName, reason = "Requested via Shantha") {
+export async function addRole(
+  guild,
+  member,
+  roleName,
+  reason = "Requested via Shantha",
+) {
   validateTarget(member);
   if (!roleName) throw new Error("roleName is required for add-role.");
-  
+
   const role = resolveRoleByName(guild, roleName);
   if (!role) throw new Error(`Role "${roleName}" not found in this server.`);
-  
+
   if (member.roles.cache.has(role.id)) {
-    throw new Error(`${member.displayName} already has the "${role.name}" role.`);
+    throw new Error(
+      `${member.displayName} already has the "${role.name}" role.`,
+    );
   }
-  
+
   await member.roles.add(role, reason);
   return `The "${role.name}" role has been added to ${member.displayName}.`;
 }
@@ -255,17 +285,24 @@ export async function addRole(guild, member, roleName, reason = "Requested via S
  * @param {string} [reason="Requested via Shantha"] - The reason for removing the role.
  * @returns {Promise<string>} A success message.
  */
-export async function removeRole(guild, member, roleName, reason = "Requested via Shantha") {
+export async function removeRole(
+  guild,
+  member,
+  roleName,
+  reason = "Requested via Shantha",
+) {
   validateTarget(member);
   if (!roleName) throw new Error("roleName is required for remove-role.");
-  
+
   const role = resolveRoleByName(guild, roleName);
   if (!role) throw new Error(`Role "${roleName}" not found in this server.`);
-  
+
   if (!member.roles.cache.has(role.id)) {
-    throw new Error(`${member.displayName} doesn't have the "${role.name}" role.`);
+    throw new Error(
+      `${member.displayName} doesn't have the "${role.name}" role.`,
+    );
   }
-  
+
   await member.roles.remove(role, reason);
   return `The "${role.name}" role has been removed from ${member.displayName}.`;
 }

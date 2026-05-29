@@ -34,10 +34,13 @@ export default {
    * @returns {Promise<void>}
    */
   async execute(interaction) {
-    const payload = await buildStatusPayload(interaction.client, interaction.guild);
+    const payload = await buildStatusPayload(
+      interaction.client,
+      interaction.guild,
+    );
     await interaction.reply({
       ...payload,
-      ephemeral: true
+      ephemeral: true,
     });
   },
 };
@@ -107,22 +110,26 @@ export async function buildStatusPayload(client, guild) {
   const container = new ContainerBuilder()
     .setAccentColor(EPHEMERAL_COLOR)
     .addTextDisplayComponents(
-      new TextDisplayBuilder().setContent(`## ${i("BOT")} ʙᴏᴛ sᴛᴀᴛᴜs\n\n${botStats}`)
+      new TextDisplayBuilder().setContent(
+        `## ${i("BOT")} ʙᴏᴛ sᴛᴀᴛᴜs\n\n${botStats}`,
+      ),
     )
     .addSeparatorComponents(
-      new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+      new SeparatorBuilder()
+        .setDivider(true)
+        .setSpacing(SeparatorSpacingSize.Small),
     )
-    .addTextDisplayComponents(
-      new TextDisplayBuilder().setContent(voiceStats)
-    );
+    .addTextDisplayComponents(new TextDisplayBuilder().setContent(voiceStats));
 
   if (verifStats) {
     container
       .addSeparatorComponents(
-        new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+        new SeparatorBuilder()
+          .setDivider(true)
+          .setSpacing(SeparatorSpacingSize.Small),
       )
       .addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(verifStats)
+        new TextDisplayBuilder().setContent(verifStats),
       );
   }
 

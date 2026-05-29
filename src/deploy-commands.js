@@ -5,7 +5,7 @@ import { loadCommands } from "./utils/commandLoader.js";
 const loadedCommands = await loadCommands(undefined, {
   allowlist: ["setup-verification", "setup-ticket"],
 });
-const commands = loadedCommands.map(cmd => {
+const commands = loadedCommands.map((cmd) => {
   console.log(`[INFO] Processed command for deployment: ${cmd.data.name}`);
   return cmd.data.toJSON();
 });

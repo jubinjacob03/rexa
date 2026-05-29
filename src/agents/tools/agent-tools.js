@@ -77,44 +77,52 @@ export function createDiscordEmbed(options) {
       if (thumbnail) {
         const section = new SectionBuilder()
           .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(headerText.trim())
+            new TextDisplayBuilder().setContent(headerText.trim()),
           )
           .setThumbnailAccessory(new ThumbnailBuilder().setURL(thumbnail));
         container.addSectionComponents(section);
       } else {
         container.addTextDisplayComponents(
-          new TextDisplayBuilder().setContent(headerText.trim())
+          new TextDisplayBuilder().setContent(headerText.trim()),
         );
       }
     }
 
     if (fields && Array.isArray(fields) && fields.length > 0) {
       container.addSeparatorComponents(
-        new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+        new SeparatorBuilder()
+          .setDivider(true)
+          .setSpacing(SeparatorSpacingSize.Small),
       );
       fields.forEach((field) => {
         container.addTextDisplayComponents(
-          new TextDisplayBuilder().setContent(`**${field.name}**\n${field.value}`)
+          new TextDisplayBuilder().setContent(
+            `**${field.name}**\n${field.value}`,
+          ),
         );
       });
     }
 
     if (image) {
       container.addSeparatorComponents(
-        new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+        new SeparatorBuilder()
+          .setDivider(true)
+          .setSpacing(SeparatorSpacingSize.Small),
       );
       container.addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(`[Image](${image})`)
+        new TextDisplayBuilder().setContent(`[Image](${image})`),
       );
     }
 
     if (footer) {
       const footerText = typeof footer === "string" ? footer : footer.text;
       container.addSeparatorComponents(
-        new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+        new SeparatorBuilder()
+          .setDivider(true)
+          .setSpacing(SeparatorSpacingSize.Small),
       );
       container.addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(`-*${footerText}*-`)
+        new TextDisplayBuilder().setContent(`-*${footerText}*-`),
       );
     }
 

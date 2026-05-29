@@ -1,9 +1,16 @@
 import { Events, MessageFlags } from "discord.js";
 import config from "../../config.js";
-import { checkSpam, checkToxicity, checkHackedAccountSpam } from "../utils/automodRunner.js";
+import {
+  checkSpam,
+  checkToxicity,
+  checkHackedAccountSpam,
+} from "../utils/automodRunner.js";
 import { eSend } from "../utils/embed.js";
 import { i } from "../utils/icons.js";
-import { handleVerificationDM, getAutoApprove } from "../utils/verificationHandler.js";
+import {
+  handleVerificationDM,
+  getAutoApprove,
+} from "../utils/verificationHandler.js";
 import { processMessage } from "../agents/agent.js";
 
 const ANNOUNCEMENTS_CHANNEL = "1473075468805738540";
@@ -69,22 +76,26 @@ export default {
     }
     await checkSpam(message);
     await checkToxicity(message);
-    
+
     if (message.attachments.size >= 1) {
       const imageUrls = [];
-      message.attachments.forEach(att => {
+      message.attachments.forEach((att) => {
         if (att.contentType && att.contentType.startsWith("image/")) {
           imageUrls.push(att.url);
         }
       });
-      
+
       if (imageUrls.length >= 1) {
-        checkHackedAccountSpam(message, imageUrls).catch(err => {
+        checkHackedAccountSpam(message, imageUrls).catch((err) => {
           console.error("[AutoMod] Async Image Scrutiny Error:", err);
         });
       }
-    } else if (message.content.match(/(https?:\/\/[^\s]+)/g) && (message.content.includes("@everyone") || message.content.includes("@here"))) {
-      checkHackedAccountSpam(message, []).catch(err => {
+    } else if (
+      message.content.match(/(https?:\/\/[^\s]+)/g) &&
+      (message.content.includes("@everyone") ||
+        message.content.includes("@here"))
+    ) {
+      checkHackedAccountSpam(message, []).catch((err) => {
         console.error("[AutoMod] Async Text Scrutiny Error:", err);
       });
     }
@@ -145,7 +156,7 @@ export default {
             message.author.id,
             message.guild?.id || "dm",
             question,
-            message.member?.displayName || message.author.username
+            message.member?.displayName || message.author.username,
           );
 
           const safeReply = async (payload) => {
@@ -161,18 +172,18 @@ export default {
             }
           };
 
-            if (result.success) {
-              const response = result.response || "";
-              const hasEmbeds = result.embeds?.length > 0;
-              const hasComponents = result.components?.length > 0;
-  
-              if (hasEmbeds || hasComponents) {
-                await safeReply({
-                  content: response || undefined,
-                  embeds: result.embeds,
-                  components: result.components,
-                  flags: hasComponents ? MessageFlags.IsComponentsV2 : undefined,
-                });
+          if (result.success) {
+            const response = result.response || "";
+            const hasEmbeds = result.embeds?.length > 0;
+            const hasComponents = result.components?.length > 0;
+
+            if (hasEmbeds || hasComponents) {
+              await safeReply({
+                content: response || undefined,
+                embeds: result.embeds,
+                components: result.components,
+                flags: hasComponents ? MessageFlags.IsComponentsV2 : undefined,
+              });
             } else if (!response || response.trim() === "") {
               console.warn(`[AI] Empty response for question: "${question}"`);
               await safeReply(

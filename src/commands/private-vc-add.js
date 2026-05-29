@@ -30,7 +30,7 @@ export default {
 
     const guild = interaction.guild;
     const invokerId = interaction.user.id;
-    
+
     // Retrieve the private VC associated with the invoker
     const channelId = getVCByMember(invokerId);
     if (!channelId) {
@@ -40,7 +40,7 @@ export default {
     }
 
     const invokerMember = interaction.member;
-    
+
     // Ensure the invoker is currently connected to their private VC
     if (invokerMember.voice?.channelId !== channelId) {
       return interaction.editReply(
@@ -52,7 +52,7 @@ export default {
     }
 
     const targetUser = interaction.options.getUser("member");
-    
+
     // Prevent adding bots to the private VC
     if (targetUser.bot) {
       return interaction.editReply(
@@ -61,7 +61,7 @@ export default {
     }
 
     const data = getVCData(channelId);
-    
+
     // Check if the target user is already in the private VC
     if (data.members.has(targetUser.id)) {
       return interaction.editReply(
@@ -86,7 +86,7 @@ export default {
     const targetMember = await guild.members
       .fetch(targetUser.id)
       .catch(() => null);
-      
+
     if (!targetMember) {
       return interaction.editReply(
         eSend(`${i("ERROR")} ɴᴏᴛ ғᴏᴜɴᴅ`, "ᴄᴏᴜʟᴅ ɴᴏᴛ ғɪɴᴅ ᴛʜᴀᴛ ᴍᴇᴍʙᴇʀ."),

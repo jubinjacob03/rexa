@@ -493,7 +493,9 @@ export async function postDashboard(client) {
     if (m.embeds[0]?.title?.includes("Shantha Bot Command Center")) return true;
     if (m.embeds[0]?.title?.includes("Shantha Control Center")) return true;
     const flat = JSON.stringify(m.components ?? []);
-    return flat.includes("Control Center") || flat.includes("shantha_vc_create");
+    return (
+      flat.includes("Control Center") || flat.includes("shantha_vc_create")
+    );
   });
   const payload = await buildDashboardPayload(channel.guild.members.me);
   if (existing) {

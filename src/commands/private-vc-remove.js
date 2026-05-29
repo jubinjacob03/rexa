@@ -40,7 +40,7 @@ export default {
     }
 
     const invokerMember = interaction.member;
-    
+
     // Ensure the invoker is currently connected to their private VC
     if (invokerMember.voice?.channelId !== channelId) {
       return interaction.editReply(
@@ -53,7 +53,7 @@ export default {
 
     const targetUser = interaction.options.getUser("member");
     const data = getVCData(channelId);
-    
+
     // Check if the target user is actually in the private VC
     if (!data.members.has(targetUser.id)) {
       return interaction.editReply(
@@ -78,7 +78,7 @@ export default {
     const targetMember = await guild.members
       .fetch(targetUser.id)
       .catch(() => null);
-      
+
     if (!targetMember) {
       return interaction.editReply(
         eSend(`${i("ERROR")} ɴᴏᴛ ғᴏᴜɴᴅ`, "ᴄᴏᴜʟᴅ ɴᴏᴛ ғɪɴᴅ ᴛʜᴀᴛ ᴍᴇᴍʙᴇʀ."),

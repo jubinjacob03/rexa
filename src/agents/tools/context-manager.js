@@ -192,11 +192,16 @@ class ContextManager {
       await this.batchSave();
     }, this.batchSaveDelay);
 
-    this.cleanupInterval = setInterval(async () => {
-      await this.cleanup();
-    }, 60 * 60 * 1000);
+    this.cleanupInterval = setInterval(
+      async () => {
+        await this.cleanup();
+      },
+      60 * 60 * 1000,
+    );
 
-    console.log("[CONTEXT MANAGER] Auto-save enabled (batch every 2s), cleanup every 1h");
+    console.log(
+      "[CONTEXT MANAGER] Auto-save enabled (batch every 2s), cleanup every 1h",
+    );
   }
 
   /**

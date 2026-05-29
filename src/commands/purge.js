@@ -67,7 +67,7 @@ async function deleteMessages(channel, messages) {
 
   for (let i = 0; i < recent.length; i += BATCH_SIZE) {
     const chunk = recent.slice(i, i + BATCH_SIZE);
-    chunk.forEach(m => ignoredDeletes.add(m.id));
+    chunk.forEach((m) => ignoredDeletes.add(m.id));
     try {
       await channel.bulkDelete(chunk, true);
       deleted += chunk.length;
@@ -158,12 +158,19 @@ export default {
    * @returns {Promise<void>}
    */
   async execute(interaction) {
-    const replyFn = interaction.deferred || interaction.replied 
-      ? interaction.editReply.bind(interaction) 
-      : interaction.reply.bind(interaction);
+    const replyFn =
+      interaction.deferred || interaction.replied
+        ? interaction.editReply.bind(interaction)
+        : interaction.reply.bind(interaction);
 
     // Check if the user has moderation permissions
-    if (!(await checkModerationPermission(interaction.guild, interaction.user.id, "mod"))) {
+    if (
+      !(await checkModerationPermission(
+        interaction.guild,
+        interaction.user.id,
+        "mod",
+      ))
+    ) {
       return replyFn(
         eReply(
           `${i("ERROR")} ᴀᴄᴄᴇss ᴅᴇɴɪᴇᴅ`,
@@ -298,21 +305,30 @@ export default {
           failed > 0
             ? `\n**ғᴀɪʟᴇᴅ:** ${failed} (ʟɪᴋᴇʟʏ ᴛᴏᴏ ᴏʟᴅ ᴏʀ ᴀʟʀᴇᴀᴅʏ ᴘᴜʀɢᴇᴅ)`
             : ""
-        }\n\n**sᴄᴏᴘᴇ:** ${modeLabel}`
-      )
+        }\n\n**sᴄᴏᴘᴇ:** ${modeLabel}`,
+      ),
     );
     container.addSeparatorComponents(
-      new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+      new SeparatorBuilder()
+        .setDivider(true)
+        .setSpacing(SeparatorSpacingSize.Small),
     );
     container.addTextDisplayComponents(
-      new TextDisplayBuilder().setContent(`-*ᴇxᴇᴄᴜᴛᴇᴅ ʙʏ ${interaction.user.tag}*-`)
+      new TextDisplayBuilder().setContent(
+        `-*ᴇxᴇᴄᴜᴛᴇᴅ ʙʏ ${interaction.user.tag}*-`,
+      ),
     );
 
-    await interaction.editReply({
-      components: [container],
-      flags: MessageFlags.IsComponentsV2,
-    }).catch(err => {
-      console.warn("[PURGE] Could not edit reply, interaction token likely expired after 15m:", err.message);
-    });
+    await interaction
+      .editReply({
+        components: [container],
+        flags: MessageFlags.IsComponentsV2,
+      })
+      .catch((err) => {
+        console.warn(
+          "[PURGE] Could not edit reply, interaction token likely expired after 15m:",
+          err.message,
+        );
+      });
   },
 };

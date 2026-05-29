@@ -22,8 +22,6 @@ import { checkModerationPermission } from "../../utils/moderation.js";
 
 const router = Router();
 
-
-
 async function broadcastVerification(guild) {
   const pending = await getAllPendingRequests();
   const list = Object.values(pending).map((r) => {
@@ -155,22 +153,26 @@ router.post("/apply", async (req, res) => {
       .setAccentColor(EMBED_COLOR)
       .addTextDisplayComponents(
         new TextDisplayBuilder().setContent(
-          `## ${iconStr} ɴᴇᴡ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ\n<@${userId}> ʜᴀs ʀᴇǫᴜᴇsᴛᴇᴅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ғᴏʀ **${requestedRole}** ʀᴏʟᴇ ᴠɪᴀ ᴡᴇʙ ᴅᴀsʜʙᴏᴀʀᴅ.`
-        )
+          `## ${iconStr} ɴᴇᴡ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ\n<@${userId}> ʜᴀs ʀᴇǫᴜᴇsᴛᴇᴅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ғᴏʀ **${requestedRole}** ʀᴏʟᴇ ᴠɪᴀ ᴡᴇʙ ᴅᴀsʜʙᴏᴀʀᴅ.`,
+        ),
       )
       .addSeparatorComponents(
-        new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+        new SeparatorBuilder()
+          .setDivider(true)
+          .setSpacing(SeparatorSpacingSize.Small),
       )
       .addTextDisplayComponents(
         new TextDisplayBuilder().setContent(
-          `**ᴜsᴇʀ:** <@${userId}>\n**ᴜsᴇʀɴᴀᴍᴇ:** ${member.user.tag}\n**ʀᴇǫᴜᴇsᴛᴇᴅ ʀᴏʟᴇ:** ${requestedRole}`
-        )
+          `**ᴜsᴇʀ:** <@${userId}>\n**ᴜsᴇʀɴᴀᴍᴇ:** ${member.user.tag}\n**ʀᴇǫᴜᴇsᴛᴇᴅ ʀᴏʟᴇ:** ${requestedRole}`,
+        ),
       )
       .addSeparatorComponents(
-        new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+        new SeparatorBuilder()
+          .setDivider(true)
+          .setSpacing(SeparatorSpacingSize.Small),
       )
       .addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(`-# User ID: ${userId}`)
+        new TextDisplayBuilder().setContent(`-# User ID: ${userId}`),
       );
 
     addFooter(approvalContainer);
@@ -183,16 +185,24 @@ router.post("/apply", async (req, res) => {
         .status(500)
         .json({ success: false, error: "Approvals channel not found." });
 
-    await approvalsChannel.send({
-      content: `<@&${config.ownerRoleId}> <@&${config.managerRoleId}> <@&${config.moderatorRoleId}>`,
-    }).catch(() => null);
-    const approvalMessage = await approvalsChannel.send({
-      components: [approvalContainer],
-      flags: MessageFlags.IsComponentsV2,
-    }).catch(() => null);
+    await approvalsChannel
+      .send({
+        content: `<@&${config.ownerRoleId}> <@&${config.managerRoleId}> <@&${config.moderatorRoleId}>`,
+      })
+      .catch(() => null);
+    const approvalMessage = await approvalsChannel
+      .send({
+        components: [approvalContainer],
+        flags: MessageFlags.IsComponentsV2,
+      })
+      .catch(() => null);
 
     if (!approvalMessage) {
-      return res.status(500).json({ error: "Failed to send approval request to the approvals channel." });
+      return res
+        .status(500)
+        .json({
+          error: "Failed to send approval request to the approvals channel.",
+        });
     }
 
     await createRequest(
@@ -274,20 +284,25 @@ router.post("/approve", async (req, res) => {
             .setAccentColor(EMBED_COLOR)
             .addTextDisplayComponents(
               new TextDisplayBuilder().setContent(
-                `## ${icon("SUCCESS")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ\n<@${targetUserId}> (${request.username}) - **${request.requestedRole}**`
-              )
+                `## ${icon("SUCCESS")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ\n<@${targetUserId}> (${request.username}) - **${request.requestedRole}**`,
+              ),
             )
             .addSeparatorComponents(
-              new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+              new SeparatorBuilder()
+                .setDivider(true)
+                .setSpacing(SeparatorSpacingSize.Small),
             )
             .addTextDisplayComponents(
               new TextDisplayBuilder().setContent(
-                `**ᴀᴘᴘʀᴏᴠᴇᴅ ʙʏ:** <@${requesterId}>\n**ɴɪᴄᴋɴᴀᴍᴇ:** ${finalNickname}`
-              )
+                `**ᴀᴘᴘʀᴏᴠᴇᴅ ʙʏ:** <@${requesterId}>\n**ɴɪᴄᴋɴᴀᴍᴇ:** ${finalNickname}`,
+              ),
             );
           addFooter(updatedContainer);
           await msg
-            .edit({ components: [updatedContainer], flags: MessageFlags.IsComponentsV2 })
+            .edit({
+              components: [updatedContainer],
+              flags: MessageFlags.IsComponentsV2,
+            })
             .catch(() => {});
         }
       }
@@ -319,10 +334,12 @@ router.post("/approve", async (req, res) => {
             .setSpacing(SeparatorSpacingSize.Small),
         );
 
-      await user.send({
-        components: [approvalContainer],
-        flags: MessageFlags.IsComponentsV2,
-      }).catch(() => {});
+      await user
+        .send({
+          components: [approvalContainer],
+          flags: MessageFlags.IsComponentsV2,
+        })
+        .catch(() => {});
     }
 
     await broadcastVerification(guild);
@@ -381,20 +398,25 @@ router.post("/reject", async (req, res) => {
             .setAccentColor(EMBED_COLOR)
             .addTextDisplayComponents(
               new TextDisplayBuilder().setContent(
-                `## ${icon("ERROR")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇᴊᴇᴄᴛᴇᴅ\n<@${targetUserId}> (${request.username}) - **${request.requestedRole}**`
-              )
+                `## ${icon("ERROR")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇᴊᴇᴄᴛᴇᴅ\n<@${targetUserId}> (${request.username}) - **${request.requestedRole}**`,
+              ),
             )
             .addSeparatorComponents(
-              new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+              new SeparatorBuilder()
+                .setDivider(true)
+                .setSpacing(SeparatorSpacingSize.Small),
             )
             .addTextDisplayComponents(
               new TextDisplayBuilder().setContent(
-                `**ʀᴇᴊᴇᴄᴛᴇᴅ ʙʏ:** <@${requesterId}>`
-              )
+                `**ʀᴇᴊᴇᴄᴛᴇᴅ ʙʏ:** <@${requesterId}>`,
+              ),
             );
           addFooter(updatedContainer);
           await msg
-            .edit({ components: [updatedContainer], flags: MessageFlags.IsComponentsV2 })
+            .edit({
+              components: [updatedContainer],
+              flags: MessageFlags.IsComponentsV2,
+            })
             .catch(() => {});
         }
       }

@@ -25,7 +25,7 @@ export default {
         15000,
       );
     }
-    
+
     await checkMemberUpdate(oldMember, newMember);
   },
 };

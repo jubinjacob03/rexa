@@ -3,18 +3,15 @@
  * @description Tool call parsing utilities for extracting tool invocations from LLM responses. Handles JSON, XML, and various malformed formats.
  */
 
-// Pre-compiled regexes for tool extraction (avoids re-creating on each call)
 export const RE_JSON_TOOL_CALL = /\{\s*"tool_call"/;
 export const RE_XML_FUNCTION = /<function=(\w+)>/;
 export const RE_XML_PARAM = /<parameter=(\w+)>\s*([\s\S]*?)\s*<\/parameter>/g;
 
-// Follow-up detection patterns
 export const RE_FOLLOW_UP_PRONOUNS =
   /\b(he|she|they|him|her|them|that|this|it|those|these|who|same|their|his|her|my|your|our|we|i)\b/i;
 export const RE_FOLLOW_UP_WORDS =
   /\b(now|again|still|so|also|too|else|another|more|why|how|what about|and|but)\b/i;
 
-// Tool bleed detection (when model emits tool calls in text response)
 export const RE_LOOKS_LIKE_TOOL = /^\s*\{[\s\S]*"(?:tool_call|tool|name)"\s*:/;
 export const RE_XML_TOOL_BLEED = /<\|?tool_calls?/i;
 export const RE_XML_CUT = /<\|?tool_calls?/i;
@@ -22,7 +19,6 @@ export const RE_JSON_CUT = /^\s*\{\s*"(?:tool_call|tool_calls)"\s*:/m;
 export const RE_PY_FUNC_CUT =
   /^\s*(?:createEmbed|executeCommand|discordAction|serverInfo|fetchWebPage|webSearch)\s*\(/m;
 
-// Message content patterns
 export const RE_PERSON_MATCH =
   /(?:who\s+is|do\s+you\s+know|find|tell\s+me\s+about|what(?:'s|\s+is)(?:\s+up\s+with)?)\s+([\w.\-]+)/i;
 export const RE_WTTR_MATCH = /wttr\.in\/([^?]+)/i;
@@ -37,16 +33,13 @@ export const RE_TIME_QUERY = /\b(time|what time|current time|clock)\b/i;
 export function extractToolCall(text) {
   const stripped = text.replace(/```(?:json)?\s*\n?/gi, "").trim();
 
-  // Fast path: try direct JSON parse first
   try {
     const parsed = JSON.parse(stripped);
     if (parsed.tool_call?.name) return parsed.tool_call;
   } catch {}
 
-  // Look for {"tool_call" pattern
   const idx = stripped.search(RE_JSON_TOOL_CALL);
   if (idx !== -1) {
-    // Brace-matching to extract JSON object
     let depth = 0,
       end = -1;
     for (let i = idx; i < stripped.length; i++) {
@@ -64,7 +57,6 @@ export function extractToolCall(text) {
         if (parsed.tool_call?.name) return parsed.tool_call;
       } catch {}
     } else {
-      // Try adding missing closing braces
       for (let extra = 1; extra <= 3; extra++) {
         try {
           const parsed = JSON.parse(stripped.slice(idx) + "}".repeat(extra));
@@ -74,13 +66,11 @@ export function extractToolCall(text) {
     }
   }
 
-  // XML format from stepfun: <function=NAME><parameter=KEY>VAL</parameter>
   if (text.includes("<tool_call>") || text.includes("<function=")) {
     const funcMatch = text.match(RE_XML_FUNCTION);
     if (funcMatch) {
       const toolName = funcMatch[1];
       const params = {};
-      // Reset lastIndex for global regex
       RE_XML_PARAM.lastIndex = 0;
       let m;
       while ((m = RE_XML_PARAM.exec(text)) !== null) {
@@ -96,10 +86,9 @@ export function extractToolCall(text) {
     }
   }
 
-  // Handle <tool_calls> wrapper
   const toolCallsStart = text.indexOf("<tool_calls>");
   if (toolCallsStart !== -1) {
-    const inner = text.slice(toolCallsStart + 12); // "<tool_calls>".length = 12
+    const inner = text.slice(toolCallsStart + 12);
     if (inner.includes("<tool_call>") || inner.includes("<function=")) {
       const nested = extractToolCall(inner);
       if (nested) return nested;

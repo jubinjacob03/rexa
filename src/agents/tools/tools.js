@@ -382,13 +382,26 @@ export const musicControlTool = tool({
     ]),
     query: z.string().optional(),
     volume: z.number().min(0).max(100).optional(),
-    loopMode: z.number().min(0).max(2).optional().describe("0: off, 1: track, 2: queue"),
+    loopMode: z
+      .number()
+      .min(0)
+      .max(2)
+      .optional()
+      .describe("0: off, 1: track, 2: queue"),
     position: z.number().min(0).optional().describe("Index of song to remove"),
     userId: z.string(),
     guildId: z.string(),
     username: z.string().optional().describe("invoking user's username"),
   }),
-  execute: async ({ action, query, volume, loopMode, position, userId, guildId }) => {
+  execute: async ({
+    action,
+    query,
+    volume,
+    loopMode,
+    position,
+    userId,
+    guildId,
+  }) => {
     let voiceChannelId = null;
     const guild = client?.guilds.cache.get(guildId);
     const member = guild?.members.cache.get(userId);
@@ -404,12 +417,12 @@ export const musicControlTool = tool({
     const channelIndex = [
       "1496481436377812992",
       "1496527838226940174",
-      "1496527870598709432"
+      "1496527870598709432",
     ].indexOf(voiceChannelId);
 
     const port = channelIndex !== -1 ? 8001 + channelIndex : 8000;
     const baseURL = `http://localhost:${port}`;
-    
+
     const headers = {
       "Content-Type": "application/json",
       ...(process.env.REMANI_API_KEY

@@ -60,8 +60,13 @@ const proxyPost =
   (remaniPath, timeout = CMD_TIMEOUT) =>
   async (req, res) => {
     try {
-      const botIndex = req.body.botIndex !== undefined ? Number(req.body.botIndex) : 0;
-      const { data } = await getRemaniInstance(botIndex).post(remaniPath, req.body, { timeout });
+      const botIndex =
+        req.body.botIndex !== undefined ? Number(req.body.botIndex) : 0;
+      const { data } = await getRemaniInstance(botIndex).post(
+        remaniPath,
+        req.body,
+        { timeout },
+      );
       res.json(data);
     } catch (err) {
       const status = err.response?.status || 502;
@@ -73,7 +78,8 @@ const proxyPost =
 
 const proxyGet = (remaniPath, getParams) => async (req, res) => {
   try {
-    const botIndex = req.query.botIndex !== undefined ? Number(req.query.botIndex) : 0;
+    const botIndex =
+      req.query.botIndex !== undefined ? Number(req.query.botIndex) : 0;
     const params = getParams ? getParams(req) : req.query;
     const { data } = await getRemaniInstance(botIndex).get(remaniPath, {
       params,
@@ -90,7 +96,8 @@ const proxyGet = (remaniPath, getParams) => async (req, res) => {
 
 const _proxyDelete = (remaniPath) => async (req, res) => {
   try {
-    const botIndex = req.body.botIndex !== undefined ? Number(req.body.botIndex) : 0;
+    const botIndex =
+      req.body.botIndex !== undefined ? Number(req.body.botIndex) : 0;
     const { data } = await getRemaniInstance(botIndex).delete(remaniPath, {
       data: req.body,
       timeout: CMD_TIMEOUT,

@@ -44,12 +44,10 @@ router.post("/create", async (req, res) => {
       return res.status(400).json({ success: false, error: "userId required" });
 
     if (!canCreate()) {
-      return res
-        .status(409)
-        .json({
-          success: false,
-          error: `Maximum of ${config.privateVC.maxSimultaneous} private VCs already active.`,
-        });
+      return res.status(409).json({
+        success: false,
+        error: `Maximum of ${config.privateVC.maxSimultaneous} private VCs already active.`,
+      });
     }
 
     if (getVCByMember(userId)) {
@@ -92,12 +90,10 @@ router.post("/add", async (req, res) => {
 
     const { requesterId, targetUserId } = req.body;
     if (!requesterId || !targetUserId)
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: "requesterId and targetUserId required",
-        });
+      return res.status(400).json({
+        success: false,
+        error: "requesterId and targetUserId required",
+      });
 
     const channelId = getVCByMember(requesterId);
     if (!channelId)
@@ -111,12 +107,10 @@ router.post("/add", async (req, res) => {
         .status(409)
         .json({ success: false, error: "User is already in this VC." });
     if (getVCByMember(targetUserId))
-      return res
-        .status(409)
-        .json({
-          success: false,
-          error: "User is already in another private VC.",
-        });
+      return res.status(409).json({
+        success: false,
+        error: "User is already in another private VC.",
+      });
 
     const member = await guild.members.fetch(targetUserId).catch(() => null);
     if (!member)
@@ -145,12 +139,10 @@ router.post("/remove", async (req, res) => {
 
     const { requesterId, targetUserId } = req.body;
     if (!requesterId || !targetUserId)
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: "requesterId and targetUserId required",
-        });
+      return res.status(400).json({
+        success: false,
+        error: "requesterId and targetUserId required",
+      });
 
     const channelId = getVCByMember(requesterId);
     if (!channelId)
@@ -206,12 +198,10 @@ router.delete("/:channelId", async (req, res) => {
         .status(404)
         .json({ success: false, error: "Requester not found." });
     if (!requester.roles.cache.has(config.ownerRoleId)) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          error: "Only owners can force-delete private VCs.",
-        });
+      return res.status(403).json({
+        success: false,
+        error: "Only owners can force-delete private VCs.",
+      });
     }
 
     if (!getVCData(channelId)) {

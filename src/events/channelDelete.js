@@ -6,29 +6,32 @@ import { checkChannelDelete } from "../utils/automodRunner.js";
  * @module events/channelDelete
  */
 export default {
-    name: Events.ChannelDelete,
-    /**
-     * Executes the event handler.
-     * @param {import("discord.js").GuildChannel} channel - The channel that was deleted.
-     * @returns {Promise<void>}
-     */
-    async execute(channel) {
-        if (!channel.guild) return;
-        
-        try {
-            const fetchedLogs = await channel.guild.fetchAuditLogs({
-                limit: 1,
-                type: AuditLogEvent.ChannelDelete
-            });
-            const deletionLog = fetchedLogs.entries.first();
-            if (!deletionLog) return;
-            
-            const { executor, target } = deletionLog;
-            if (target.id === channel.id) {
-                await checkChannelDelete(channel, executor);
-            }
-        } catch (error) {
-            console.error("[AutoMod] Error fetching audit logs for channel delete:", error.message);
-        }
+  name: Events.ChannelDelete,
+  /**
+   * Executes the event handler.
+   * @param {import("discord.js").GuildChannel} channel - The channel that was deleted.
+   * @returns {Promise<void>}
+   */
+  async execute(channel) {
+    if (!channel.guild) return;
+
+    try {
+      const fetchedLogs = await channel.guild.fetchAuditLogs({
+        limit: 1,
+        type: AuditLogEvent.ChannelDelete,
+      });
+      const deletionLog = fetchedLogs.entries.first();
+      if (!deletionLog) return;
+
+      const { executor, target } = deletionLog;
+      if (target.id === channel.id) {
+        await checkChannelDelete(channel, executor);
+      }
+    } catch (error) {
+      console.error(
+        "[AutoMod] Error fetching audit logs for channel delete:",
+        error.message,
+      );
     }
+  },
 };

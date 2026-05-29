@@ -73,7 +73,7 @@ An intelligent Discord bot with natural conversation, persistent memory, and sea
 
 ## Deployment
 
-See [DEPLOY.md](DEPLOY.md) for Railway deployment guide.
+Deployed via Docker Compose.
 
 ---
 

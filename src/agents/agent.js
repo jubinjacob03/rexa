@@ -367,7 +367,6 @@ export async function processMessage(
     let finalToolName = toolName;
     let finalToolResult = toolResult;
 
-    // If fetchWebPage failed, fall back to webSearch automatically
     if (toolName === "fetchWebPage" && toolResult?.success === false) {
       const urlParam = toolParams?.url || "";
       const wttrMatch = urlParam.match(RE_WTTR_MATCH);
@@ -479,7 +478,6 @@ export async function processMessage(
       return { success: true, response: finalResp, components: [] };
     }
 
-    // Pass 2: feed tool result back for natural language synthesis
     const pass2Base = await getPass2BasePrompt();
     const toolResultStr = JSON.stringify(finalToolResult, null, 2);
     const toolContext = `[${finalToolName} result]:\n${
@@ -550,7 +548,6 @@ export async function processMessage(
     }
 
     let finalResponse = (pass2?.text || "").trim();
-    // Strip any tool_call (XML or JSON) that the model may have emitted in Pass 2
     const xmlIdx = finalResponse.search(RE_XML_CUT);
     const funcIdx = finalResponse.indexOf("<function=");
     const jsonIdx = finalResponse.search(RE_JSON_CUT);

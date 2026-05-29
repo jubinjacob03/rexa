@@ -19,7 +19,6 @@ import { checkModerationPermission } from "../utils/moderation.js";
 
 export const setupSessions = new Map();
 
-// Cleanup abandoned setup sessions every 30 minutes
 setInterval(
   () => {
     const now = Date.now();
@@ -60,7 +59,6 @@ export default {
    * @returns {Promise<void>}
    */
   async execute(interaction) {
-    // Check if the user has moderation permissions
     if (
       !(await checkModerationPermission(
         interaction.guild,
@@ -74,13 +72,11 @@ export default {
     const targetChannel = interaction.options.getChannel("channel");
     const advanced = interaction.options.getBoolean("advanced") || false;
 
-    // If not advanced, publish the simple ticket panel directly
     if (!advanced) {
       await publishSimpleTicketPanel(interaction, targetChannel);
       return;
     }
 
-    // Fetch ticket mods configuration from Supabase
     let ticketMods = [];
     if (supabase) {
       const { data } = await supabase
@@ -92,13 +88,10 @@ export default {
       if (data?.content) {
         try {
           ticketMods = JSON.parse(data.content);
-        } catch {
-          // Ignore parsing errors
-        }
+        } catch {}
       }
     }
 
-    // Initialize the setup session for the user
     setupSessions.set(interaction.user.id, {
       title: `${icon("TICKET")} sᴜᴘᴘᴏʀᴛ ᴛɪᴄᴋᴇᴛs`,
       description:
@@ -125,7 +118,6 @@ async function publishSimpleTicketPanel(interaction, targetChannel) {
   const serverIcon = interaction.guild.iconURL({ size: 128 });
   const panelContainer = new ContainerBuilder().setAccentColor(EMBED_COLOR);
 
-  // Add server icon as thumbnail if available
   if (serverIcon) {
     panelContainer.addSectionComponents(
       new SectionBuilder()
@@ -144,7 +136,6 @@ async function publishSimpleTicketPanel(interaction, targetChannel) {
     );
   }
 
-  // Add the create ticket button
   panelContainer.addActionRowComponents(
     new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -190,7 +181,6 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
   const iconUrl = interaction.guild?.iconURL({ size: 256, dynamic: true });
   const headerContent = `## ${icon("EDITOR")} ᴛɪᴄᴋᴇᴛ ᴇᴅɪᴛᴏʀ\nᴜsᴇ ᴛʜᴇ ᴄᴏɴᴛʀᴏʟs ʙᴇʟᴏᴡ ᴛᴏ ᴄᴏɴғɪɢᴜʀᴇ ᴀɴᴅ ᴘᴜʙʟɪsʜ ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ ᴘᴀɴᴇʟ.\n\n**ᴛᴀʀɢᴇᴛ:** <#${config.targetChannelId}>`;
 
-  // Add header with optional server icon
   if (iconUrl) {
     const headerSection = new SectionBuilder()
       .addTextDisplayComponents(
@@ -204,7 +194,6 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
     );
   }
 
-  // Calculate button statistics
   const buttonCount = config.buttons.length;
   const maxButtons = 3;
   const ticketCount = config.buttons.filter((b) => b.type === "ticket").length;
@@ -225,7 +214,6 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
       new TextDisplayBuilder().setContent("### sᴇᴛᴜᴘ ᴀᴄᴛɪᴏɴs"),
     );
 
-  // Determine button states based on current configuration
   const hasTextTicket = config.buttons.some(
     (b) => b.type === "ticket" && b.ticketType === "text",
   );
@@ -235,7 +223,6 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
   const hasTicketBtn = hasTextTicket || hasVcTicket;
   const full = config.buttons.length >= 3;
 
-  // Build setup action buttons
   const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("tsetup_edit_embed")

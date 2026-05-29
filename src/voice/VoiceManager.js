@@ -56,7 +56,6 @@ export class VoiceManager {
       try {
         await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
 
-        // DAVE: wait for MLS epoch commit before playing
         const dave = connection.state?.networking?.state?.dave;
         if (dave && dave.lastTransitionId === undefined) {
           await new Promise((resolve) => {
@@ -191,7 +190,6 @@ export class VoiceManager {
       throw new Error("Not connected to voice channel");
     }
 
-    // Stop current audio and clear the queue so the new sound plays right away
     if (player.isPlaying()) {
       console.log(
         `[INFO] Interrupting current playback to play: ${soundData.soundName}`,

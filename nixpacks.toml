@@ -1,8 +1,0 @@
-[phases.setup]
-nixPkgs = ["nodejs", "python3", "gcc", "gnumake", "pkg-config", "libtool"]
-
-[phases.install]
-cmds = ["npm install --omit=dev"]
-
-[start]
-cmd = "npm start"

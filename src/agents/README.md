@@ -29,6 +29,7 @@ agents/
 ## Setup
 
 ### Environment Variables
+
 ```env
 # AI Provider (pick one)
 AI_MODEL_PROVIDER=openai
@@ -41,25 +42,26 @@ COMMAND_EXECUTION_ENABLED=true
 ```
 
 ### Integration
+
 ```javascript
-import { initializeAgentSystem } from './agents/index.js';
+import { initializeAgentSystem } from "./agents/index.js";
 
 // Initialize
-client.once('ready', async () => {
+client.once("ready", async () => {
   const agent = await initializeAgentSystem(client);
 });
 
 // Handle messages
-client.on('messageCreate', async (message) => {
+client.on("messageCreate", async (message) => {
   if (message.author.bot || !message.mentions.has(client.user)) return;
-  
+
   const result = await agent.processMessage(
     message.author.id,
     message.guild.id,
     message.content,
-    'music' // Optional: music, moderation, welcome, creative, info
+    "music", // Optional: music, moderation, welcome, creative, info
   );
-  
+
   if (result.success) await message.reply(result.response);
 });
 ```
@@ -78,30 +80,36 @@ All tools in `tools/tools.js`:
 ## Customization
 
 ### Edit Personality
+
 Edit markdown files in `prompts/`:
+
 ```markdown
 # prompts/master-agent.md
+
 You are Shantha, an AI consciousness...
 ```
 
 ### Add Knowledge
+
 ```javascript
-import { knowledgeBase } from './agents/index.js';
+import { knowledgeBase } from "./agents/index.js";
 
 await knowledgeBase.addKnowledgeBatch([
-  { id: 'rule-1', text: 'Server rule...', metadata: { category: 'server' } },
+  { id: "rule-1", text: "Server rule...", metadata: { category: "server" } },
 ]);
 ```
 
 ### Configure
+
 Edit `config.js`:
+
 ```javascript
 export default {
-  model: { provider: 'openai', name: 'gpt-4o' },
+  model: { provider: "openai", name: "gpt-4o" },
   rag: { enabled: true, topK: 5 },
-  commandExecution: { 
+  commandExecution: {
     enabled: true,
-    blockedCommands: ['ban', 'kick'],
+    blockedCommands: ["ban", "kick"],
   },
 };
 ```

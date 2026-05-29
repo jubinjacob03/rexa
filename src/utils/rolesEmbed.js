@@ -32,16 +32,19 @@ let cachedRolesData = null;
 export async function handleRolesInfo(interaction, selectedCategory = "home") {
   const rolesPath = join(__dirname, "..", "..", "data", "roles-info.json");
   let rolesData = cachedRolesData;
-  
+
   if (!rolesData) {
     try {
       const fileContent = await readFile(rolesPath, "utf8");
       rolesData = JSON.parse(fileContent);
       cachedRolesData = rolesData;
     } catch {
-      const errPayload = eReply(`${i("ERROR")} ᴇʀʀᴏʀ`, "ʀᴏʟᴇs ɪɴғᴏ ɴᴏᴛ ᴄᴏɴғɪɢᴜʀᴇᴅ.");
-      return interaction.isStringSelectMenu() 
-        ? await interaction.update(errPayload) 
+      const errPayload = eReply(
+        `${i("ERROR")} ᴇʀʀᴏʀ`,
+        "ʀᴏʟᴇs ɪɴғᴏ ɴᴏᴛ ᴄᴏɴғɪɢᴜʀᴇᴅ.",
+      );
+      return interaction.isStringSelectMenu()
+        ? await interaction.update(errPayload)
         : await interaction.reply(errPayload);
     }
   }
@@ -50,7 +53,7 @@ export async function handleRolesInfo(interaction, selectedCategory = "home") {
     (value ?? "").replace(/\{(\w+)\}/g, (match, key) => icon(key) || match);
 
   // User requested Cyan color
-  const container = new ContainerBuilder().setAccentColor(0x00FFFF);
+  const container = new ContainerBuilder().setAccentColor(0x00ffff);
   const title = rolesData.title || "Saiyan Gods — Roles";
   const guildIcon = interaction.guild.iconURL({ dynamic: true, size: 256 });
 
@@ -70,7 +73,9 @@ export async function handleRolesInfo(interaction, selectedCategory = "home") {
       container.addSectionComponents(header);
     } else {
       container.addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(`## ${title}\nWelcome to the interactive roles hub.\n\n• **Staff roles** are assigned by leaders or moderators.\n• **Self roles** can be assigned automatically via the verification channel.\n\n*Use the dropdown below to explore the role categories.*`),
+        new TextDisplayBuilder().setContent(
+          `## ${title}\nWelcome to the interactive roles hub.\n\n• **Staff roles** are assigned by leaders or moderators.\n• **Self roles** can be assigned automatically via the verification channel.\n\n*Use the dropdown below to explore the role categories.*`,
+        ),
       );
     }
   } else {
@@ -78,13 +83,15 @@ export async function handleRolesInfo(interaction, selectedCategory = "home") {
     const section = rolesData.sections[sectionIndex];
     if (section) {
       const sectionTitle = resolveEmoji(section.name);
-      
+
       const descriptions = section.roles
         .map((r) => `-# **${r.name}**: ${r.description}`)
         .join("\n");
 
       container.addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(`### ${sectionTitle}\n${descriptions}\n`)
+        new TextDisplayBuilder().setContent(
+          `### ${sectionTitle}\n${descriptions}\n`,
+        ),
       );
 
       const row = new ActionRowBuilder();
@@ -94,7 +101,7 @@ export async function handleRolesInfo(interaction, selectedCategory = "home") {
             .setCustomId(`dummy_role_${sectionIndex}_${rIdx}`)
             .setLabel(r.name)
             .setEmoji(resolveEmoji(r.emoji))
-            .setStyle(ButtonStyle.Secondary)
+            .setStyle(ButtonStyle.Secondary),
         );
       });
       container.addActionRowComponents(row);
@@ -111,11 +118,11 @@ export async function handleRolesInfo(interaction, selectedCategory = "home") {
         .setValue("home")
         .setDescription("Return to the roles overview")
         .setEmoji("🏠")
-        .setDefault(selectedCategory === "home")
+        .setDefault(selectedCategory === "home"),
     );
 
   rolesData.sections.forEach((sec, idx) => {
-    const rawName = sec.name.replace(/\{(\w+)\}/g, "").trim(); 
+    const rawName = sec.name.replace(/\{(\w+)\}/g, "").trim();
     const cleanLabel = rawName || `Category ${idx + 1}`;
 
     selectMenu.addOptions(
@@ -123,13 +130,15 @@ export async function handleRolesInfo(interaction, selectedCategory = "home") {
         .setLabel(cleanLabel)
         .setValue(idx.toString())
         .setDescription(`View all ${cleanLabel}`)
-        .setDefault(selectedCategory === idx.toString())
+        .setDefault(selectedCategory === idx.toString()),
     );
   });
   navRow.addComponents(selectMenu);
-  
+
   container.addSeparatorComponents(
-    new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large)
+    new SeparatorBuilder()
+      .setDivider(true)
+      .setSpacing(SeparatorSpacingSize.Large),
   );
   container.addActionRowComponents(navRow);
 

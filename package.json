@@ -5,7 +5,7 @@
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "start": "node src/deploy-commands.js && node src/warmup.js && node src/index.js",
+    "start": "node src/deploy-commands.js && node src/warmup.js && node --max-old-space-size=512 --expose-gc src/index.js",
     "warmup": "node src/warmup.js",
     "dev": "node --watch src/index.js",
     "deploy": "node src/deploy-commands.js"
