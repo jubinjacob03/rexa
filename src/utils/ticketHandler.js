@@ -520,6 +520,10 @@ async function createTicketInstance(interaction, options = {}) {
  * @returns {Promise<void>}
  */
 async function createTicketInstanceImpl(interaction, options = {}) {
+  if (!interaction.deferred && !interaction.replied) {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  }
+
   if (activeTickets.has(interaction.user.id)) {
     const guild = interaction.guild;
     const existingChannel = guild.channels.cache.find(
@@ -538,7 +542,7 @@ async function createTicketInstanceImpl(interaction, options = {}) {
           .catch(() => {});
       }
     } else {
-      return interaction.reply(
+      return interaction.editReply(
         eReply(
           `${i("ERROR")} ᴀᴄᴛɪᴠᴇ ᴛɪᴄᴋᴇᴛ`,
           "ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀɴ ᴀᴄᴛɪᴠᴇ ᴛɪᴄᴋᴇᴛ.",
@@ -569,7 +573,7 @@ async function createTicketInstanceImpl(interaction, options = {}) {
           .catch(() => {});
       } else {
         activeTickets.add(interaction.user.id);
-        return interaction.reply(
+        return interaction.editReply(
           eReply(
             `${i("ERROR")} ᴀᴄᴛɪᴠᴇ ᴛɪᴄᴋᴇᴛ`,
             "ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀɴ ᴀᴄᴛɪᴠᴇ ᴛɪᴄᴋᴇᴛ.",
@@ -578,8 +582,6 @@ async function createTicketInstanceImpl(interaction, options = {}) {
       }
     }
   }
-
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const customIdParts = interaction.customId.split("|");
   const ticketType = options.ticketType || customIdParts[1] || "text";
@@ -679,8 +681,8 @@ async function createTicketInstanceImpl(interaction, options = {}) {
         await supabase
           .from("active_tickets")
           .insert({ user_id: interaction.user.id });
-      } catch {
-        null;
+      } catch (err) {
+        log.debug("Failed to record active ticket:", err?.message || err);
       }
     }
 

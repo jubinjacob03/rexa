@@ -35,10 +35,8 @@ export function authenticateApiKey(req, res, next) {
     });
   }
 
-  const token = authHeader.replace("Bearer ", "");
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
 
-  // Reject all requests when no key is configured (fail closed), and compare in
-  // constant time otherwise.
   if (!config.api.key || !safeEqual(token, config.api.key)) {
     return res.status(401).json({
       success: false,

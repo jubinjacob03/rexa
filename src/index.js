@@ -5,7 +5,13 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import { Client, GatewayIntentBits, Collection, Events } from "discord.js";
+import {
+  Client,
+  GatewayIntentBits,
+  Collection,
+  Events,
+  Options,
+} from "discord.js";
 import { eReply } from "./utils/embed.js";
 import { i } from "./utils/icons.js";
 import { fileURLToPath } from "url";
@@ -50,6 +56,16 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildVoiceStates,
   ],
+  makeCache: Options.cacheWithLimits({
+    ...Options.DefaultMakeCacheSettings,
+    MessageManager: 25,
+    ReactionManager: 0,
+    ReactionUserManager: 0,
+  }),
+  sweepers: {
+    ...Options.DefaultSweeperSettings,
+    messages: { interval: 300, lifetime: 900 },
+  },
 });
 
 client.commands = new Collection();

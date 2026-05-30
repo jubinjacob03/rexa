@@ -63,8 +63,6 @@ export function createApiServer(discordClient) {
 
   app.use("/api", limiter);
 
-  // Token issuance is sensitive; cap it well below the global limit to blunt
-  // brute-force/enumeration attempts even before authentication runs.
   const wsTokenLimiter = rateLimit({
     windowMs: 60 * 1000,
     max: 20,

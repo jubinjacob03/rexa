@@ -161,7 +161,7 @@ DESIGN TIPS:
 - Use fields for organized data (inline=true for side-by-side)
 - Keep it concise and visually appealing`,
 
-  parameters: z.object({
+  inputSchema: z.object({
     title: z.string().describe("Embed title (bold heading with emojis)"),
     description: z
       .string()

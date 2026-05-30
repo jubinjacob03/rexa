@@ -367,7 +367,8 @@ export async function handleVerificationApply(interaction) {
       .setThumbnailAccessory(new ThumbnailBuilder().setURL(userAvatar));
 
     const approvalContainer = new ContainerBuilder()
-      .setAccentColor(0x3498db)      .addSectionComponents(approvalSection);
+      .setAccentColor(0x3498db)
+      .addSectionComponents(approvalSection);
 
     const approvalButtons = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -573,7 +574,16 @@ export async function handleVerificationDM(message) {
 
 export async function handleApprovalAction(interaction) {
   try {
-    const [action, userId, roleId] = interaction.customId.split("_");
+    const parts = interaction.customId.split("_");
+    if (parts.length < 3) {
+      return interaction.reply(
+        eReply(
+          `${i("ERROR")} ɪɴᴠᴀʟɪᴅ ᴀᴄᴛɪᴏɴ`,
+          "ᴛʜɪs ʙᴜᴛᴛᴏɴ ɪs ᴍᴀʟғᴏʀᴍᴇᴅ. ᴘʟᴇᴀsᴇ ᴛʀʏ ᴀɢᴀɪɴ.",
+        ),
+      );
+    }
+    const [action, userId, roleId] = parts;
 
     const request = await getRequest(userId);
     if (!request) {
@@ -632,7 +642,8 @@ export async function handleApprovalAction(interaction) {
         .setThumbnailAccessory(new ThumbnailBuilder().setURL(userAvatar));
 
       const rejectedContainer = new ContainerBuilder()
-        .setAccentColor(0xe74c3c)        .addSectionComponents(rejectedSection);
+        .setAccentColor(0xe74c3c)
+        .addSectionComponents(rejectedSection);
 
       addFooter(rejectedContainer);
 
@@ -687,7 +698,6 @@ export async function handleNicknameModal(interaction) {
 
     const [, , userId, roleId] = interaction.customId.split("_");
     const rawNickname = interaction.fields.getTextInputValue("nickname_input");
-    // Strip control/zero-width characters and collapse whitespace; Discord caps
     const nicknameInput = sanitizeNickname(rawNickname);
     const isFriends = roleId === config.friendsRoleId;
     const finalNickname = (
@@ -744,7 +754,8 @@ export async function handleNicknameModal(interaction) {
       .setThumbnailAccessory(new ThumbnailBuilder().setURL(userAvatar));
 
     const approvedContainer = new ContainerBuilder()
-      .setAccentColor(0x2ecc71)      .addSectionComponents(approvedSection);
+      .setAccentColor(0x2ecc71)
+      .addSectionComponents(approvedSection);
 
     addFooter(approvedContainer);
 

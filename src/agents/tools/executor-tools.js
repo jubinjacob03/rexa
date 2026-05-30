@@ -555,7 +555,7 @@ export const httpRequestTool = tool({
 Works with any public URL including APIs, websites, and web services.
 Use for: fetching data, accessing APIs, retrieving web content, and more.`,
 
-  parameters: z.object({
+  inputSchema: z.object({
     url: z.string().url().describe("Full URL to request"),
     method: z.enum(["GET", "POST", "PUT", "DELETE", "PATCH"]).default("GET"),
     headers: z.record(z.string()).optional(),
@@ -588,7 +588,7 @@ export const webFetchTool = tool({
 Works with any public URL - websites, articles, documentation, APIs, and more.
 Automatically handles both HTML pages and JSON responses.`,
 
-  parameters: z.object({
+  inputSchema: z.object({
     url: z.string().url().describe("Web page or API URL to fetch"),
     userId: z.string().optional().describe("invoking user's Discord ID"),
     guildId: z.string().optional().describe("server ID"),
@@ -607,7 +607,7 @@ export const webSearchTool = tool({
   description: `Search the web using DuckDuckGo. Get instant answers and related topics.
 Use when you need current information or facts not in your knowledge base.`,
 
-  parameters: z.object({
+  inputSchema: z.object({
     query: z.string().describe("Search query"),
     maxResults: z.number().min(1).max(10).default(5),
     userId: z.string().optional().describe("invoking user's Discord ID"),
@@ -628,7 +628,7 @@ export const workflowTool = tool({
 Available workflows: ${Object.keys(WORKFLOWS).join(", ")}.
 Each workflow runs a sequence of automated steps.`,
 
-  parameters: z.object({
+  inputSchema: z.object({
     workflowName: z
       .enum(Object.keys(WORKFLOWS))
       .describe("Workflow to execute"),

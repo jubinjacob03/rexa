@@ -79,7 +79,8 @@ export default {
     for (const key of ["member1", "member2", "member3", "member4", "member5"]) {
       const user = interaction.options.getUser(key);
       if (!user) continue;
-      if (user.bot) continue;      const member = await guild.members.fetch(user.id).catch(() => null);
+      if (user.bot) continue;
+      const member = await guild.members.fetch(user.id).catch(() => null);
       if (member) memberMap.set(member.id, member);
     }
 

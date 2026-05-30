@@ -290,8 +290,7 @@ export async function processMessage(
       model,
       system: pass1System,
       messages: pass1Messages,
-      maxTokens: 300,
-      maxSteps: 1,
+      maxOutputTokens: 300,
     });
 
     const rawOutput = (pass1.text || "").trim();
@@ -496,8 +495,7 @@ export async function processMessage(
           model,
           system: `${pass2Base}\n\n${userContext}\n\n${ctx}`,
           messages: [...historyMessages, { role: "user", content: message }],
-          maxTokens: 400,
-          maxSteps: 1,
+          maxOutputTokens: 400,
         });
       } catch (err) {
         const failedGen = err?.data?.error?.failed_generation;
@@ -528,8 +526,7 @@ export async function processMessage(
                   ...historyMessages,
                   { role: "user", content: message },
                 ],
-                maxTokens: 400,
-                maxSteps: 1,
+                maxOutputTokens: 400,
               });
             }
           }

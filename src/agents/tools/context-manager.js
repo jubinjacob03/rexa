@@ -6,6 +6,9 @@
 import { embed, embedMany, cosineSimilarity } from "ai";
 import config, { getEmbeddingModel } from "../config.js";
 import { createClient } from "@supabase/supabase-js";
+import { createLogger } from "../../utils/logger.js";
+
+const log = createLogger("context");
 
 const supabase = createClient(config.supabase.url, config.supabase.serviceKey, {
   auth: {
@@ -67,7 +70,7 @@ class ContextManager {
     this.startAutoSave();
 
     this.initialized = true;
-    console.log("[CONTEXT MANAGER] Initialized with Supabase persistence");
+    log.info("Initialized with Supabase persistence");
   }
 
   /**
@@ -99,19 +102,14 @@ class ContextManager {
           (sum, row) => sum + (row.message_count || 0),
           0,
         );
-        console.log(
-          `[CONTEXT MANAGER] Loaded ${data.length} conversations with ${totalMessages} messages from Supabase`,
+        log.info(
+          `Loaded ${data.length} conversations with ${totalMessages} messages from Supabase`,
         );
       } else {
-        console.log(
-          "[CONTEXT MANAGER] No existing conversations found in Supabase",
-        );
+        log.info("No existing conversations found in Supabase");
       }
     } catch (error) {
-      console.error(
-        "[CONTEXT MANAGER] Failed to load from Supabase:",
-        error.message,
-      );
+      log.error("Failed to load from Supabase:", error.message);
     }
   }
 
@@ -143,10 +141,7 @@ class ContextManager {
 
       if (error) throw error;
     } catch (error) {
-      console.error(
-        `[CONTEXT MANAGER] Failed to save ${contextId}:`,
-        error.message,
-      );
+      log.error(`Failed to save ${contextId}:`, error.message);
     }
   }
 
@@ -189,11 +184,11 @@ class ContextManager {
 
       if (error) throw error;
 
-      console.log(
-        `[CONTEXT MANAGER] Batch saved ${updates.length} conversations to Supabase`,
+      log.info(
+        `Batch saved ${updates.length} conversations to Supabase`,
       );
     } catch (error) {
-      console.error("[CONTEXT MANAGER] Batch save failed:", error.message);
+      log.error("Batch save failed:", error.message);
     }
   }
 
@@ -223,9 +218,7 @@ class ContextManager {
       60 * 60 * 1000,
     );
 
-    console.log(
-      "[CONTEXT MANAGER] Auto-save enabled (batch every 2s), cleanup every 1h",
-    );
+    log.info("Auto-save enabled (batch every 2s), cleanup every 1h");
   }
 
   /**
@@ -240,7 +233,7 @@ class ContextManager {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }
-    console.log("[CONTEXT MANAGER] Auto-save and cleanup disabled");
+    log.info("Auto-save and cleanup disabled");
   }
 
   /**
@@ -251,7 +244,7 @@ class ContextManager {
     const contextIds = Array.from(this.conversations.keys());
     contextIds.forEach((id) => this.queueSave(id));
     await this.batchSave();
-    console.log("[CONTEXT MANAGER] Force saved all conversations");
+    log.info("Force saved all conversations");
   }
 
   /**
@@ -339,10 +332,7 @@ class ContextManager {
       });
       message.embedding = embedding;
     } catch (e) {
-      console.error(
-        "[CONTEXT MANAGER] Embedding error for message:",
-        e.message,
-      );
+      log.error("Embedding error for message:", e.message);
     }
   }
 
@@ -436,7 +426,7 @@ class ContextManager {
         results: topResults,
       };
     } catch (error) {
-      console.error("[CONTEXT MANAGER] Search error:", error);
+      log.error("Search error:", error);
       return { success: false, error: error.message };
     }
   }
@@ -484,10 +474,7 @@ class ContextManager {
 
       if (error) throw error;
     } catch (error) {
-      console.error(
-        "[CONTEXT MANAGER] Clear history Supabase error:",
-        error.message,
-      );
+      log.error("Clear history Supabase error:", error.message);
     }
 
     return { success: true };
@@ -551,14 +538,11 @@ class ContextManager {
 
         if (error) throw error;
       } catch (error) {
-        console.error(
-          "[CONTEXT MANAGER] Cleanup Supabase error:",
-          error.message,
-        );
+        log.error("Cleanup Supabase error:", error.message);
       }
     }
 
-    console.log(`[CONTEXT MANAGER] Cleaned up ${cleaned} old conversations`);
+    log.info(`Cleaned up ${cleaned} old conversations`);
     return { success: true, cleaned };
   }
 
@@ -567,10 +551,10 @@ class ContextManager {
    * @returns {Promise<void>}
    */
   async shutdown() {
-    console.log("[CONTEXT MANAGER] Shutting down...");
+    log.info("Shutting down...");
     this.stopAutoSave();
     await this.forceSaveAll();
-    console.log("[CONTEXT MANAGER] Shutdown complete");
+    log.info("Shutdown complete");
   }
 
   /**
@@ -627,12 +611,12 @@ class ContextManager {
         });
       });
 
-      console.log(
-        `[CONTEXT MANAGER] Imported ${data.conversations.length} conversations`,
+      log.info(
+        `Imported ${data.conversations.length} conversations`,
       );
       return { success: true, count: data.conversations.length };
     } catch (error) {
-      console.error("[CONTEXT MANAGER] Import error:", error);
+      log.error("Import error:", error);
       return { success: false, error: error.message };
     }
   }

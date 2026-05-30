@@ -20,4 +20,4 @@ COPY . .
 
 ENV NODE_ENV=production
 
-CMD ["node", "--max-old-space-size=512", "--expose-gc", "src/index.js"]
+CMD ["node", "--expose-gc", "src/index.js"]

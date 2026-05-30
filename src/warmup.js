@@ -8,8 +8,11 @@ try {
   console.log(
     `[INFO] Warmup: done — ${memoryCount} sounds in memory, ${totalKB} KB, ${manifestEntries} manifest entries`,
   );
-  process.exit(0);
 } catch (err) {
-  console.error("[ERROR] Warmup failed:", err);
-  process.exit(1);
+  console.warn(
+    "[WARN] Warmup failed; continuing with a cold cache (it repopulates on demand):",
+    err?.message || err,
+  );
 }
+process.exit(0);
+
