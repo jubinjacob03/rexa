@@ -361,7 +361,7 @@ export async function handleVerificationApply(interaction) {
     const approvalSection = new SectionBuilder()
       .addTextDisplayComponents(
         new TextDisplayBuilder().setContent(
-          `## ${isFriends ? icon("FRIENDS_ROLE") : icon("MEMBER_ROLE")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ\n> <@${userId}> ɪs ʀᴇǫᴜᴇsᴛɪɴɢ ᴀᴄᴄᴇss ᴛᴏ ᴛʜᴇ sᴇʀᴠᴇʀ.\n\n${icon("USER")} **ᴀᴘᴘʟɪᴄᴀɴᴛ : ** <@${userId}>\n\u200b\n${icon("MEMO")} **ᴜsᴇʀɴᴀᴍᴇ : ** \`${username}\`\n\u200b\n${icon("TYPE")} **ᴛᴀʀɢᴇᴛ ʀᴏʟᴇ : ** \`${requestedRole}\`\n\u200b\n${icon("KEYLOCK")} **ɪᴅᴇɴᴛɪғɪᴇʀ : ** \`${userId}\``,
+          `## ${isFriends ? icon("FRIENDS_ROLE") : icon("MEMBER_ROLE")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ\n> <@${userId}> ɪs ʀᴇǫᴜᴇsᴛɪɴɢ ᴀᴄᴄᴇss ᴛᴏ ᴛʜᴇ sᴇʀᴠᴇʀ.\n\n${icon("USER")} **ᴀᴘᴘʟɪᴄᴀɴᴛ : ** <@${userId}>\n\n${icon("MEMO")} **ᴜsᴇʀɴᴀᴍᴇ : ** \`${username}\`\n\n${icon("TYPE")} **ᴛᴀʀɢᴇᴛ ʀᴏʟᴇ : ** \`${requestedRole}\`\n\n${icon("KEYLOCK")} **ɪᴅᴇɴᴛɪғɪᴇʀ : ** \`${userId}\``,
         ),
       )
       .setThumbnailAccessory(new ThumbnailBuilder().setURL(userAvatar));
@@ -636,7 +636,7 @@ export async function handleApprovalAction(interaction) {
       const rejectedSection = new SectionBuilder()
         .addTextDisplayComponents(
           new TextDisplayBuilder().setContent(
-            `## ${icon("ERROR")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇᴊᴇᴄᴛᴇᴅ\n> <@${userId}> ᴡᴀs ᴅᴇɴɪᴇᴅ ᴀᴄᴄᴇss.\n\n${icon("USER")} **ᴀᴘᴘʟɪᴄᴀɴᴛ:** <@${userId}>\n\u200b\n${icon("TYPE")} **ʀᴇǫᴜᴇsᴛᴇᴅ ʀᴏʟᴇ:** \`${request.requestedRole}\`\n\u200b\n${icon("MODERATOR")} **ʀᴇᴊᴇᴄᴛᴇᴅ ʙʏ:** <@${interaction.user.id}>`,
+            `## ${icon("ERROR")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇᴊᴇᴄᴛᴇᴅ\n> <@${userId}> ᴡᴀs ᴅᴇɴɪᴇᴅ ᴀᴄᴄᴇss.\n\n${icon("USER")} **ᴀᴘᴘʟɪᴄᴀɴᴛ : ** <@${userId}>\n\n${icon("TYPE")} **ʀᴇǫᴜᴇsᴛᴇᴅ ʀᴏʟᴇ : ** \`${request.requestedRole}\`\n\n${icon("MODERATOR")} **ʀᴇᴊᴇᴄᴛᴇᴅ ʙʏ : ** <@${interaction.user.id}>`,
           ),
         )
         .setThumbnailAccessory(new ThumbnailBuilder().setURL(userAvatar));
@@ -748,7 +748,7 @@ export async function handleNicknameModal(interaction) {
     const approvedSection = new SectionBuilder()
       .addTextDisplayComponents(
         new TextDisplayBuilder().setContent(
-          `## ${icon("SUCCESS")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ\n> <@${userId}> ᴡᴀs ɢʀᴀɴᴛᴇᴅ ᴀᴄᴄᴇss.\n\n${icon("USER")} **ᴍᴇᴍʙᴇʀ:** <@${userId}>\n\u200b\n${icon("TYPE")} **ᴀssɪɢɴᴇᴅ ʀᴏʟᴇ:** \`${request.requestedRole}\`\n\u200b\n${icon("EDITOR")} **ɴɪᴄᴋɴᴀᴍᴇ:** \`${finalNickname}\`\n\u200b\n${icon("MODERATOR")} **ᴀᴘᴘʀᴏᴠᴇᴅ ʙʏ:** <@${interaction.user.id}>`,
+          `## ${icon("SUCCESS")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ\n> <@${userId}> ᴡᴀs ɢʀᴀɴᴛᴇᴅ ᴀᴄᴄᴇss.\n\n${icon("USER")} **ᴍᴇᴍʙᴇʀ : ** <@${userId}>\n\n${icon("TYPE")} **ᴀssɪɢɴᴇᴅ ʀᴏʟᴇ : ** \`${request.requestedRole}\`\n\n${icon("EDITOR")} **ɴɪᴄᴋɴᴀᴍᴇ : ** \`${finalNickname}\`\n\n${icon("MODERATOR")} **ᴀᴘᴘʀᴏᴠᴇᴅ ʙʏ : ** <@${interaction.user.id}>`,
         ),
       )
       .setThumbnailAccessory(new ThumbnailBuilder().setURL(userAvatar));
