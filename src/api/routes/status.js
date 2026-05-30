@@ -24,8 +24,7 @@ router.get("/", async (req, res) => {
     res.json({
       success: true,
       data: {
-        uptime: Math.floor(client.uptime / 1000), // convert ms to seconds
-        ping: client.ws.ping,
+        uptime: Math.floor(client.uptime / 1000),        ping: client.ws.ping,
         guilds: client.guilds.cache.size,
         voiceConnections: voiceManager.getActiveGuilds().length,
         totalUsers: client.users.cache.size,

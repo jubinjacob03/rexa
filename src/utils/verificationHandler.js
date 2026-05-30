@@ -8,17 +8,33 @@ import {
   MessageFlags,
   ContainerBuilder,
   TextDisplayBuilder,
-  SeparatorBuilder,
-  SeparatorSpacingSize,
   SectionBuilder,
   ThumbnailBuilder,
 } from "discord.js";
 import { createClient } from "@supabase/supabase-js";
 import config from "../../config.js";
 import { generateText } from "ai";
-import { eReply, eSend, EMBED_COLOR, addFooter } from "./embed.js";
+import { eReply, eSend, addFooter } from "./embed.js";
 import { i, icon } from "./icons.js";
 import { getLanguageModel } from "../agents/config.js";
+import { createLogger } from "./logger.js";
+
+const log = createLogger("verify");
+
+const NICKNAME_STRIP = new RegExp(
+  "[\\u0000-\\u001F\\u007F\\u200B-\\u200F\\u2060\\uFEFF]",
+  "g",
+);
+
+/**
+ * Removes control and zero-width characters and collapses whitespace from a
+ * user-supplied nickname so it cannot smuggle in invisible or disruptive content.
+ * @param {string} raw
+ * @returns {string}
+ */
+function sanitizeNickname(raw) {
+  return String(raw).replace(NICKNAME_STRIP, "").replace(/\s+/g, " ").trim();
+}
 
 const supabase = createClient(config.supabase.url, config.supabase.serviceKey, {
   auth: { autoRefreshToken: false, persistSession: false },
@@ -34,7 +50,6 @@ const SELF_ROLE_MAP = {
 
 export const pendingInterrogations = new Map();
 
-// Cleanup abandoned interrogations every 30 minutes to prevent memory leaks
 setInterval(
   () => {
     const now = Date.now();
@@ -66,6 +81,7 @@ const defaultData = {
 
 let _cache = null;
 let _cacheTTL = 0;
+let _writeChain = Promise.resolve();
 const CACHE_MS = 5_000;
 
 async function loadData() {
@@ -78,7 +94,7 @@ async function loadData() {
     .single();
 
   if (error && error.code !== "PGRST116") {
-    console.error("[ERROR] Failed to load verification data:", error);
+    log.error("Failed to load verification data:", error);
     return { ...defaultData };
   }
 
@@ -100,8 +116,6 @@ async function loadData() {
 }
 
 async function saveData(data) {
-  _cache = null;
-
   const { error } = await supabase.from("bot_verification").upsert(
     {
       guild_id: GUILD_ID,
@@ -115,8 +129,29 @@ async function saveData(data) {
   );
 
   if (error) {
-    console.error("[ERROR] Failed to save verification data:", error);
+    log.error("Failed to save verification data:", error);
+    _cache = null;
+    return;
   }
+  _cache = data;
+  _cacheTTL = Date.now() + CACHE_MS;
+}
+
+/**
+ * Serializes read-modify-write operations on the verification record so concurrent
+ * callers cannot clobber each other (last-write-wins). Each mutation loads the
+ * latest data, applies the mutator, then persists it, strictly one at a time.
+ * @param {(data: typeof defaultData) => void | Promise<void>} mutator
+ * @returns {Promise<void>}
+ */
+function mutate(mutator) {
+  const next = _writeChain.then(async () => {
+    const data = await loadData();
+    await mutator(data);
+    await saveData(data);
+  });
+  _writeChain = next.catch(() => {});
+  return next;
 }
 
 export async function hasPendingRequest(userId) {
@@ -140,16 +175,16 @@ export async function createRequest(
   requestedRoleId,
   approvalMessageId,
 ) {
-  const data = await loadData();
-  data.pendingRequests[userId] = {
-    userId,
-    username,
-    requestedRole,
-    requestedRoleId,
-    timestamp: new Date().toISOString(),
-    approvalMessageId,
-  };
-  await saveData(data);
+  await mutate((data) => {
+    data.pendingRequests[userId] = {
+      userId,
+      username,
+      requestedRole,
+      requestedRoleId,
+      timestamp: new Date().toISOString(),
+      approvalMessageId,
+    };
+  });
 }
 
 export async function getRequest(userId) {
@@ -158,9 +193,9 @@ export async function getRequest(userId) {
 }
 
 export async function removeRequest(userId) {
-  const data = await loadData();
-  delete data.pendingRequests[userId];
-  await saveData(data);
+  await mutate((data) => {
+    delete data.pendingRequests[userId];
+  });
 }
 
 /**
@@ -183,18 +218,18 @@ export async function logApproval(
   nickname,
   status,
 ) {
-  const data = await loadData();
-  data.approvalLogs.push({
-    userId,
-    username,
-    requestedRole,
-    approvedBy,
-    approvedById,
-    nickname: nickname || null,
-    status,
-    timestamp: new Date().toISOString(),
+  await mutate((data) => {
+    data.approvalLogs.push({
+      userId,
+      username,
+      requestedRole,
+      approvedBy,
+      approvedById,
+      nickname: nickname || null,
+      status,
+      timestamp: new Date().toISOString(),
+    });
   });
-  await saveData(data);
 }
 
 export async function getAllPendingRequests() {
@@ -213,9 +248,9 @@ export async function getAutoDmEnabled() {
  * @returns {Promise<void>}
  */
 export async function setAutoDmEnabled(value) {
-  const data = await loadData();
-  data.autoDmEnabled = value;
-  await saveData(data);
+  await mutate((data) => {
+    data.autoDmEnabled = value;
+  });
 }
 
 /**
@@ -228,9 +263,9 @@ export async function getAutoApprove() {
 }
 
 export async function setAutoApprove(value) {
-  const data = await loadData();
-  data.autoApprove = value;
-  await saveData(data);
+  await mutate((data) => {
+    data.autoApprove = value;
+  });
 }
 
 export async function getApprovalLogs(limit = 50) {
@@ -326,24 +361,13 @@ export async function handleVerificationApply(interaction) {
     const approvalSection = new SectionBuilder()
       .addTextDisplayComponents(
         new TextDisplayBuilder().setContent(
-          `## ${isFriends ? icon("FRIENDS_ROLE") : icon("MEMBER_ROLE")} ɴᴇᴡ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ\n<@${userId}> ʜᴀs ʀᴇǫᴜᴇsᴛᴇᴅ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ғᴏʀ **${requestedRole}** ʀᴏʟᴇ.`,
+          `## ${isFriends ? icon("FRIENDS_ROLE") : icon("MEMBER_ROLE")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ\n> <@${userId}> ɪs ʀᴇǫᴜᴇsᴛɪɴɢ ᴀᴄᴄᴇss ᴛᴏ ᴛʜᴇ sᴇʀᴠᴇʀ.\n\n${icon("USER")} **ᴀᴘᴘʟɪᴄᴀɴᴛ : ** <@${userId}>\n\u200b\n${icon("MEMO")} **ᴜsᴇʀɴᴀᴍᴇ : ** \`${username}\`\n\u200b\n${icon("TYPE")} **ᴛᴀʀɢᴇᴛ ʀᴏʟᴇ : ** \`${requestedRole}\`\n\u200b\n${icon("KEYLOCK")} **ɪᴅᴇɴᴛɪғɪᴇʀ : ** \`${userId}\``,
         ),
       )
       .setThumbnailAccessory(new ThumbnailBuilder().setURL(userAvatar));
 
     const approvalContainer = new ContainerBuilder()
-      .setAccentColor(EMBED_COLOR)
-      .addSectionComponents(approvalSection)
-      .addSeparatorComponents(
-        new SeparatorBuilder()
-          .setDivider(true)
-          .setSpacing(SeparatorSpacingSize.Small),
-      )
-      .addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(
-          `**ᴜsᴇʀ:** <@${userId}>\n**ᴜsᴇʀɴᴀᴍᴇ:** ${username}\n**ʀᴇǫᴜᴇsᴛᴇᴅ ʀᴏʟᴇ:** ${requestedRole}\n**ᴜsᴇʀ ɪᴅ:** ${userId}`,
-        ),
-      );
+      .setAccentColor(0x3498db)      .addSectionComponents(approvalSection);
 
     const approvalButtons = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -361,7 +385,7 @@ export async function handleVerificationApply(interaction) {
     approvalContainer.addActionRowComponents(approvalButtons);
     addFooter(approvalContainer);
 
-    const approvalsChannel = await interaction.guild.channels.fetch(
+    const approvalsChannel = await guild.channels.fetch(
       config.approvalsChannelId,
     );
     await approvalsChannel
@@ -400,7 +424,7 @@ export async function handleVerificationApply(interaction) {
       ),
     );
   } catch (error) {
-    console.error("[ERROR] Error handling verification apply:", error);
+    log.error("Error handling verification apply:", error);
     if (!interaction.replied)
       await interaction.reply(
         eReply(`${i("ERROR")}ᴇʀʀᴏʀ`, "ғᴀɪʟᴇᴅ ᴛᴏ sᴜʙᴍɪᴛ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ."),
@@ -451,7 +475,7 @@ export async function handleSelfRoleToggle(interaction) {
       ),
     );
   } catch (error) {
-    console.error("[ERROR] Failed to toggle self role:", error);
+    log.error("Failed to toggle self role:", error);
     return interaction.reply(
       eReply(`${i("ERROR")} ᴇʀʀᴏʀ`, "ғᴀɪʟᴇᴅ ᴛᴏ ᴜᴘᴅᴀᴛᴇ ʏᴏᴜʀ ʀᴏʟᴇ."),
     );
@@ -533,7 +557,7 @@ export async function handleVerificationDM(message) {
         .catch(() => null);
     }
   } catch (e) {
-    console.error("[ERROR] Verification AI Error:", e);
+    log.error("Verification AI Error:", e);
     await message.author
       .send(
         eSend(
@@ -602,24 +626,13 @@ export async function handleApprovalAction(interaction) {
       const rejectedSection = new SectionBuilder()
         .addTextDisplayComponents(
           new TextDisplayBuilder().setContent(
-            `## ${icon("ERROR")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇᴊᴇᴄᴛᴇᴅ`,
+            `## ${icon("ERROR")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇᴊᴇᴄᴛᴇᴅ\n> <@${userId}> ᴡᴀs ᴅᴇɴɪᴇᴅ ᴀᴄᴄᴇss.\n\n${icon("USER")} **ᴀᴘᴘʟɪᴄᴀɴᴛ:** <@${userId}>\n\u200b\n${icon("TYPE")} **ʀᴇǫᴜᴇsᴛᴇᴅ ʀᴏʟᴇ:** \`${request.requestedRole}\`\n\u200b\n${icon("MODERATOR")} **ʀᴇᴊᴇᴄᴛᴇᴅ ʙʏ:** <@${interaction.user.id}>`,
           ),
         )
         .setThumbnailAccessory(new ThumbnailBuilder().setURL(userAvatar));
 
       const rejectedContainer = new ContainerBuilder()
-        .setAccentColor(EMBED_COLOR)
-        .addSectionComponents(rejectedSection)
-        .addSeparatorComponents(
-          new SeparatorBuilder()
-            .setDivider(true)
-            .setSpacing(SeparatorSpacingSize.Small),
-        )
-        .addTextDisplayComponents(
-          new TextDisplayBuilder().setContent(
-            `**ᴜsᴇʀ:** <@${userId}>\n**ᴜsᴇʀɴᴀᴍᴇ:** ${request.username}\n**ʀᴇǫᴜᴇsᴛᴇᴅ ʀᴏʟᴇ:** ${request.requestedRole}\n**ʀᴇᴊᴇᴄᴛᴇᴅ ʙʏ:** <@${interaction.user.id}>`,
-          ),
-        );
+        .setAccentColor(0xe74c3c)        .addSectionComponents(rejectedSection);
 
       addFooter(rejectedContainer);
 
@@ -647,14 +660,14 @@ export async function handleApprovalAction(interaction) {
             `sᴏʀʀʏ, ʏᴏᴜʀ ʀᴇǫᴜᴇsᴛ ғᴏʀ **${request.requestedRole}** ʀᴏʟᴇ ʜᴀs ʙᴇᴇɴ ʀᴇᴊᴇᴄᴛᴇᴅ.`,
           ),
         )
-        .catch(() => console.log(`[WARN] Could not DM user ${userId}`));
+        .catch(() => log.warn(`Could not DM user ${userId}`));
 
       await interaction.followUp(
         eReply(`${i("DONE")}ᴅᴏɴᴇ`, "ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ ʀᴇᴊᴇᴄᴛᴇᴅ ᴀɴᴅ ʟᴏɢɢᴇᴅ."),
       );
     }
   } catch (error) {
-    console.error("[ERROR] Error handling approval action:", error);
+    log.error("Error handling approval action:", error);
     if (!interaction.replied && !interaction.deferred) {
       await interaction.reply(
         eReply(`${i("ERROR")}ᴇʀʀᴏʀ`, "ғᴀɪʟᴇᴅ ᴛᴏ ᴘʀᴏᴄᴇss ᴀᴘᴘʀᴏᴠᴀʟ ᴀᴄᴛɪᴏɴ."),
@@ -673,10 +686,13 @@ export async function handleNicknameModal(interaction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const [, , userId, roleId] = interaction.customId.split("_");
-    const nicknameInput =
-      interaction.fields.getTextInputValue("nickname_input");
+    const rawNickname = interaction.fields.getTextInputValue("nickname_input");
+    // Strip control/zero-width characters and collapse whitespace; Discord caps
+    const nicknameInput = sanitizeNickname(rawNickname);
     const isFriends = roleId === config.friendsRoleId;
-    const finalNickname = isFriends ? nicknameInput : `God ${nicknameInput}`;
+    const finalNickname = (
+      isFriends ? nicknameInput : `God ${nicknameInput}`
+    ).slice(0, 32);
 
     const request = await getRequest(userId);
     if (!request) {
@@ -722,24 +738,13 @@ export async function handleNicknameModal(interaction) {
     const approvedSection = new SectionBuilder()
       .addTextDisplayComponents(
         new TextDisplayBuilder().setContent(
-          `## ${icon("SUCCESS")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ`,
+          `## ${icon("SUCCESS")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ\n> <@${userId}> ᴡᴀs ɢʀᴀɴᴛᴇᴅ ᴀᴄᴄᴇss.\n\n${icon("USER")} **ᴍᴇᴍʙᴇʀ:** <@${userId}>\n\u200b\n${icon("TYPE")} **ᴀssɪɢɴᴇᴅ ʀᴏʟᴇ:** \`${request.requestedRole}\`\n\u200b\n${icon("EDITOR")} **ɴɪᴄᴋɴᴀᴍᴇ:** \`${finalNickname}\`\n\u200b\n${icon("MODERATOR")} **ᴀᴘᴘʀᴏᴠᴇᴅ ʙʏ:** <@${interaction.user.id}>`,
         ),
       )
       .setThumbnailAccessory(new ThumbnailBuilder().setURL(userAvatar));
 
     const approvedContainer = new ContainerBuilder()
-      .setAccentColor(EMBED_COLOR)
-      .addSectionComponents(approvedSection)
-      .addSeparatorComponents(
-        new SeparatorBuilder()
-          .setDivider(true)
-          .setSpacing(SeparatorSpacingSize.Small),
-      )
-      .addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(
-          `**ᴜsᴇʀ:** <@${userId}>\n**ᴜsᴇʀɴᴀᴍᴇ:** ${request.username}\n**ʀᴇǫᴜᴇsᴛᴇᴅ ʀᴏʟᴇ:** ${request.requestedRole}\n**ᴀᴘᴘʀᴏᴠᴇᴅ ʙʏ:** <@${interaction.user.id}>\n**ɴɪᴄᴋɴᴀᴍᴇ:** ${finalNickname}`,
-        ),
-      );
+      .setAccentColor(0x2ecc71)      .addSectionComponents(approvedSection);
 
     addFooter(approvedContainer);
 
@@ -768,7 +773,7 @@ export async function handleNicknameModal(interaction) {
           `ʏᴏᴜʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ ʜᴀs ʙᴇᴇɴ ᴀᴘᴘʀᴏᴠᴇᴅ!\n\n**ʀᴏʟᴇ:** ${request.requestedRole}\n**ɴɪᴄᴋɴᴀᴍᴇ:** ${finalNickname}`,
         ),
       )
-      .catch(() => console.log(`[WARN] Could not DM user ${userId}`));
+      .catch(() => log.warn(`Could not DM user ${userId}`));
 
     await interaction.editReply(
       eReply(
@@ -777,7 +782,7 @@ export async function handleNicknameModal(interaction) {
       ),
     );
   } catch (error) {
-    console.error("[ERROR] Error handling nickname modal:", error);
+    log.error("Error handling nickname modal:", error);
     await interaction.editReply(
       eReply(`${i("ERROR")}ᴇʀʀᴏʀ`, "ғᴀɪʟᴇᴅ ᴛᴏ ᴄᴏᴍᴘʟᴇᴛᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴀʟ."),
     );

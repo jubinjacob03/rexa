@@ -24,8 +24,16 @@ import {
 } from "../commands/ticket-setup.js";
 import { eReply, eSend, EMBED_COLOR, addFooter } from "./embed.js";
 import { i, icon } from "./icons.js";
+import { createLogger } from "./logger.js";
+import { swallow } from "./resilience.js";
+
+const log = createLogger("tickets");
 
 const activeTickets = new Set();
+
+/** User IDs with a ticket creation currently in flight, used as a synchronous
+ * single-flight lock so a double-click cannot create two tickets. */
+const ticketCreationInProgress = new Set();
 
 /**
  * Handles ticket-related interactions (buttons, modals).
@@ -266,7 +274,7 @@ export async function handleTicketInteraction(interaction) {
                 content: btn.content,
               });
             } catch (err) {
-              console.error("[SUPABASE] Error saving custom action:", err);
+              log.error("[SUPABASE] Error saving custom action:", err);
             }
           }
 
@@ -344,7 +352,7 @@ export async function handleTicketInteraction(interaction) {
             { onConflict: "action_id" },
           );
         } catch (err) {
-          console.error("[SUPABASE] Error saving ticket mods:", err);
+          log.error("[SUPABASE] Error saving ticket mods:", err);
         }
       }
     } else if (
@@ -485,8 +493,34 @@ export async function handleTicketInteraction(interaction) {
  * @returns {Promise<void>}
  */
 async function createTicketInstance(interaction, options = {}) {
+  const userId = interaction.user.id;
+  if (ticketCreationInProgress.has(userId)) {
+    return interaction
+      .reply(
+        eReply(
+          `${i("PENDING")} ᴘʟᴇᴀsᴇ ᴡᴀɪᴛ`,
+          "ʏᴏᴜʀ ᴛɪᴄᴋᴇᴛ ɪs ᴀʟʀᴇᴀᴅʏ ʙᴇɪɴɢ ᴄʀᴇᴀᴛᴇᴅ.",
+        ),
+      )
+      .catch(() => {});
+  }
+  ticketCreationInProgress.add(userId);
+  try {
+    return await createTicketInstanceImpl(interaction, options);
+  } finally {
+    ticketCreationInProgress.delete(userId);
+  }
+}
+
+/**
+ * Creates the ticket channel and welcome message. Always invoked through
+ * {@link createTicketInstance}, which serializes concurrent requests per user.
+ * @param {import('discord.js').Interaction} interaction
+ * @param {Object} [options={}]
+ * @returns {Promise<void>}
+ */
+async function createTicketInstanceImpl(interaction, options = {}) {
   if (activeTickets.has(interaction.user.id)) {
-    // Verify the channel actually still exists before rejecting
     const guild = interaction.guild;
     const existingChannel = guild.channels.cache.find(
       (c) =>
@@ -495,7 +529,6 @@ async function createTicketInstance(interaction, options = {}) {
     );
 
     if (!existingChannel) {
-      // Channel was manually deleted, auto-heal the state
       activeTickets.delete(interaction.user.id);
       if (supabase) {
         await supabase
@@ -724,14 +757,15 @@ async function createTicketInstance(interaction, options = {}) {
 
     addFooter(ticketContainer);
 
-    await ticketChannel.send(mentionText).catch(() => {});
+    await swallow(ticketChannel.send(mentionText), "Ticket mention message");
 
-    await ticketChannel
-      .send({
+    await swallow(
+      ticketChannel.send({
         components: [ticketContainer],
         flags: MessageFlags.IsComponentsV2,
-      })
-      .catch(() => {});
+      }),
+      "Ticket welcome message",
+    );
 
     await interaction.editReply(
       eReply(
@@ -740,7 +774,7 @@ async function createTicketInstance(interaction, options = {}) {
       ),
     );
   } catch (error) {
-    console.error("[TICKETS] Error creating ticket:", error);
+    log.error("[TICKETS] Error creating ticket:", error);
     activeTickets.delete(interaction.user.id);
     if (supabase) {
       try {
@@ -748,7 +782,9 @@ async function createTicketInstance(interaction, options = {}) {
           .from("active_tickets")
           .delete()
           .eq("user_id", interaction.user.id);
-      } catch {}
+      } catch (e) {
+        log.debug("Supabase ticket cleanup failed:", e?.message || e);
+      }
     }
     if (ticketChannel) {
       await ticketChannel.delete().catch(() => {});
@@ -871,16 +907,18 @@ async function closeTicketThread(interaction) {
               .from("active_tickets")
               .delete()
               .in("user_id", usersToRemove);
-          } catch {}
+          } catch (e) {
+            log.debug("Supabase bulk ticket cleanup failed:", e?.message || e);
+          }
         }
 
         await thread.delete();
       } catch (err) {
-        console.error("[TICKETS] Error archiving channel/thread:", err);
+        log.error("[TICKETS] Error archiving channel/thread:", err);
       }
     }, 4000);
   } catch (error) {
-    console.error("[TICKETS] Error closing ticket:", error);
+    log.error("[TICKETS] Error closing ticket:", error);
     if (!interaction.replied) {
       await interaction.editReply(
         eReply(
@@ -928,7 +966,9 @@ async function escalateTicket(interaction) {
       if (modsData?.content) {
         try {
           ticketModIds = JSON.parse(modsData.content);
-        } catch {}
+        } catch (e) {
+          log.debug("Malformed ticket mod list; ignoring:", e?.message || e);
+        }
       }
     }
 
@@ -952,7 +992,7 @@ async function escalateTicket(interaction) {
       ),
     );
   } catch (error) {
-    console.error("[TICKETS] Error escalating ticket:", error);
+    log.error("[TICKETS] Error escalating ticket:", error);
     if (!interaction.replied && !interaction.deferred) {
       await interaction
         .reply(eReply(`${i("ERROR")} ᴇʀʀᴏʀ`, "ғᴀɪʟᴇᴅ ᴛᴏ ᴇsᴄᴀʟᴀᴛᴇ ᴛɪᴄᴋᴇᴛ."))

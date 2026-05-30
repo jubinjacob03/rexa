@@ -32,6 +32,9 @@ import {
   getMusicConfirmation,
   initEmojis,
 } from "./utils/index.js";
+import { createLogger } from "../utils/logger.js";
+
+const log = createLogger("agent");
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -163,7 +166,7 @@ let agentInitialized = false;
  */
 export async function initializeAgent(client) {
   if (agentInitialized) {
-    console.log("[AGENT] Already initialized, skipping");
+    log.info("Already initialized, skipping");
     return { processMessage, executeCommand, getStats };
   }
 
@@ -178,7 +181,7 @@ export async function initializeAgent(client) {
   _model = getLanguageModel();
 
   agentInitialized = true;
-  console.log("[AGENT] Initialized successfully");
+  log.info("Initialized successfully");
   return { processMessage, executeCommand, getStats };
 }
 
@@ -210,7 +213,7 @@ async function executeToolByName(toolName, params) {
     const result = await toolObj.execute(params);
     return result ?? { success: true };
   } catch (err) {
-    console.error(`[AGENT] Tool execution error (${toolName}):`, err);
+    log.error(`Tool execution error (${toolName}):`, err);
     return { success: false, error: err.message };
   }
 }
@@ -229,7 +232,7 @@ export async function processMessage(
   message,
   username = "Unknown",
 ) {
-  console.log(`[AGENT] Processing message from user ${userId} (${username})`);
+  log.info(`Processing message from user ${userId} (${username})`);
 
   try {
     const model = _model ?? getLanguageModel();
@@ -266,13 +269,13 @@ export async function processMessage(
             .map((r) => ({ role: r.message.role, content: r.message.content }))
             .filter((m) => !recentContents.has(m.content));
           historyMessages = [...semanticMessages, ...recentMessages];
-          console.log(
-            `[AGENT] Smart context: ${semanticMessages.length} semantic + ${recentMessages.length} recent messages`,
+          log.info(
+            `Smart context: ${semanticMessages.length} semantic + ${recentMessages.length} recent messages`,
           );
         }
       } catch (ctxErr) {
-        console.warn(
-          "[AGENT] Smart context retrieval failed, using recent only:",
+        log.warn(
+          "Smart context retrieval failed, using recent only:",
           ctxErr.message,
         );
       }
@@ -292,26 +295,26 @@ export async function processMessage(
     });
 
     const rawOutput = (pass1.text || "").trim();
-    console.log(
-      `[AGENT] Pass 1 output (${pass1.finishReason}): ${rawOutput.substring(0, 150)}`,
+    log.info(
+      `Pass 1 output (${pass1.finishReason}): ${rawOutput.substring(0, 150)}`,
     );
 
     const toolCall = extractToolCall(rawOutput);
 
     if (!toolCall) {
-      console.log("[AGENT] No tool call — using direct response");
+      log.info("No tool call — using direct response");
       const looksLikeToolCall = RE_LOOKS_LIKE_TOOL.test(rawOutput);
       let safeResponse;
       if (looksLikeToolCall) {
         safeResponse =
           "I'm not sure how to help with that right now. Could you rephrase?";
-        console.log("[AGENT] Suppressed raw JSON tool-call from Pass 1 output");
+        log.info("Suppressed raw JSON tool-call from Pass 1 output");
       } else {
         const xmlCutIdx = rawOutput.search(RE_XML_TOOL_BLEED);
         if (xmlCutIdx !== -1) {
           safeResponse = rawOutput.substring(0, xmlCutIdx).trim();
-          console.log(
-            "[AGENT] Stripped XML tool-call bleed from Pass 1 direct response",
+          log.info(
+            "Stripped XML tool-call bleed from Pass 1 direct response",
           );
           if (!safeResponse)
             safeResponse =
@@ -328,8 +331,8 @@ export async function processMessage(
     }
 
     const { name: toolName, params: toolParams = {} } = toolCall;
-    console.log(
-      `[AGENT] Tool call: ${toolName}`,
+    log.info(
+      `Tool call: ${toolName}`,
       JSON.stringify(toolParams).substring(0, 120),
     );
 
@@ -340,8 +343,8 @@ export async function processMessage(
       const personMatch = message.match(RE_PERSON_MATCH);
       if (personMatch) {
         const searchTerm = personMatch[1].trim();
-        console.log(
-          `[AGENT] Redirecting infoType=members → search for: "${searchTerm}"`,
+        log.info(
+          `Redirecting infoType=members → search for: "${searchTerm}"`,
         );
         const searchResult = await executeToolByName("serverInfo", {
           ...enrichedParams,
@@ -352,15 +355,15 @@ export async function processMessage(
           toolResult = searchResult;
           enrichedParams.infoType = "search";
           enrichedParams.searchQuery = searchTerm;
-          console.log(
-            `[AGENT] Redirected search result: ${JSON.stringify(searchResult).substring(0, 100)}`,
+          log.info(
+            `Redirected search result: ${JSON.stringify(searchResult).substring(0, 100)}`,
           );
         }
       }
     }
 
-    console.log(
-      `[AGENT] Tool result (${toolName}):`,
+    log.info(
+      `Tool result (${toolName}):`,
       JSON.stringify(toolResult).substring(0, 150),
     );
 
@@ -375,18 +378,18 @@ export async function processMessage(
       if (wttrMatch && isTimeQuery) {
         const location = decodeURIComponent(wttrMatch[1].replace(/,/g, " "));
         fallbackQuery = `current time in ${location}`;
-        console.log(
-          `[AGENT] fetchWebPage wttr.in time-query — searching for time: "${fallbackQuery}"`,
+        log.info(
+          `fetchWebPage wttr.in time-query — searching for time: "${fallbackQuery}"`,
         );
       } else if (wttrMatch) {
         fallbackQuery = `${decodeURIComponent(wttrMatch[1].replace(/,/g, " "))} weather`;
-        console.log(
-          `[AGENT] fetchWebPage failed — falling back to webSearch: "${fallbackQuery}"`,
+        log.info(
+          `fetchWebPage failed — falling back to webSearch: "${fallbackQuery}"`,
         );
       } else {
         fallbackQuery = message;
-        console.log(
-          `[AGENT] fetchWebPage failed — falling back to webSearch with original message`,
+        log.info(
+          `fetchWebPage failed — falling back to webSearch with original message`,
         );
       }
       const wsResult = await executeToolByName("webSearch", {
@@ -398,7 +401,7 @@ export async function processMessage(
       if (wsResult?.success) {
         finalToolName = "webSearch";
         finalToolResult = wsResult;
-        console.log("[AGENT] fetchWebPage→webSearch fallback succeeded");
+        log.info("fetchWebPage→webSearch fallback succeeded");
       }
     }
 
@@ -408,7 +411,7 @@ export async function processMessage(
       toolResult?.success &&
       (toolResult.count === 0 || toolResult.results?.length === 0)
     ) {
-      console.log("[AGENT] serverInfo returned no results — trying ragQuery");
+      log.info("serverInfo returned no results — trying ragQuery");
       const ragResult = await executeToolByName("ragQuery", {
         query: enrichedParams.searchQuery,
         userId,
@@ -424,10 +427,10 @@ export async function processMessage(
       if (ragHasContent) {
         finalToolName = "ragQuery";
         finalToolResult = ragResult;
-        console.log("[AGENT] Identity fallback: using ragQuery result");
+        log.info("Identity fallback: using ragQuery result");
       } else {
-        console.log(
-          "[AGENT] ragQuery empty — no further fallback (pass to Pass 2 as unknown member)",
+        log.info(
+          "ragQuery empty — no further fallback (pass to Pass 2 as unknown member)",
         );
       }
     }
@@ -507,8 +510,8 @@ export async function processMessage(
           const extraParams =
             typeof rawArgs === "string" ? JSON.parse(rawArgs) : (rawArgs ?? {});
           if (extraToolName) {
-            console.log(
-              `[AGENT] Pass 2 tool attempt (${extraToolName}) intercepted — executing and retrying`,
+            log.info(
+              `Pass 2 tool attempt (${extraToolName}) intercepted — executing and retrying`,
             );
             const extraResult = await executeToolByName(extraToolName, {
               ...extraParams,
@@ -531,8 +534,8 @@ export async function processMessage(
             }
           }
         } catch (retryErr) {
-          console.error(
-            "[AGENT] Pass 2 retry after tool intercept failed:",
+          log.error(
+            "Pass 2 retry after tool intercept failed:",
             retryErr.message,
           );
         }
@@ -544,7 +547,7 @@ export async function processMessage(
     try {
       pass2 = await runPass2(toolContext);
     } catch (pass2Err) {
-      console.error("[AGENT] Pass 2 failed:", pass2Err.message);
+      log.error("Pass 2 failed:", pass2Err.message);
     }
 
     let finalResponse = (pass2?.text || "").trim();
@@ -582,8 +585,8 @@ export async function processMessage(
         }
       }
     }
-    console.log(
-      `[AGENT] Pass 2 synthesized: ${finalResponse.substring(0, 120)}`,
+    log.info(
+      `Pass 2 synthesized: ${finalResponse.substring(0, 120)}`,
     );
 
     await Promise.all([
@@ -592,7 +595,7 @@ export async function processMessage(
     ]);
     return { success: true, response: finalResponse, components: [] };
   } catch (error) {
-    console.error("[AGENT] Error:", error);
+    log.error("Error:", error);
     return {
       success: false,
       error: error.message,
@@ -640,18 +643,18 @@ export function getStats() {
  * @returns {Promise<object>} The initialized agent.
  */
 export async function initializeAgentSystem(discordClient) {
-  console.log("[AGENT SYSTEM] Initializing...");
+  log.info("Initializing...");
 
   const agent = await initializeAgent(discordClient);
 
-  console.log(
-    `[AGENT SYSTEM] Model: ${config.model.provider} - ${config.model.name}`,
+  log.info(
+    `Model: ${config.model.provider} - ${config.model.name}`,
   );
-  console.log(
-    `[AGENT SYSTEM] RAG: ${config.rag.enabled ? "Enabled" : "Disabled"}`,
+  log.info(
+    `RAG: ${config.rag.enabled ? "Enabled" : "Disabled"}`,
   );
-  console.log(
-    `[AGENT SYSTEM] Commands: ${config.commandExecution.enabled ? "Enabled" : "Disabled"}`,
+  log.info(
+    `Commands: ${config.commandExecution.enabled ? "Enabled" : "Disabled"}`,
   );
 
   return agent;

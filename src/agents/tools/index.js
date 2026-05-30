@@ -41,19 +41,16 @@ export async function initializeTools(client = null) {
 }
 
 export const tools = {
-  // Core tools
   createEmbed: agentTools.embedTool,
   ragQuery: knowledgeBase.ragTool,
   escalateTicket: discordTools.escalateTicketTool,
 
-  // Discord tools
   serverInfo: discordTools.serverInfoTool,
   executeCommand: discordTools.commandExecutorTool,
   musicControl: discordTools.musicControlTool,
   createPrivateVC: discordTools.createPrivateVCTool,
   discordAction: discordTools.discordActionTool,
 
-  // Web tools
   fetchWebPage: executorTools.webFetchTool,
   webSearch: executorTools.webSearchTool,
   executeWorkflow: executorTools.workflowTool,

@@ -52,12 +52,10 @@ export default {
  * @returns {Promise<Object>} The message payload.
  */
 export async function buildStatusPayload(client, guild) {
-  // Build bot statistics
   let botStats = `${icon("UPTIME")} **ᴜᴘᴛɪᴍᴇ:** ${formatUptime(client.uptime)}\n`;
   botStats += `${icon("MEMBERS")} **ᴜsᴇʀs:** ${client.users.cache.size}\n`;
   botStats += `${icon("CHANNELS")} **ᴄʜᴀɴɴᴇʟs:** ${client.channels.cache.size}`;
 
-  // Build voice statistics
   let voiceStats = "";
   const voiceStatus = voiceManager.getStatus(guild.id);
   if (voiceStatus.connected) {
@@ -76,7 +74,6 @@ export async function buildStatusPayload(client, guild) {
     voiceStats += `${icon("OFFLINE")} **ᴠᴏɪᴄᴇ:** ɴᴏᴛ ᴄᴏɴɴᴇᴄᴛᴇᴅ`;
   }
 
-  // Build verification statistics
   let verifStats = "";
   try {
     const verificationPath = join(
@@ -95,10 +92,8 @@ export async function buildStatusPayload(client, guild) {
         verifStats += ` (<#${cfg.verificationChannelId}>)`;
     }
   } catch {
-    // Ignore errors if verification data is not found or invalid
   }
 
-  // Build the refresh button
   const refreshRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("refresh_bot_status")
@@ -106,7 +101,6 @@ export async function buildStatusPayload(client, guild) {
       .setStyle(ButtonStyle.Secondary),
   );
 
-  // Build the container
   const container = new ContainerBuilder()
     .setAccentColor(EPHEMERAL_COLOR)
     .addTextDisplayComponents(

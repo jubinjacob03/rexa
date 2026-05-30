@@ -14,7 +14,6 @@ import {
 
 const router = Router();
 
-// GET /api/private-vc — list active VCs
 router.get("/", async (req, res) => {
   try {
     const client = req.app.get("discordClient");
@@ -31,7 +30,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-// POST /api/private-vc/create — { userId, memberIds: string[] }
 router.post("/create", async (req, res) => {
   try {
     const client = req.app.get("discordClient");
@@ -80,7 +78,6 @@ router.post("/create", async (req, res) => {
   }
 });
 
-// POST /api/private-vc/add — { requesterId, targetUserId }
 router.post("/add", async (req, res) => {
   try {
     const client = req.app.get("discordClient");

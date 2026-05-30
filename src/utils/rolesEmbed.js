@@ -52,13 +52,11 @@ export async function handleRolesInfo(interaction, selectedCategory = "home") {
   const resolveEmoji = (value) =>
     (value ?? "").replace(/\{(\w+)\}/g, (match, key) => icon(key) || match);
 
-  // User requested Cyan color
   const container = new ContainerBuilder().setAccentColor(0x00ffff);
   const title = rolesData.title || "Saiyan Gods — Roles";
   const guildIcon = interaction.guild.iconURL({ dynamic: true, size: 256 });
 
   if (selectedCategory === "home") {
-    // HOME SCREEN
     if (guildIcon) {
       const header = new SectionBuilder()
         .addTextDisplayComponents(

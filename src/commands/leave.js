@@ -21,7 +21,6 @@ export default {
     const guildId = interaction.guild.id;
     const connection = voiceManager.getConnection(guildId);
 
-    // Check if the bot is currently connected to a voice channel
     if (!connection) {
       return interaction.reply(
         eReply(
@@ -31,7 +30,6 @@ export default {
       );
     }
 
-    // Stop playback and leave the channel
     voiceManager.stop(guildId);
     voiceManager.leaveChannel(guildId);
 

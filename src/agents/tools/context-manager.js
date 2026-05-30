@@ -29,6 +29,30 @@ class ContextManager {
     this.saveInterval = null;
     this.autoSaveEnabled = true;
     this.batchSaveDelay = 2000;
+    this.maxConversations = config.rag?.maxConversations || 5000;
+    this.maxContextLength = config.rag?.maxContextLength || 30;
+  }
+
+  /**
+   * Safety net on top of the time-based cleanup: if the in-memory conversation
+   * count exceeds the cap, evict the least-recently-active contexts (persisting
+   * them first) down to 90% of the cap. Evicted history remains in Supabase.
+   * @returns {void}
+   */
+  enforceMemoryLimit() {
+    if (this.conversations.size <= this.maxConversations) return;
+    const target = Math.floor(this.maxConversations * 0.9);
+    const sorted = [...this.conversations.entries()].sort(
+      (a, b) =>
+        new Date(a[1].lastActivity).getTime() -
+        new Date(b[1].lastActivity).getTime(),
+    );
+    const evictCount = this.conversations.size - target;
+    for (let n = 0; n < evictCount && n < sorted.length; n += 1) {
+      const [contextId] = sorted[n];
+      this.queueSave(contextId);
+      this.conversations.delete(contextId);
+    }
   }
 
   /**
@@ -248,6 +272,7 @@ class ContextManager {
         createdAt: new Date().toISOString(),
         lastActivity: new Date().toISOString(),
       });
+      this.enforceMemoryLimit();
     }
 
     return this.conversations.get(contextId);
@@ -283,13 +308,13 @@ class ContextManager {
     context.messages.push(message);
     context.lastActivity = new Date().toISOString();
 
-    if (context.messages.length > config.rag.maxContextLength) {
+    if (context.messages.length > this.maxContextLength) {
       const systemMessages = context.messages.filter(
         (m) => m.role === "system",
       );
       const recentMessages = context.messages
         .filter((m) => m.role !== "system")
-        .slice(-config.rag.maxContextLength + systemMessages.length);
+        .slice(-this.maxContextLength + systemMessages.length);
 
       context.messages = [...systemMessages, ...recentMessages];
     }
@@ -373,7 +398,6 @@ class ContextManager {
     }
 
     try {
-      // Filter messages worth searching (>10 chars)
       const validMessages = context.messages.filter(
         (m) => m.content.length >= 10,
       );
@@ -387,7 +411,6 @@ class ContextManager {
         value: query,
       });
 
-      // Find messages missing embeddings
       const needsEmbedding = validMessages.filter((m) => !m.embedding);
 
       if (needsEmbedding.length > 0) {

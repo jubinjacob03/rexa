@@ -1,5 +1,4 @@
 import {
-  PermissionFlagsBits,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
@@ -53,7 +52,6 @@ export function getBotCmdChannel(client) {
 
 const tempSelections = new Map();
 
-// Cleanup abandoned selections every 15 minutes to prevent memory leaks
 setInterval(
   () => {
     const now = Date.now();
@@ -81,6 +79,7 @@ function getTempSelection(key) {
  * @returns {Promise<boolean>} True if the member has access.
  */
 async function hasVCAccess(guild, member) {
+  if (!member) return false;
   if (await checkModerationPermission(guild, member.id, "mod")) return true;
   if (config.memberRoleId && member.roles.cache.has(config.memberRoleId))
     return true;
@@ -1311,7 +1310,9 @@ export async function handleDashboardModal(interaction) {
               channel = ch;
               break;
             }
-          } catch (e) {}
+          } catch {
+            continue;
+          }
         }
       }
     }

@@ -163,7 +163,6 @@ export default {
         ? interaction.editReply.bind(interaction)
         : interaction.reply.bind(interaction);
 
-    // Check if the user has moderation permissions
     if (
       !(await checkModerationPermission(
         interaction.guild,
@@ -188,7 +187,6 @@ export default {
     const targetUser = interaction.options.getUser("user");
     const messageId = interaction.options.getString("message_id");
 
-    // Ensure the channel supports messages
     if (!channel.isTextBased()) {
       return interaction.editReply(
         eSend(
@@ -198,7 +196,6 @@ export default {
       );
     }
 
-    // Validate required options based on the selected mode
     if ((mode === "user" || mode === "trail_user") && !targetUser) {
       return interaction.editReply(
         eSend(
@@ -217,7 +214,6 @@ export default {
       );
     }
 
-    // Verify the starting message exists for trail modes
     if (mode === "trail" || mode === "trail_user") {
       try {
         await channel.messages.fetch(messageId);
@@ -241,7 +237,6 @@ export default {
     let toDelete = [];
 
     try {
-      // Fetch messages based on the selected mode
       switch (mode) {
         case "user": {
           const all = await fetchAllMessages(channel);
@@ -287,7 +282,6 @@ export default {
       ),
     );
 
-    // Perform the deletion
     const { deleted, failed } = await deleteMessages(channel, toDelete);
 
     const modeLabel = {
@@ -297,7 +291,6 @@ export default {
       trail_user: `ᴀʟʟ ᴍᴇssᴀɢᴇs ғʀᴏᴍ <@${targetUser?.id}> ғʀᴏᴍ ᴍᴇssᴀɢᴇ \`${messageId}\` ᴏɴᴡᴀʀᴅ`,
     }[mode];
 
-    // Build the completion embed
     const container = new ContainerBuilder().setAccentColor(EMBED_COLOR);
     container.addTextDisplayComponents(
       new TextDisplayBuilder().setContent(

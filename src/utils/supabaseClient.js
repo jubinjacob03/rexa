@@ -1,5 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 import config from "../../config.js";
+import { createLogger } from "./logger.js";
+import { withRetry } from "./resilience.js";
+
+const log = createLogger("supabase");
 
 const supabase = createClient(config.supabase.url, config.supabase.serviceKey, {
   auth: {
@@ -9,20 +13,23 @@ const supabase = createClient(config.supabase.url, config.supabase.serviceKey, {
 });
 
 /**
- * Fetch sound metadata from database
+ * Fetches sound metadata from the database, retrying transient failures.
+ * @param {string} soundId
+ * @returns {Promise<object|null>} The sound row, or null if not found/unavailable.
  */
 export async function getSoundById(soundId) {
   try {
-    const { data, error } = await supabase
-      .from("sounds")
-      .select("*")
-      .eq("id", soundId)
-      .single();
-
-    if (error) throw error;
-    return data;
+    return await withRetry(async () => {
+      const { data, error } = await supabase
+        .from("sounds")
+        .select("*")
+        .eq("id", soundId)
+        .single();
+      if (error) throw error;
+      return data;
+    });
   } catch (error) {
-    console.error("[ERROR] Failed to fetch sound:", error);
+    log.error("Failed to fetch sound:", error);
     return null;
   }
 }
@@ -58,9 +65,9 @@ export async function logPlayback(
     if (error) throw error;
     await supabase.rpc("increment_play_count", { sound_uuid: soundId });
 
-    console.log(`[INFO] Logged playback for sound ${soundId}`);
+    log.info(`Logged playback for sound ${soundId}`);
   } catch (error) {
-    console.error("[ERROR] Failed to log playback:", error);
+    log.error("Failed to log playback:", error);
   }
 }
 
@@ -72,17 +79,18 @@ export async function logPlayback(
  */
 export async function getAllSounds(limit = 100, offset = 0) {
   try {
-    const { data, error } = await supabase
-      .from("sounds")
-      .select("*")
-      .eq("is_public", true)
-      .order("play_count", { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    if (error) throw error;
-    return data || [];
+    return await withRetry(async () => {
+      const { data, error } = await supabase
+        .from("sounds")
+        .select("*")
+        .eq("is_public", true)
+        .order("play_count", { ascending: false })
+        .range(offset, offset + limit - 1);
+      if (error) throw error;
+      return data || [];
+    });
   } catch (error) {
-    console.error("[ERROR] Failed to fetch sounds:", error);
+    log.error("Failed to fetch sounds:", error);
     return [];
   }
 }

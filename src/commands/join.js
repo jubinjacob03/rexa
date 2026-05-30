@@ -19,14 +19,12 @@ export default {
    * @returns {Promise<void>}
    */
   async execute(interaction) {
-    // Defer the reply to ensure the interaction doesn't timeout
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const member = interaction.member;
     const guild = interaction.guild;
     let targetChannel = member.voice.channel;
 
-    // If the user is not in a voice channel, find the most populated one
     if (!targetChannel) {
       const channels = guild.channels.cache.filter(
         (ch) => ch.type === ChannelType.GuildVoice && ch.members.size > 0,
@@ -41,14 +39,12 @@ export default {
         );
       }
 
-      // Select the channel with the most members
       targetChannel = channels.reduce((prev, curr) =>
         curr.members.size > prev.members.size ? curr : prev,
       );
     }
 
     try {
-      // Attempt to join the selected voice channel
       await voiceManager.joinChannel(guild, targetChannel);
       await interaction.editReply(
         eSend(

@@ -3,7 +3,7 @@ import { z } from "zod";
 import config, { getLanguageModel } from "../agents/config.js";
 import * as modTools from "./moderation.js";
 import { loadConfig } from "./automodManager.js";
-import { eSend, EMBED_COLOR, addFooter } from "./embed.js";
+import { EMBED_COLOR, addFooter } from "./embed.js";
 import { i } from "./icons.js";
 import {
   ContainerBuilder,
@@ -58,14 +58,10 @@ async function sendActionEmbed(
     .catch(() => {});
 }
 
-// In-memory rate trackers
 const userTrackers = new Map();
-// Stores who has been warned already (Key: userId, Value: timestamp)
 const UserWarnings = new Map();
 
-const TRACKER_TTL = 10000; // 10 seconds tracking window
-const WARNING_COOLDOWN = 20 * 60 * 1000; // 20 minutes in milliseconds
-
+const TRACKER_TTL = 10000;const WARNING_COOLDOWN = 20 * 60 * 1000;
 function getTracker(userId) {
   if (!userTrackers.has(userId)) {
     userTrackers.set(userId, {
@@ -513,7 +509,6 @@ export async function checkHackedAccountSpam(message, imageUrls) {
   const cfg = await loadConfig();
   if (!cfg.enabled) return;
 
-  // Don't scrutinize admins or bots
   const member = await message.guild.members
     .fetch(message.author.id)
     .catch(() => null);

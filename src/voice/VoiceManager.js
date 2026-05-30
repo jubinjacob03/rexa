@@ -59,7 +59,14 @@ export class VoiceManager {
         const dave = connection.state?.networking?.state?.dave;
         if (dave && dave.lastTransitionId === undefined) {
           await new Promise((resolve) => {
-            const timeout = setTimeout(resolve, 5000);
+            let settled = false;
+            const finish = (delay) => {
+              if (settled) return;
+              settled = true;
+              clearTimeout(timeout);
+              dave.off("debug", onDebug);
+              setTimeout(resolve, delay);
+            };
             const onDebug = (msg) => {
               if (
                 msg.includes("commit") ||
@@ -67,11 +74,10 @@ export class VoiceManager {
                 msg.includes("passthrough") ||
                 msg.includes("epoch")
               ) {
-                clearTimeout(timeout);
-                dave.off("debug", onDebug);
-                setTimeout(resolve, 2500);
+                finish(2500);
               }
             };
+            const timeout = setTimeout(() => finish(0), 5000);
             dave.on("debug", onDebug);
           });
         }

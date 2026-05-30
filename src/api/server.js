@@ -63,6 +63,19 @@ export function createApiServer(discordClient) {
 
   app.use("/api", limiter);
 
+  // Token issuance is sensitive; cap it well below the global limit to blunt
+  // brute-force/enumeration attempts even before authentication runs.
+  const wsTokenLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 20,
+    message: {
+      success: false,
+      error: { code: "RATE_LIMIT_EXCEEDED", message: "Too many token requests" },
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
   app.get("/health", (req, res) => {
     res.json({
       success: true,
@@ -77,7 +90,7 @@ export function createApiServer(discordClient) {
   app.use("/api/play", authenticateApiKey, playRoute);
   app.use("/api/status", authenticateApiKey, statusRoute);
   app.use("/api/channels", authenticateApiKey, channelsRoute);
-  app.use("/api/ws-token", authenticateApiKey, wsTokenRoute);
+  app.use("/api/ws-token", wsTokenLimiter, authenticateApiKey, wsTokenRoute);
   app.use("/api/private-vc", authenticateApiKey, privateVcRoute);
   app.use("/api/admin", authenticateApiKey, adminRoute);
   app.use("/api/members", authenticateApiKey, membersRoute);
@@ -96,6 +109,12 @@ export function startApiServer(discordClient) {
   if (_serverInstance) {
     console.log("[INFO] API server already running, skipping duplicate start");
     return _serverInstance;
+  }
+
+  if (!config.api.key) {
+    console.warn(
+      "[WARN] BOT_API_KEY is not set — every API request will be rejected. Set it to enable the API.",
+    );
   }
 
   const app = createApiServer(discordClient);

@@ -23,11 +23,9 @@ export default {
    * @returns {Promise<void>}
    */
   async execute(interaction) {
-    // Defer the reply to ensure the interaction doesn't timeout
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     try {
-      // Update the status message
       await updateStatusMessage(interaction.client);
       await interaction.editReply(
         eSend(

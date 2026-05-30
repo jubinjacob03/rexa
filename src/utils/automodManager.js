@@ -20,11 +20,9 @@ const defaultData = {
   },
 };
 
-// In-memory cache — avoids a DB round-trip on every single message event
 let _cache = null;
 let _cacheTTL = 0;
-const CACHE_MS = 10_000; // 10 seconds
-
+const CACHE_MS = 10_000;
 export async function loadConfig() {
   if (_cache && Date.now() < _cacheTTL) return _cache;
 
@@ -74,7 +72,6 @@ export async function saveConfig(data) {
 
     if (error) throw error;
 
-    // Bust cache so next read reflects the change immediately
     _cache = { ...data };
     _cacheTTL = Date.now() + CACHE_MS;
   } catch (error) {

@@ -3,8 +3,6 @@
  * @description Custom emoji utilities for Shantha Discord bot. Loads custom emojis from Discord server and provides fallback to unicode. Based on the Zyra/Remani implementation.
  */
 
-import path from "path";
-import fs from "fs";
 import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);

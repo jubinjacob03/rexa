@@ -7,6 +7,9 @@ import { tool } from "ai";
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 import config from "../config.js";
+import { createLogger } from "../../utils/logger.js";
+
+const log = createLogger("KB");
 
 const supabase = createClient(config.supabase.url, config.supabase.serviceKey, {
   auth: {
@@ -71,29 +74,29 @@ function setCachedEmbedding(text, embedding) {
  */
 async function initialize() {
   if (initialized) {
-    console.log("[KNOWLEDGE BASE] Already initialized");
+    log.info("Already initialized");
     return;
   }
 
   if (initializationPromise) {
-    console.log("[KNOWLEDGE BASE] Initialization in progress, waiting...");
+    log.info("Initialization in progress, waiting...");
     return initializationPromise;
   }
 
   initializationPromise = (async () => {
     try {
-      console.log("[KNOWLEDGE BASE] Initializing Supabase pgvector...");
+      log.info("Initializing Supabase pgvector...");
 
       await ensureVectorTable();
 
       initialized = true;
-      console.log("[KNOWLEDGE BASE] Supabase initialized successfully");
+      log.info("Supabase initialized successfully");
 
-      console.log(
-        "[KNOWLEDGE BASE] Custom KB successfully loaded from SHANTHA_KNOWLEDGE_BASE.txt",
+      log.info(
+        "Custom KB successfully loaded from SHANTHA_KNOWLEDGE_BASE.txt",
       );
     } catch (error) {
-      console.error("[KNOWLEDGE BASE] Initialization error:", error);
+      log.error("Initialization error:", error);
       initializationPromise = null;
       throw error;
     }
@@ -114,12 +117,12 @@ async function ensureVectorTable() {
       .limit(1);
 
     if (error && error.code !== "PGRST116") {
-      console.error(
-        "[KNOWLEDGE BASE] Vector table check error:",
+      log.error(
+        "Vector table check error:",
         error.message,
       );
-      console.log("[KNOWLEDGE BASE] Please run the following SQL in Supabase:");
-      console.log(`
+      log.info("Please run the following SQL in Supabase:");
+      log.info(`
 -- Enable pgvector extension
 CREATE EXTENSION IF NOT EXISTS vector;
 
@@ -173,10 +176,10 @@ END;
 $$;
       `);
     } else {
-      console.log("[KNOWLEDGE BASE] Vector table verified");
+      log.info("Vector table verified");
     }
   } catch (error) {
-    console.error("[KNOWLEDGE BASE] Table verification error:", error);
+    log.error("Table verification error:", error);
   }
 }
 
@@ -185,7 +188,7 @@ $$;
  * @returns {Promise<void>}
  */
 async function _loadDefaultKnowledge() {
-  console.log("[KNOWLEDGE BASE] Loading default knowledge...");
+  log.info("Loading default knowledge...");
 
   const defaultDocs = [
     {
@@ -328,14 +331,14 @@ Server Info:
         tags: doc.tags,
       });
 
-      console.log(`[KNOWLEDGE BASE] Loaded: ${doc.id}`);
+      log.info(`Loaded: ${doc.id}`);
     } catch (error) {
-      console.error(`[KNOWLEDGE BASE] Error loading ${doc.id}:`, error.message);
+      log.error(`Error loading ${doc.id}:`, error.message);
     }
   }
 
-  console.log(
-    `[KNOWLEDGE BASE] Loaded ${defaultDocs.length} default documents`,
+  log.info(
+    `Loaded ${defaultDocs.length} default documents`,
   );
 }
 
@@ -364,7 +367,7 @@ async function generateEmbedding(text) {
     setCachedEmbedding(text, embeddings[0]);
     return embeddings[0];
   } catch (error) {
-    console.error("[KNOWLEDGE BASE] Embedding generation error:", error);
+    log.error("Embedding generation error:", error);
     throw error;
   }
 }
@@ -414,10 +417,10 @@ export async function addDocument(id, content, metadata = {}) {
     await initialize();
     await addDocumentToSupabase(id, content, metadata);
 
-    console.log(`[KNOWLEDGE BASE] Added document: ${id}`);
+    log.info(`Added document: ${id}`);
     return { success: true, id };
   } catch (error) {
-    console.error(`[KNOWLEDGE BASE] Error adding document:`, error);
+    log.error(`Error adding document:`, error);
     return { success: false, error: error.message };
   }
 }
@@ -445,10 +448,10 @@ export async function addWebPage(url, metadata = {}) {
       type: "web",
     });
 
-    console.log(`[KNOWLEDGE BASE] Added web page: ${url}`);
+    log.info(`Added web page: ${url}`);
     return { success: true, id, url };
   } catch (error) {
-    console.error(`[KNOWLEDGE BASE] Error adding web page:`, error);
+    log.error(`Error adding web page:`, error);
     return { success: false, error: error.message };
   }
 }
@@ -473,7 +476,7 @@ export async function query(question, options = {}) {
 
   try {
     await initialize();
-    console.log(`[KNOWLEDGE BASE] Query: "${question}"`);
+    log.info(`Query: "${question}"`);
 
     const queryEmbedding = await generateEmbedding(question);
 
@@ -514,7 +517,7 @@ export async function query(question, options = {}) {
       query: question,
     };
   } catch (error) {
-    console.error(`[KNOWLEDGE BASE] Query error:`, error);
+    log.error(`Query error:`, error);
     return {
       success: false,
       error: error.message,
@@ -543,7 +546,7 @@ export async function search(queryText, options = {}) {
 
   try {
     await initialize();
-    console.log(`[KNOWLEDGE BASE] Search: "${queryText}"`);
+    log.info(`Search: "${queryText}"`);
 
     const queryEmbedding = await generateEmbedding(queryText);
 
@@ -571,7 +574,7 @@ export async function search(queryText, options = {}) {
       query: queryText,
     };
   } catch (error) {
-    console.error(`[KNOWLEDGE BASE] Search error:`, error);
+    log.error(`Search error:`, error);
     return {
       success: false,
       error: error.message,
@@ -598,7 +601,7 @@ export async function getDocuments() {
       documents: data || [],
     };
   } catch (error) {
-    console.error("[KNOWLEDGE BASE] Error fetching documents:", error);
+    log.error("Error fetching documents:", error);
     return {
       success: false,
       error: error.message,
@@ -627,7 +630,7 @@ export async function deleteDocument(id) {
       message: "Document deleted successfully",
     };
   } catch (error) {
-    console.error("[KNOWLEDGE BASE] Error deleting document:", error);
+    log.error("Error deleting document:", error);
     return {
       success: false,
       error: error.message,
@@ -671,7 +674,7 @@ export async function getStats() {
       tags: Array.from(tags),
     };
   } catch (error) {
-    console.error("[KNOWLEDGE BASE] Error getting stats:", error);
+    log.error("Error getting stats:", error);
     return {
       totalDocuments: 0,
       initialized,
@@ -702,7 +705,7 @@ export async function reset() {
       message: "Knowledge base reset successfully",
     };
   } catch (error) {
-    console.error("[KNOWLEDGE BASE] Error resetting:", error);
+    log.error("Error resetting:", error);
     return {
       success: false,
       error: error.message,
@@ -772,7 +775,7 @@ Uses advanced RAG with embedJS for accurate, contextual answers. Returns both an
 });
 
 initialize().catch((error) => {
-  console.error("[KNOWLEDGE BASE] Failed to initialize:", error);
+  log.error("Failed to initialize:", error);
 });
 
 export default {

@@ -250,7 +250,6 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
       .setDisabled(!hasTicketBtn || full),
   );
 
-  // Build publish and preview buttons
   const row2 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("tsetup_clear_buttons")
@@ -288,7 +287,6 @@ export async function renderTicketDashboard(interaction, isUpdate = false) {
     flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
   };
 
-  // Send or update the dashboard message
   if (isUpdate) {
     try {
       await interaction.editReply(payload);

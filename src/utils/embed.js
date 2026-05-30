@@ -25,7 +25,6 @@ function buildV2Container(
 ) {
   const container = new ContainerBuilder().setAccentColor(color);
 
-  // Combine title and description to eliminate awkward vertical gaps
   let bodyContent = "";
   if (title) bodyContent += `### ${title}\n`;
   if (description) {
@@ -48,7 +47,6 @@ function buildV2Container(
     }
   }
 
-  // Add fields with a subtle divider
   if (opts.fields && opts.fields.length > 0) {
     if (bodyContent) {
       container.addSeparatorComponents(
@@ -65,7 +63,6 @@ function buildV2Container(
     );
   }
 
-  // Clean, consistent footer
   const ts = Math.floor(Date.now() / 1000);
   const footerCustom = opts.footer?.text ? `${opts.footer.text} · ` : "";
   if (bodyContent || (opts.fields && opts.fields.length > 0)) {
