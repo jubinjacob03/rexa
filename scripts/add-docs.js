@@ -1,5 +1,5 @@
 /**
- * Ingest SHANTHA_KNOWLEDGE_BASE.txt into Supabase pgvector
+ * Ingest docs/RAG.txt into Supabase pgvector
  *
  * This script:
  * 1. Reads the knowledge base file
@@ -170,7 +170,7 @@ async function ingestKnowledgeBase() {
 
     const knowledgeBasePath = join(
       __dirname,
-      "../../SHANTHA_KNOWLEDGE_BASE.txt",
+      "../docs/RAG.txt",
     );
 
     const sections = parseKnowledgeBase(knowledgeBasePath);
@@ -212,7 +212,7 @@ async function ingestKnowledgeBase() {
             category,
             tags,
             title: chunk.title,
-            source: "SHANTHA_KNOWLEDGE_BASE.txt",
+            source: "docs/RAG.txt",
           });
 
           if (result.success) {

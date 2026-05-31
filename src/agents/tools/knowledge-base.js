@@ -93,7 +93,7 @@ async function initialize() {
       log.info("Supabase initialized successfully");
 
       log.info(
-        "Custom KB successfully loaded from SHANTHA_KNOWLEDGE_BASE.txt",
+        "Custom KB successfully loaded from docs/RAG.txt",
       );
     } catch (error) {
       log.error("Initialization error:", error);
