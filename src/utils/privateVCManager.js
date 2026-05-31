@@ -30,7 +30,7 @@ const {
  * @returns {string} The generated name.
  */
 function vcName(index) {
-  return `${icon("TICKET")}〢・ᴘʀɪᴠᴀᴛᴇ-ᴠᴄ ${toRoman(index)}`;
+  return `🎟️〢・ᴘʀɪᴠᴀᴛᴇ-ᴠᴄ ${toRoman(index)}`;
 }
 
 function memberOverwrite(userId) {

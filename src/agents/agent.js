@@ -210,7 +210,18 @@ async function executeToolByName(toolName, params) {
     if (!toolObj?.execute) {
       return { success: false, error: `Unknown tool: ${toolName}` };
     }
-    const result = await toolObj.execute(params);
+
+    let validatedParams = params;
+    if (toolObj.parameters) {
+      try {
+        validatedParams = toolObj.parameters.parse(params);
+      } catch (zodError) {
+        log.warn(`Zod validation failed for ${toolName}:`, zodError.message);
+        return { success: false, error: `Invalid parameters: ${zodError.message}` };
+      }
+    }
+
+    const result = await toolObj.execute(validatedParams);
     return result ?? { success: true };
   } catch (err) {
     log.error(`Tool execution error (${toolName}):`, err);
@@ -290,7 +301,7 @@ export async function processMessage(
       model,
       system: pass1System,
       messages: pass1Messages,
-      maxOutputTokens: 300,
+      maxTokens: config.model.maxTokens || 1000000,
     });
 
     const rawOutput = (pass1.text || "").trim();
@@ -495,7 +506,7 @@ export async function processMessage(
           model,
           system: `${pass2Base}\n\n${userContext}\n\n${ctx}`,
           messages: [...historyMessages, { role: "user", content: message }],
-          maxOutputTokens: 400,
+          maxTokens: config.model.maxTokens || 1000000,
         });
       } catch (err) {
         const failedGen = err?.data?.error?.failed_generation;
@@ -526,7 +537,7 @@ export async function processMessage(
                   ...historyMessages,
                   { role: "user", content: message },
                 ],
-                maxOutputTokens: 400,
+                maxTokens: config.model.maxTokens || 1000000,
               });
             }
           }

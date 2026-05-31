@@ -4,7 +4,7 @@ import config, { getLanguageModel } from "../agents/config.js";
 import * as modTools from "./moderation.js";
 import { loadConfig } from "./automodManager.js";
 import { EMBED_COLOR, addFooter } from "./embed.js";
-import { i } from "./icons.js";
+import { i, icon } from "./icons.js";
 import {
   ContainerBuilder,
   TextDisplayBuilder,
@@ -450,6 +450,7 @@ async function triggerAIModeration(
     const result = await generateObject({
       model: modelObj,
       prompt,
+      maxTokens: 500,
       schema: z.object({
         action: z.enum(["timeout", "kick", "ban", "ban-wipe", "none"]),
         durationMinutes: z.number().optional().describe("For timeout only"),
@@ -556,6 +557,7 @@ export async function checkHackedAccountSpam(message, imageUrls) {
           content: contentArray,
         },
       ],
+      maxTokens: 500,
       schema: z.object({
         isHackedPromo: z
           .boolean()

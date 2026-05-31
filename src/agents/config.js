@@ -52,7 +52,7 @@ const config = {
     name: process.env.AI_MODEL_NAME || "stepfun/step-3.5-flash:free",
     preset: process.env.AI_MODEL_PRESET || "fast",
     temperature: parseFloat(process.env.AI_TEMPERATURE) || 0.7,
-    maxTokens: parseInt(process.env.AI_MAX_TOKENS) || 4000,
+    maxTokens: parseInt(process.env.AI_MAX_TOKENS) || 1000000,
   },
 
   rag: {

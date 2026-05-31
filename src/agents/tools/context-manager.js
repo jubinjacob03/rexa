@@ -164,7 +164,7 @@ class ContextManager {
           context_id: contextId,
           guild_id: context.guildId,
           user_id: context.userId,
-          messages: context.messages,
+          messages: context.messages.map(({ embedding, ...msg }) => msg),
           metadata: context.metadata,
           created_at: context.createdAt,
           last_activity: context.lastActivity,

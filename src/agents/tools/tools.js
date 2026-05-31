@@ -68,7 +68,7 @@ async function fetchMembersFresh(guild) {
  */
 export const commandExecutorTool = tool({
   description: `Execute Discord commands autonomously. Use for actions like playing music, managing channels, or triggering bot functions.`,
-  inputSchema: z.object({
+  parameters: z.object({
     command: z.string().describe("Command name without slash"),
     parameters: z.record(z.string(), z.any()).optional(),
     channelId: z.string().optional(),
@@ -133,7 +133,7 @@ export const serverInfoTool = tool({
   
   REQUIRED: Always provide guildId (server ID) and infoType.
   For lists with many people, the AI agent will respond natively with an Embed table containing the users.`,
-  inputSchema: z.object({
+  parameters: z.object({
     infoType: z
       .enum([
         "stats",
@@ -366,7 +366,7 @@ export const serverInfoTool = tool({
  */
 export const musicControlTool = tool({
   description: `Control Remani music bot: play, pause, resume, skip, stop, queue, volume, nowplaying.`,
-  inputSchema: z.object({
+  parameters: z.object({
     action: z.enum([
       "play",
       "pause",
@@ -479,7 +479,7 @@ export const musicControlTool = tool({
  */
 export const embedGeneratorTool = tool({
   description: `Create beautiful Discord embeds with rich formatting, colors, fields, and images.`,
-  inputSchema: z.object({
+  parameters: z.object({
     title: z.string(),
     description: z.string().optional(),
     color: z.string().optional(),
@@ -595,7 +595,7 @@ export const embedGeneratorTool = tool({
  */
 export const createPrivateVCTool = tool({
   description: `Create a real private voice channel for specified members. Resolves member names to Discord members and calls the actual private VC system. Use this whenever a user asks to create a private VC for themselves and/or others.`,
-  inputSchema: z.object({
+  parameters: z.object({
     guildId: z.string().describe("The Discord server/guild ID"),
     invokerUserId: z
       .string()
@@ -681,7 +681,7 @@ export const createPrivateVCTool = tool({
  */
 export const escalateTicketTool = tool({
   description: `Escalates a user's support ticket to human staff. Use this ONLY if the user is in a ticket thread, you cannot solve their problem, or they explicitly demand a human moderator. Provide a summary of the issue.`,
-  inputSchema: z.object({
+  parameters: z.object({
     summary: z
       .string()
       .describe(
@@ -724,7 +724,7 @@ Available actions:
   Mod-level: voice-mute, voice-unmute, voice-deafen, voice-undeafen, timeout, remove-timeout, change-nickname, change-bot-nickname
   Owner-level: kick, ban, add-role, remove-role
 The tool enforces role-based permissions internally. Always pass userId (invoker) so permissions can be verified.`,
-  inputSchema: z.object({
+  parameters: z.object({
     action: z
       .enum([
         "voice-mute",

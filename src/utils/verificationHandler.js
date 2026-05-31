@@ -519,6 +519,7 @@ export async function handleVerificationDM(message) {
     const result = await generateText({
       model: getLanguageModel("fast"),
       prompt: prompt,
+      maxTokens: 100,
     });
 
     const decision = result.text.trim().toUpperCase();

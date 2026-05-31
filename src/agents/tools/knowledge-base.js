@@ -720,7 +720,7 @@ export const ragTool = tool({
   description: `Search knowledge base for information about Shantha, Remani, commands, and server features. 
 Uses advanced RAG with embedJS for accurate, contextual answers. Returns both answers and source documents.`,
 
-  inputSchema: z.object({
+  parameters: z.object({
     query: z.string().describe("Search query or question"),
     category: z
       .enum([
