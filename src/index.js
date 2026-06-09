@@ -27,7 +27,6 @@ import {
   handleSelfRoleToggle,
 } from "./utils/verificationHandler.js";
 import { handleTicketInteraction } from "./utils/ticketHandler.js";
-import { buildStatusPayload } from "./commands/status.js";
 import {
   postDashboard,
   handleDashboardInteraction,
@@ -146,13 +145,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
           await interaction.deferUpdate();
         } catch {}
         await updateStatusMessage(interaction.client);
-        return;
-      }
-
-      if (interaction.customId === "refresh_bot_status") {
-        await interaction.update(
-          await buildStatusPayload(interaction.client, interaction.guild),
-        );
         return;
       }
 

@@ -29,7 +29,6 @@ import {
 import privateVC from "../commands/private-vc.js";
 import privateVCAdd from "../commands/private-vc-add.js";
 import privateVCRemove from "../commands/private-vc-remove.js";
-import status from "../commands/status.js";
 import purge from "../commands/purge.js";
 import refresh from "../commands/refresh.js";
 import { eReply, addFooter } from "../utils/embed.js";
@@ -250,11 +249,6 @@ export async function buildDashboardContainer(member) {
 
   container.addActionRowComponents(
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("shantha_status")
-        .setLabel("Status")
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(!isMod),
       new ButtonBuilder()
         .setCustomId("shantha_mod_timeout")
         .setLabel("Timeout")
@@ -855,9 +849,6 @@ export async function handleDashboardInteraction(interaction) {
       }
       return interaction.showModal(modal);
     }
-
-    case "shantha_status":
-      return await status.execute(interaction);
 
     case "shantha_mod_timeout":
     case "shantha_mod_remtimeout":
