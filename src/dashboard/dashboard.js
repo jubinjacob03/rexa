@@ -404,11 +404,12 @@ export async function showSelectWithConfirm(
   confirmId,
   confirmLabel,
   maxValues = 1,
+  minValues = 1,
 ) {
   const select = new UserSelectMenuBuilder()
     .setCustomId(selectId)
     .setPlaceholder("Select users...")
-    .setMinValues(1)
+    .setMinValues(minValues)
     .setMaxValues(maxValues);
 
   const row = new ActionRowBuilder().addComponents(select);
@@ -547,6 +548,7 @@ export async function handleDashboardInteraction(interaction) {
         "shantha_private_vc_confirm",
         "Create VC",
         5,
+        0
       );
     }
     case "shantha_vc_add": {
@@ -705,10 +707,6 @@ export async function handleDashboardInteraction(interaction) {
     case "shantha_private_vc_confirm": {
       const cacheKey = `${interaction.user.id}_shantha_private_vc_select`;
       const values = getTempSelection(cacheKey) || [];
-      if (!values.length)
-        return interaction.reply(
-          eReply("Notice", "Please select at least 1 member first."),
-        );
       tempSelections.delete(cacheKey);
 
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
