@@ -309,7 +309,7 @@ PARAMETERS:
 
 ACTIONS & PERMISSION LEVELS:
 
-Moderator-level (requires role 1473075468088377349 OR 1473075468088377350 OR 1473075468088377352):
+Moderator-level (requires role 1473075468088377349 (Moderator) OR 1473075468088377350 (Administrator) OR 1473075468088377352 (Owner)):
   - voice-mute: Server-mutes a member currently in a voice channel
   - voice-unmute: Removes server-mute from a member in a voice channel
   - voice-deafen: Server-deafens a member currently in a voice channel
@@ -433,7 +433,7 @@ User says: "mute @person" / "deafen that guy" / "timeout luna for 10 minutes"
 │   └─ Returns: { roleIds: ["1473075468088377349", ...] }
 │
 ├─ Step 2: Check for moderator role
-│   └─ Is any of 1473075468088377349, 1473075468088377350, 1473075468088377352 in roleIds?
+│   └─ Is any of 1473075468088377349 (Moderator), 1473075468088377350 (Administrator), 1473075468088377352 (Owner) in roleIds?
 │   ├─ YES → User has permission
 │   └─ NO → Deny: "That requires Moderator permissions 🔒"
 │
@@ -625,7 +625,7 @@ ADMIN COMMANDS:
 /setup-verification
   - Set up the verification system in verification channel
   - Administrator only
-  - Creates buttons for Friends and Member role applications
+  - Creates buttons for Dev Check, Member, and Moderator role applications
 
 /status
   - Show bot status and uptime
@@ -683,7 +683,7 @@ LEVEL 1 - OWNER ONLY:
 - Check: roleIds.includes("1473075468088377352")
 
 LEVEL 2 - MODERATORS:
-- Role IDs: 1473075468088377349, 1473075468088377350, 1473075468088377352
+- Role IDs: 1473075468088377349 (Moderator), 1473075468088377350 (Administrator), 1473075468088377352 (Owner)
 - Can do: Mute, deafen, timeout, temporary moderation
 - Check: roleIds.includes("1473075468088377349") || roleIds.includes("1473075468088377350") || roleIds.includes("1473075468088377352")
 
@@ -701,10 +701,9 @@ PERMISSION VERIFICATION PROCESS:
 
 KEY ROLES:
 - Unverified: New members (must verify to get full access)
-- Friends: Close friends role
-- Member: Regular member role
-- Moderators: Server moderators
-- Managers: Server managers
+- Member: Regular member role (requires nickname prefix "God ")
+- Moderators: Server moderators (requires nickname prefix "God ")
+- Administrators: Server administrators
 - Owner: Server owner
 - Bot: Assigned to bots automatically
 
@@ -785,8 +784,8 @@ VERIFICATION SYSTEM
 
 HOW IT WORKS:
 1. New members join with Unverified role
-2. They see verification channel with Friends/Member buttons
-3. Click button → Modal appears asking for nickname
+2. They see verification channel with Member, Moderator, and Dev Check buttons
+3. Click button → Modal appears asking for nickname (both Member and Moderator applications will prompt for a name to be prefixed with "God ")
 4. Submit → Approval request sent to approvals channel using modern Discord V2 Container/Section components with user avatars
 5. Admin clicks Approve/Reject
 6. If approved: Get role, nickname set, DM sent, unverified removed, and the UI card updates to an Approved state
@@ -851,7 +850,7 @@ Just say "play [song name]" and I'll handle it through Remani. Or use Remani's /
 Remani handles all the actual audio playback. I can control her remotely so you can just ask me instead of using her commands, but she's the one actually playing the music.
 
 "How do I get verified?"
-Head to the verification channel and click the Friends or Member button. Fill in what nickname you want, and an admin will review it. You'll get a DM when they approve or reject.
+Head to the verification channel and click the Member or Moderator button. Fill in what nickname you want (both roles will prompt for a name to be prefixed with "God "), and an admin will review it. You'll get a DM when they approve or reject.
 
 "How do I create a private VC?"
 Use /private and select up to 5 members. Channel gets created just for you all. Use /add and /remove to manage who's in it later.
@@ -1169,5 +1168,5 @@ Use categories to get more relevant results faster.
 END OF KNOWLEDGE BASE
 ================================================================================
 
-Last Updated: May 21, 2026 (updated tool schemas to accept username natively, updated verification handler UI details, updated serverInfo parameter types to match new codebase implementation)
+Last Updated: June 9, 2026 (removed Friends role references, updated verification buttons to Member and Moderator, added Administrator role definition, documented "God " prefix nickname logic for Member and Moderator roles)
 This knowledge base is used by Shantha for RAG queries. Keep all info accurate and up to date.

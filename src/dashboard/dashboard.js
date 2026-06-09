@@ -26,16 +26,16 @@ import {
   kick,
   ban,
 } from "../utils/moderation.js";
-import privateVC from "../commands/private-vc.js";
-import privateVCAdd from "../commands/private-vc-add.js";
-import privateVCRemove from "../commands/private-vc-remove.js";
 import purge from "../commands/purge.js";
 import refresh from "../commands/refresh.js";
 import { eReply, addFooter } from "../utils/embed.js";
 import {
+  canCreate,
+  createPrivateVC,
   getVCByMember,
-  removeMember,
   getVCData,
+  addMember,
+  removeMember,
 } from "../utils/privateVCManager.js";
 import { icon } from "../utils/icons.js";
 
@@ -81,8 +81,6 @@ async function hasVCAccess(guild, member) {
   if (!member) return false;
   if (await checkModerationPermission(guild, member.id, "mod")) return true;
   if (config.memberRoleId && member.roles.cache.has(config.memberRoleId))
-    return true;
-  if (config.friendsRoleId && member.roles.cache.has(config.friendsRoleId))
     return true;
   return false;
 }
@@ -531,7 +529,21 @@ export async function handleDashboardInteraction(interaction) {
         return interaction.reply(
           eReply(
             "Access denied",
-            "You need the Member or Friends role to use this.",
+            "You need the Member role to use this.",
+          ),
+        );
+      if (getVCByMember(interaction.user.id))
+        return interaction.reply(
+          eReply(
+            "Already active",
+            "You are already in a private VC. Leave it before creating a new one.",
+          ),
+        );
+      if (!canCreate())
+        return interaction.reply(
+          eReply(
+            "Limit reached",
+            "Maximum private VCs are already active. Wait for one to end.",
           ),
         );
       return showSelectWithConfirm(
@@ -542,7 +554,7 @@ export async function handleDashboardInteraction(interaction) {
         "shantha_private_vc_confirm",
         "Create VC",
         5,
-        0
+        0,
       );
     }
     case "shantha_vc_add": {
@@ -550,8 +562,13 @@ export async function handleDashboardInteraction(interaction) {
         return interaction.reply(
           eReply(
             "Access denied",
-            "You need the Member or Friends role to use this.",
+            "You need the Member role to use this.",
           ),
+        );
+      const addChannelId = getVCByMember(interaction.user.id);
+      if (!addChannelId)
+        return interaction.reply(
+          eReply("Not found", "You are not in a private VC."),
         );
       return showSelectWithConfirm(
         interaction,
@@ -568,18 +585,18 @@ export async function handleDashboardInteraction(interaction) {
         return interaction.reply(
           eReply(
             "Access denied",
-            "You need the Member or Friends role to use this.",
+            "You need the Member role to use this.",
           ),
         );
-      const channelId = getVCByMember(interaction.user.id);
-      if (!channelId)
+      const removeChannelId = getVCByMember(interaction.user.id);
+      if (!removeChannelId)
         return interaction.reply(
-          eReply("Access denied", "You are not in a private VC."),
+          eReply("Not found", "You are not in a private VC."),
         );
-      const vcData = getVCData(channelId);
+      const removeVcData = getVCData(removeChannelId);
       if (
-        vcData &&
-        vcData.creatorId !== interaction.user.id &&
+        removeVcData &&
+        removeVcData.creatorId !== interaction.user.id &&
         !(await checkModerationPermission(
           interaction.guild,
           interaction.user.id,
@@ -589,7 +606,7 @@ export async function handleDashboardInteraction(interaction) {
         return interaction.reply(
           eReply(
             "Access denied",
-            "Only the creator of the VC can remove members.",
+            "Only the creator of the VC or a moderator can remove members.",
           ),
         );
       }
@@ -608,27 +625,26 @@ export async function handleDashboardInteraction(interaction) {
         return interaction.reply(
           eReply(
             "Access denied",
-            "You need the Member or Friends role to use this.",
+            "You need the Member role to use this.",
           ),
         );
-      const guild = interaction.guild;
-      const invokerId = interaction.user.id;
-      const channelId = getVCByMember(invokerId);
-      if (!channelId) {
+      const leaveChannelId = getVCByMember(interaction.user.id);
+      if (!leaveChannelId) {
         return interaction.reply(
-          eReply("Access denied", "You are not in a private VC."),
+          eReply("Not found", "You are not in a private VC."),
         );
       }
-      const invokerMember = interaction.member;
-      if (invokerMember.voice?.channelId !== channelId) {
+      try {
+        await removeMember(leaveChannelId, interaction.member, interaction.guild);
         return interaction.reply(
-          eReply("Not connected", "Join your private VC to use this."),
+          eReply("Left VC", "You have left your private VC."),
+        );
+      } catch (err) {
+        console.error("[VC Leave]", err);
+        return interaction.reply(
+          eReply("Error", "Failed to leave the VC."),
         );
       }
-      await removeMember(channelId, invokerMember, guild);
-      return interaction.reply(
-        eReply("Left VC", "You have left your private VC."),
-      );
     }
     case "shantha_automod_master":
     case "shantha_automod_limits":
@@ -699,92 +715,173 @@ export async function handleDashboardInteraction(interaction) {
     }
 
     case "shantha_private_vc_confirm": {
-      const cacheKey = `${interaction.user.id}_shantha_private_vc_select`;
-      const values = getTempSelection(cacheKey) || [];
-      tempSelections.delete(cacheKey);
+      const createCacheKey = `${interaction.user.id}_shantha_private_vc_select`;
+      const createValues = getTempSelection(createCacheKey) || [];
+      tempSelections.delete(createCacheKey);
 
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-      const resolvedMembers = [];
-      for (const id of values) {
-        const member = await interaction.guild.members
-          .fetch(id)
-          .catch(() => null);
-        if (member && !member.user.bot) resolvedMembers.push(member);
+
+      if (getVCByMember(interaction.user.id))
+        return interaction.editReply(
+          eReply("Already active", "You are already in a private VC. Leave it before creating a new one."),
+        );
+      if (!canCreate())
+        return interaction.editReply(
+          eReply("Limit reached", "Maximum private VCs are already active. Wait for one to end."),
+        );
+
+      const invitedIds = createValues.filter(
+        (id) => id !== interaction.user.id,
+      );
+      const invoker = await interaction.guild.members
+        .fetch(interaction.user.id)
+        .catch(() => null);
+      if (!invoker)
+        return interaction.editReply(
+          eReply("Error", "Could not resolve your member data."),
+        );
+
+      const createMembers = [invoker];
+      for (const id of invitedIds) {
+        const m = await interaction.guild.members.fetch(id).catch(() => null);
+        if (m && !m.user.bot && !getVCByMember(m.id)) createMembers.push(m);
       }
-      if (!resolvedMembers.find((m) => m.id === interaction.user.id)) {
-        const invoker = await interaction.guild.members
-          .fetch(interaction.user.id)
-          .catch(() => null);
-        if (invoker) resolvedMembers.unshift(invoker);
-      }
-      const mapping = {};
-      for (let i = 0; i < resolvedMembers.length; i++)
-        mapping[`member${i + 1}`] = resolvedMembers[i].user;
-      interaction.options = { getUser: (key) => mapping[key] || null };
+
       try {
-        const m = await import("../commands/private-vc.js");
-        await m.default.execute(interaction);
+        const channel = await createPrivateVC(interaction.guild, createMembers);
+        if (!channel)
+          return interaction.editReply(
+            eReply("Error", "Failed to create private VC. Please try again."),
+          );
+
+        const mentions = createMembers
+          .filter((m) => m.id !== interaction.user.id)
+          .map((m) => `<@${m.id}>`)
+          .join(", ");
+        return interaction.editReply(
+          eReply(
+            "Private VC created",
+            `**${channel.name}** is ready!\nInvited: ${mentions || "No others"}\n\nMembers not in voice will need to join manually.`,
+          ),
+        );
       } catch (err) {
-        console.error(err);
-        await interaction.editReply(eReply("Error", "Failed to create VC."));
+        console.error("[VC Create]", err);
+        return interaction.editReply(
+          eReply("Error", "Failed to create VC."),
+        );
       }
-      return;
     }
     case "shantha_vc_add_confirm": {
-      const cacheKey = `${interaction.user.id}_shantha_vc_add_select`;
-      const values = getTempSelection(cacheKey) || [];
-      if (!values.length)
+      const addCacheKey = `${interaction.user.id}_shantha_vc_add_select`;
+      const addValues = getTempSelection(addCacheKey) || [];
+      if (!addValues.length)
         return interaction.reply(
           eReply("Notice", "Please select 1 member first."),
         );
-      tempSelections.delete(cacheKey);
+      tempSelections.delete(addCacheKey);
 
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-      const member = await interaction.guild.members
-        .fetch(values[0])
+
+      const addChannelId = getVCByMember(interaction.user.id);
+      if (!addChannelId)
+        return interaction.editReply(
+          eReply("Not found", "You are not in a private VC."),
+        );
+
+      const addTarget = await interaction.guild.members
+        .fetch(addValues[0])
         .catch(() => null);
-      if (!member)
-        return interaction.editReply(eReply("Notice", "Member not found."));
-      interaction.options = {
-        getUser: (key) => (key === "member" ? member.user : null),
-      };
+      if (!addTarget)
+        return interaction.editReply(eReply("Not found", "Member not found."));
+      if (addTarget.user.bot)
+        return interaction.editReply(eReply("Invalid", "You cannot add bots."));
+
+      const addVcData = getVCData(addChannelId);
+      if (addVcData && addVcData.members.has(addTarget.id))
+        return interaction.editReply(
+          eReply("Already added", `<@${addTarget.id}> is already in this VC.`),
+        );
+      if (getVCByMember(addTarget.id))
+        return interaction.editReply(
+          eReply("Unavailable", `<@${addTarget.id}> is already in another private VC.`),
+        );
+
       try {
-        const m = await import("../commands/private-vc-add.js");
-        await m.default.execute(interaction);
+        const ok = await addMember(addChannelId, addTarget, interaction.guild);
+        if (!ok)
+          return interaction.editReply(
+            eReply("Error", "Failed to add member."),
+          );
+        return interaction.editReply(
+          eReply(
+            "Member added",
+            `<@${addTarget.id}> has been added to the private VC.${addTarget.voice?.channel ? "" : " They are not in voice — they can now join manually."}`,
+          ),
+        );
       } catch (err) {
-        console.error(err);
-        await interaction.editReply(eReply("Error", "Failed to add member."));
+        console.error("[VC Add]", err);
+        return interaction.editReply(
+          eReply("Error", "Failed to add member."),
+        );
       }
-      return;
     }
     case "shantha_vc_remove_confirm": {
-      const cacheKey = `${interaction.user.id}_shantha_vc_remove_select`;
-      const values = getTempSelection(cacheKey) || [];
-      if (!values.length)
+      const removeCacheKey = `${interaction.user.id}_shantha_vc_remove_select`;
+      const removeValues = getTempSelection(removeCacheKey) || [];
+      if (!removeValues.length)
         return interaction.reply(
           eReply("Notice", "Please select 1 member first."),
         );
-      tempSelections.delete(cacheKey);
+      tempSelections.delete(removeCacheKey);
 
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-      const member = await interaction.guild.members
-        .fetch(values[0])
+
+      const rmChannelId = getVCByMember(interaction.user.id);
+      if (!rmChannelId)
+        return interaction.editReply(
+          eReply("Not found", "You are not in a private VC."),
+        );
+
+      const rmVcData = getVCData(rmChannelId);
+      const isMod = await checkModerationPermission(
+        interaction.guild,
+        interaction.user.id,
+        "mod",
+      );
+      if (
+        rmVcData &&
+        rmVcData.creatorId !== interaction.user.id &&
+        !isMod
+      )
+        return interaction.editReply(
+          eReply("Access denied", "Only the creator of the VC or a moderator can remove members."),
+        );
+
+      const rmTarget = await interaction.guild.members
+        .fetch(removeValues[0])
         .catch(() => null);
-      if (!member)
-        return interaction.editReply(eReply("Notice", "Member not found."));
-      interaction.options = {
-        getUser: (key) => (key === "member" ? member.user : null),
-      };
+      if (!rmTarget)
+        return interaction.editReply(eReply("Not found", "Member not found."));
+      if (rmTarget.id === interaction.user.id)
+        return interaction.editReply(
+          eReply("Invalid", "You cannot remove yourself. Use Leave instead."),
+        );
+      if (rmVcData && !rmVcData.members.has(rmTarget.id))
+        return interaction.editReply(
+          eReply("Not in VC", `<@${rmTarget.id}> is not in this private VC.`),
+        );
+
       try {
-        const m = await import("../commands/private-vc-remove.js");
-        await m.default.execute(interaction);
+        await removeMember(rmChannelId, rmTarget, interaction.guild);
+        return interaction.editReply(
+          eReply("Member removed", `<@${rmTarget.id}> has been removed from the private VC.`),
+        );
       } catch (err) {
-        console.error(err);
-        await interaction.editReply(
+        console.error("[VC Remove]", err);
+        return interaction.editReply(
           eReply("Error", "Failed to remove member."),
         );
       }
-      return;
     }
     case "shantha_purge_user_confirm":
     case "shantha_purge_trail_user_confirm": {

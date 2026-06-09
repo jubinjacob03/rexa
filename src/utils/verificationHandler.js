@@ -282,8 +282,8 @@ export async function handleVerificationApply(interaction) {
     const guildMember = await guild.members.fetch(userId).catch(() => null);
     if (
       guildMember &&
-      (guildMember.roles.cache.has(config.friendsRoleId) ||
-        guildMember.roles.cache.has(config.memberRoleId))
+      (guildMember.roles.cache.has(config.memberRoleId) ||
+        guildMember.roles.cache.has(config.moderatorRoleId))
     ) {
       return interaction.reply(
         eReply(
@@ -293,10 +293,10 @@ export async function handleVerificationApply(interaction) {
       );
     }
 
-    const isFriends = interaction.customId === "verify_friends";
-    const requestedRole = isFriends ? "Friends" : "Member";
-    const requestedRoleId = isFriends
-      ? config.friendsRoleId
+    const isModerator = interaction.customId === "verify_moderator";
+    const requestedRole = isModerator ? "Moderator" : "Member";
+    const requestedRoleId = isModerator
+      ? config.moderatorRoleId
       : config.memberRoleId;
 
     const autoApproveEnabled = await getAutoApprove();
@@ -361,7 +361,7 @@ export async function handleVerificationApply(interaction) {
     const approvalSection = new SectionBuilder()
       .addTextDisplayComponents(
         new TextDisplayBuilder().setContent(
-          `## ${isFriends ? icon("FRIENDS_ROLE") : icon("MEMBER_ROLE")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ\n> <@${userId}> ɪs ʀᴇǫᴜᴇsᴛɪɴɢ ᴀᴄᴄᴇss ᴛᴏ ᴛʜᴇ sᴇʀᴠᴇʀ.\n\n${icon("USER")} **ᴀᴘᴘʟɪᴄᴀɴᴛ : ** <@${userId}>\n\n${icon("MEMO")} **ᴜsᴇʀɴᴀᴍᴇ : ** \`${username}\`\n\n${icon("TYPE")} **ᴛᴀʀɢᴇᴛ ʀᴏʟᴇ : ** \`${requestedRole}\`\n\n${icon("KEYLOCK")} **ɪᴅᴇɴᴛɪғɪᴇʀ : ** \`${userId}\``,
+          `## ${isModerator ? icon("MODERATOR") : icon("MEMBER_ROLE")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ\n> <@${userId}> ɪs ʀᴇǫᴜᴇsᴛɪɴɢ ᴀᴄᴄᴇss ᴛᴏ ᴛʜᴇ sᴇʀᴠᴇʀ.\n\n${icon("USER")} **ᴀᴘᴘʟɪᴄᴀɴᴛ : ** <@${userId}>\n\n${icon("MEMO")} **ᴜsᴇʀɴᴀᴍᴇ : ** \`${username}\`\n\n${icon("TYPE")} **ᴛᴀʀɢᴇᴛ ʀᴏʟᴇ : ** \`${requestedRole}\`\n\n${icon("KEYLOCK")} **ɪᴅᴇɴᴛɪғɪᴇʀ : ** \`${userId}\``,
         ),
       )
       .setThumbnailAccessory(new ThumbnailBuilder().setURL(userAvatar));
@@ -391,7 +391,7 @@ export async function handleVerificationApply(interaction) {
     );
     await approvalsChannel
       .send({
-        content: `<@&${config.ownerRoleId}> <@&${config.managerRoleId}> <@&${config.moderatorRoleId}>`,
+        content: `<@&${config.ownerRoleId}> <@&${config.administratorRoleId}> <@&${config.moderatorRoleId}>`,
       })
       .catch(() => null);
     const approvalMessage = await approvalsChannel
@@ -609,25 +609,17 @@ export async function handleApprovalAction(interaction) {
     }
 
     if (action === "approve") {
-      const isFriends = roleId === config.friendsRoleId;
-
       const modal = new ModalBuilder()
         .setCustomId(`nickname_modal_${userId}_${roleId}`)
         .setTitle("sᴇᴛ sᴇʀᴠᴇʀ ɴɪᴄᴋɴᴀᴍᴇ");
 
       const nicknameInput = new TextInputBuilder()
         .setCustomId("nickname_input")
-        .setLabel(
-          isFriends
-            ? "ᴇɴᴛᴇʀ ᴛʜᴇ ɴɪᴄᴋɴᴀᴍᴇ"
-            : 'ᴇɴᴛᴇʀ ᴛʜᴇ ɴᴀᴍᴇ ғᴏʀ "ɢᴏᴅ [ɴᴀᴍᴇ]" ғᴏʀᴍᴀᴛ',
-        )
-        .setPlaceholder(
-          isFriends ? "ᴇxᴀᴍᴘʟᴇ: ᴊᴏʜɴ" : "ᴇxᴀᴍᴘʟᴇ: ᴊᴏʜɴ → ɢᴏᴅ ᴊᴏʜɴ",
-        )
+        .setLabel('ᴇɴᴛᴇʀ ᴛʜᴇ ɴᴀᴍᴇ ғᴏʀ "ɢᴏᴅ [ɴᴀᴍᴇ]" ғᴏʀᴍᴀᴛ')
+        .setPlaceholder("ᴇxᴀᴍᴘʟᴇ: ᴊᴏʜɴ → ɢᴏᴅ ᴊᴏʜɴ")
         .setStyle(TextInputStyle.Short)
         .setRequired(true)
-        .setMaxLength(isFriends ? 32 : 26);
+        .setMaxLength(26);
       const row = new ActionRowBuilder().addComponents(nicknameInput);
       modal.addComponents(row);
 
@@ -700,10 +692,7 @@ export async function handleNicknameModal(interaction) {
     const [, , userId, roleId] = interaction.customId.split("_");
     const rawNickname = interaction.fields.getTextInputValue("nickname_input");
     const nicknameInput = sanitizeNickname(rawNickname);
-    const isFriends = roleId === config.friendsRoleId;
-    const finalNickname = (
-      isFriends ? nicknameInput : `God ${nicknameInput}`
-    ).slice(0, 32);
+    const finalNickname = `God ${nicknameInput}`.slice(0, 32);
 
     const request = await getRequest(userId);
     if (!request) {

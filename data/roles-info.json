@@ -12,8 +12,8 @@
         },
         {
           "emoji": "{MANAGEMENT}",
-          "name": "Management",
-          "description": "Senior staff who oversee and manage the server."
+          "name": "Administrator",
+          "description": "Senior staff who oversee and administer the server."
         },
         {
           "emoji": "{MODERATOR}",
@@ -30,11 +30,6 @@
           "emoji": "{MEMBER}",
           "name": "Member",
           "description": "Verified guild members with full access to the server."
-        },
-        {
-          "emoji": "{FRIENDS}",
-          "name": "Friends",
-          "description": "Trusted friends of the community with limited access."
         },
         {
           "emoji": "{UNVERIFIED}",

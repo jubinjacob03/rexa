@@ -598,7 +598,7 @@ async function createTicketInstanceImpl(interaction, options = {}) {
   try {
     const ticketName = `ticket-${interaction.user.username.toLowerCase()}`;
 
-    const defaultRoles = [config.ownerRoleId, config.managerRoleId].filter(
+    const defaultRoles = [config.ownerRoleId, config.administratorRoleId].filter(
       Boolean,
     );
     let modRoles =
@@ -977,8 +977,8 @@ async function escalateTicket(interaction) {
     const pings =
       ticketModIds.length > 0
         ? ticketModIds.map((id) => `<@${id}>`).join(" ")
-        : [config.ownerRoleId, config.managerRoleId].filter(Boolean).length > 0
-          ? [config.ownerRoleId, config.managerRoleId]
+        : [config.ownerRoleId, config.administratorRoleId].filter(Boolean).length > 0
+          ? [config.ownerRoleId, config.administratorRoleId]
               .filter(Boolean)
               .map((r) => `<@&${r}>`)
               .join(" ")

@@ -49,12 +49,12 @@ export default {
             .setLabel("ᴅᴇᴠ ᴄʜᴇᴄᴋ")
             .setStyle(ButtonStyle.Secondary),
           new ButtonBuilder()
-            .setCustomId("verify_friends")
-            .setLabel("ғʀɪᴇɴᴅs")
+            .setCustomId("verify_member")
+            .setLabel("ᴍᴇᴍʙᴇʀ")
             .setStyle(ButtonStyle.Primary),
           new ButtonBuilder()
-            .setCustomId("verify_member")
-            .setLabel("ɢᴜɪʟᴅ-ᴍᴇᴍʙᴇʀ")
+            .setCustomId("verify_moderator")
+            .setLabel("ᴍᴏᴅᴇʀᴀᴛᴏʀ")
             .setStyle(ButtonStyle.Success),
         );
 

@@ -103,12 +103,12 @@ export default {
           .setLabel("ᴅᴇᴠ ᴄʜᴇᴄᴋ")
           .setStyle(ButtonStyle.Secondary),
         new ButtonBuilder()
-          .setCustomId("verify_friends")
-          .setLabel("ғʀɪᴇɴᴅs")
+          .setCustomId("verify_member")
+          .setLabel("ᴍᴇᴍʙᴇʀ")
           .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
-          .setCustomId("verify_member")
-          .setLabel("ɢᴜɪʟᴅ-ᴍᴇᴍʙᴇʀ")
+          .setCustomId("verify_moderator")
+          .setLabel("ᴍᴏᴅᴇʀᴀᴛᴏʀ")
           .setStyle(ButtonStyle.Success),
       );
 
@@ -171,8 +171,8 @@ export default {
       const VERIF_NEEDLES = [
         "role verification",
         "ʀᴏʟᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ",
-        "friends verification",
-        "ғʀɪᴇɴᴅs ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ",
+        "moderator verification",
+        "ᴍᴏᴅᴇʀᴀᴛᴏʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ",
         "member verification",
         "ᴍᴇᴍʙᴇʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ",
       ];
@@ -199,7 +199,7 @@ export default {
         }
         const ids = JSON.stringify(msg.components ?? []);
         if (
-          ids.includes("verify_friends") ||
+          ids.includes("verify_moderator") ||
           ids.includes("verify_member") ||
           ids.includes("dev_check")
         ) {

@@ -34,6 +34,7 @@ import {
   handleDashboardSelect,
 } from "./dashboard/dashboard.js";
 import { handleRolesInfo } from "./utils/rolesEmbed.js";
+import { handleEmbedBuilderInteraction } from "./utils/embedBuilderHandler.js";
 
 if (ffmpegPath) {
   process.env.FFMPEG_PATH = ffmpegPath;
@@ -71,7 +72,7 @@ client.commands = new Collection();
 
 import { loadCommands } from "./utils/commandLoader.js";
 const loadedCommands = await loadCommands(undefined, {
-  allowlist: ["setup-verification", "setup-ticket"],
+  allowlist: ["setup-verification", "setup-ticket", "embed-builder"],
 });
 
 for (const command of loadedCommands) {
@@ -167,7 +168,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const memberRoles = [
           config.memberRoleId,
           config.moderatorRoleId,
-          config.managerRoleId,
+          config.administratorRoleId,
           config.ownerRoleId,
         ].filter(Boolean);
         const hasAccess = interaction.member.roles.cache.some((r) =>
@@ -230,7 +231,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
 
       if (
-        interaction.customId === "verify_friends" ||
+        interaction.customId === "verify_moderator" ||
         interaction.customId === "verify_member"
       ) {
         await handleVerificationApply(interaction);
@@ -249,11 +250,20 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await handleApprovalAction(interaction);
         return;
       }
+
+      if (interaction.customId.startsWith("ebld_")) {
+        await handleEmbedBuilderInteraction(interaction);
+        return;
+      }
     }
 
     if (interaction.isModalSubmit()) {
       if (interaction.customId.startsWith("nickname_modal_")) {
         await handleNicknameModal(interaction);
+        return;
+      }
+      if (interaction.customId.startsWith("ebld_")) {
+        await handleEmbedBuilderInteraction(interaction);
         return;
       }
     }

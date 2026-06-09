@@ -81,7 +81,7 @@ router.get("/user-status", async (req, res) => {
         .json({ success: false, error: "Member not found" });
 
     const roleIds = [...member.roles.cache.keys()];
-    const hasFriends = member.roles.cache.has(config.friendsRoleId);
+    const hasModerator = member.roles.cache.has(config.moderatorRoleId);
     const hasMember = member.roles.cache.has(config.memberRoleId);
     const pending = await getRequest(userId);
 
@@ -89,7 +89,7 @@ router.get("/user-status", async (req, res) => {
       success: true,
       data: {
         roleIds,
-        hasFriends,
+        hasModerator,
         hasMember,
         hasPending: !!pending,
         pendingRole: pending?.requestedRole ?? null,
@@ -125,30 +125,24 @@ router.post("/apply", async (req, res) => {
         .json({ success: false, error: "You already have a pending request." });
     }
 
-    const isFriends = type === "friends";
-    const requestedRole = isFriends ? "Friends" : "Member";
-    const requestedRoleId = isFriends
-      ? config.friendsRoleId
+    const isModerator = type === "moderator";
+    const requestedRole = isModerator ? "Moderator" : "Member";
+    const requestedRoleId = isModerator
+      ? config.moderatorRoleId
       : config.memberRoleId;
 
-    if (isFriends && member.roles.cache.has(config.friendsRoleId)) {
+    if (isModerator && member.roles.cache.has(config.moderatorRoleId)) {
       return res
         .status(409)
-        .json({ success: false, error: "You already have the Friends role." });
+        .json({ success: false, error: "You already have the Moderator role." });
     }
-    if (!isFriends && member.roles.cache.has(config.memberRoleId)) {
+    if (!isModerator && member.roles.cache.has(config.memberRoleId)) {
       return res
         .status(409)
         .json({ success: false, error: "You already have the Member role." });
     }
-    if (!isFriends && !member.roles.cache.has(config.friendsRoleId)) {
-      return res.status(400).json({
-        success: false,
-        error: "You must have the Friends role before applying for Member.",
-      });
-    }
 
-    const iconStr = isFriends ? icon("FRIENDS_ROLE") : icon("MEMBER_ROLE");
+    const iconStr = isModerator ? icon("MODERATOR") : icon("MEMBER_ROLE");
     const approvalContainer = new ContainerBuilder()
       .setAccentColor(EMBED_COLOR)
       .addTextDisplayComponents(
@@ -187,7 +181,7 @@ router.post("/apply", async (req, res) => {
 
     await approvalsChannel
       .send({
-        content: `<@&${config.ownerRoleId}> <@&${config.managerRoleId}> <@&${config.moderatorRoleId}>`,
+        content: `<@&${config.ownerRoleId}> <@&${config.administratorRoleId}> <@&${config.moderatorRoleId}>`,
       })
       .catch(() => null);
     const approvalMessage = await approvalsChannel
@@ -262,8 +256,7 @@ router.post("/approve", async (req, res) => {
         .json({ success: false, error: "Member no longer in server." });
     }
 
-    const isFriends = request.requestedRoleId === config.friendsRoleId;
-    const finalNickname = isFriends ? nickname : `God ${nickname}`;
+    const finalNickname = `God ${nickname}`;
 
     if (member.roles.cache.has(config.unverifiedRoleId)) {
       await member.roles.remove(config.unverifiedRoleId);

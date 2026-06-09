@@ -3,7 +3,7 @@ import config from "../config.js";
 import { loadCommands } from "./utils/commandLoader.js";
 
 const loadedCommands = await loadCommands(undefined, {
-  allowlist: ["setup-verification", "setup-ticket"],
+  allowlist: ["setup-verification", "setup-ticket", "embed-builder"],
 });
 const commands = loadedCommands.map((cmd) => {
   console.log(`[INFO] Processed command for deployment: ${cmd.data.name}`);

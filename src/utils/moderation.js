@@ -34,7 +34,7 @@ export async function checkModerationPermission(guild, userId, level) {
   if (level === "mod") {
     if (isOwner) return true;
     if (member.permissions.has(PermissionFlagsBits.Administrator)) return true;
-    if (config.managerRoleId && member.roles.cache.has(config.managerRoleId))
+    if (config.administratorRoleId && member.roles.cache.has(config.administratorRoleId))
       return true;
     if (
       config.moderatorRoleId &&

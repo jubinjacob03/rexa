@@ -21,8 +21,6 @@ import { i, icon } from "./icons.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-let cachedRolesData = null;
-
 /**
  * Handles the roles info interaction.
  * @param {import('discord.js').Interaction} interaction - The interaction object.
@@ -31,22 +29,19 @@ let cachedRolesData = null;
  */
 export async function handleRolesInfo(interaction, selectedCategory = "home") {
   const rolesPath = join(__dirname, "..", "..", "data", "roles-info.json");
-  let rolesData = cachedRolesData;
+  let rolesData = null;
 
-  if (!rolesData) {
-    try {
-      const fileContent = await readFile(rolesPath, "utf8");
-      rolesData = JSON.parse(fileContent);
-      cachedRolesData = rolesData;
-    } catch {
-      const errPayload = eReply(
-        `${i("ERROR")} ᴇʀʀᴏʀ`,
-        "ʀᴏʟᴇs ɪɴғᴏ ɴᴏᴛ ᴄᴏɴғɪɢᴜʀᴇᴅ.",
-      );
-      return interaction.isStringSelectMenu()
-        ? await interaction.update(errPayload)
-        : await interaction.reply(errPayload);
-    }
+  try {
+    const fileContent = await readFile(rolesPath, "utf8");
+    rolesData = JSON.parse(fileContent);
+  } catch {
+    const errPayload = eReply(
+      `${i("ERROR")} ᴇʀʀᴏʀ`,
+      "ʀᴏʟᴇs ɪɴғᴏ ɴᴏᴛ ᴄᴏɴғɪɢᴜʀᴇᴅ.",
+    );
+    return interaction.isStringSelectMenu()
+      ? await interaction.update(errPayload)
+      : await interaction.reply(errPayload);
   }
 
   const resolveEmoji = (value) =>
