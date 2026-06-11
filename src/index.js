@@ -72,7 +72,15 @@ client.commands = new Collection();
 
 import { loadCommands } from "./utils/commandLoader.js";
 const loadedCommands = await loadCommands(undefined, {
-  allowlist: ["setup-verification", "setup-ticket", "embed-builder"],
+  allowlist: [
+    "setup-verification",
+    "setup-ticket",
+    "embed-builder",
+    "purge",
+    "private-vc",
+    "private-vc-add",
+    "private-vc-remove",
+  ],
 });
 
 for (const command of loadedCommands) {
@@ -269,6 +277,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isStringSelectMenu()) {
+      if (interaction.customId.startsWith("shantha_")) {
+        await handleDashboardSelect(interaction);
+        return;
+      }
       if (interaction.customId === "roles_nav_dropdown") {
         await handleRolesInfo(interaction, interaction.values[0]);
         return;

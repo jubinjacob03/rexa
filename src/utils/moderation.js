@@ -87,6 +87,38 @@ function validateTarget(member) {
   }
 }
 
+async function validateBotCanManageMember(member, permission) {
+  const me = member.guild.members.me ?? (await member.guild.members.fetchMe());
+  if (!me.permissions.has(permission)) {
+    throw new Error(
+      "I don't have the required Discord permission for this action.",
+    );
+  }
+  if (member.id === member.guild.ownerId) {
+    throw new Error("I can't moderate the server owner.");
+  }
+  if (member.roles.highest.comparePositionTo(me.roles.highest) >= 0) {
+    throw new Error(
+      "I can't manage this member because their role is higher than or equal to mine.",
+    );
+  }
+}
+
+async function validateBotCanManageRole(guild, role) {
+  const me = guild.members.me ?? (await guild.members.fetchMe());
+  if (!me.permissions.has(PermissionFlagsBits.ManageRoles)) {
+    throw new Error("I don't have the Manage Roles permission.");
+  }
+  if (role.managed) {
+    throw new Error(`The "${role.name}" role is managed by an integration.`);
+  }
+  if (role.comparePositionTo(me.roles.highest) >= 0) {
+    throw new Error(
+      `I can't manage the "${role.name}" role because it is higher than or equal to mine.`,
+    );
+  }
+}
+
 /**
  * Server-mutes a member in voice channels.
  * @param {import('discord.js').GuildMember} member - The member to mute.
@@ -95,6 +127,7 @@ function validateTarget(member) {
  */
 export async function voiceMute(member, reason = "Requested via Shantha") {
   validateTarget(member);
+  await validateBotCanManageMember(member, PermissionFlagsBits.MuteMembers);
   if (!member.voice?.channel) {
     throw new Error(`${member.displayName} is not in a voice channel.`);
   }
@@ -110,6 +143,7 @@ export async function voiceMute(member, reason = "Requested via Shantha") {
  */
 export async function voiceUnmute(member, reason = "Requested via Shantha") {
   validateTarget(member);
+  await validateBotCanManageMember(member, PermissionFlagsBits.MuteMembers);
   if (!member.voice?.channel) {
     throw new Error(`${member.displayName} is not in a voice channel.`);
   }
@@ -125,6 +159,7 @@ export async function voiceUnmute(member, reason = "Requested via Shantha") {
  */
 export async function voiceDeafen(member, reason = "Requested via Shantha") {
   validateTarget(member);
+  await validateBotCanManageMember(member, PermissionFlagsBits.DeafenMembers);
   if (!member.voice?.channel) {
     throw new Error(`${member.displayName} is not in a voice channel.`);
   }
@@ -140,6 +175,7 @@ export async function voiceDeafen(member, reason = "Requested via Shantha") {
  */
 export async function voiceUndeafen(member, reason = "Requested via Shantha") {
   validateTarget(member);
+  await validateBotCanManageMember(member, PermissionFlagsBits.DeafenMembers);
   if (!member.voice?.channel) {
     throw new Error(`${member.displayName} is not in a voice channel.`);
   }
@@ -160,6 +196,7 @@ export async function timeout(
   reason = "Requested via Shantha",
 ) {
   validateTarget(member);
+  await validateBotCanManageMember(member, PermissionFlagsBits.ModerateMembers);
   const ms = Math.min(durationMinutes, 40320) * 60 * 1000;
   await member.timeout(ms, reason);
   return `${member.displayName} has been timed out for ${Math.round(ms / 60000)} minute(s).`;
@@ -173,6 +210,7 @@ export async function timeout(
  */
 export async function removeTimeout(member, reason = "Requested via Shantha") {
   validateTarget(member);
+  await validateBotCanManageMember(member, PermissionFlagsBits.ModerateMembers);
   await member.timeout(null, reason);
   return `${member.displayName}'s timeout has been removed.`;
 }
@@ -185,6 +223,7 @@ export async function removeTimeout(member, reason = "Requested via Shantha") {
  */
 export async function kick(member, reason = "Requested via Shantha") {
   validateTarget(member);
+  await validateBotCanManageMember(member, PermissionFlagsBits.KickMembers);
   await member.kick(reason);
   return `${member.displayName} has been kicked from the server.`;
 }
@@ -202,6 +241,7 @@ export async function ban(
   reason = "Requested via Shantha",
 ) {
   validateTarget(member);
+  await validateBotCanManageMember(member, PermissionFlagsBits.BanMembers);
   await member.ban({
     reason,
     deleteMessageSeconds: deleteDays * 86400,
@@ -222,6 +262,7 @@ export async function changeNickname(
   reason = "Requested via Shantha",
 ) {
   validateTarget(member);
+  await validateBotCanManageMember(member, PermissionFlagsBits.ManageNicknames);
   await member.setNickname(nickname ?? null, reason);
   return nickname
     ? `${member.displayName}'s nickname has been changed to "${nickname}".`
@@ -241,6 +282,9 @@ export async function changeBotNickname(
   reason = "Requested via Shantha",
 ) {
   const me = await guild.members.fetchMe();
+  if (!me.permissions.has(PermissionFlagsBits.ManageNicknames)) {
+    throw new Error("I don't have the Manage Nicknames permission.");
+  }
   await me.setNickname(nickname ?? null, reason);
   return nickname
     ? `My nickname has been changed to "${nickname}".`
@@ -266,6 +310,8 @@ export async function addRole(
 
   const role = resolveRoleByName(guild, roleName);
   if (!role) throw new Error(`Role "${roleName}" not found in this server.`);
+  await validateBotCanManageRole(guild, role);
+  await validateBotCanManageMember(member, PermissionFlagsBits.ManageRoles);
 
   if (member.roles.cache.has(role.id)) {
     throw new Error(
@@ -296,6 +342,8 @@ export async function removeRole(
 
   const role = resolveRoleByName(guild, roleName);
   if (!role) throw new Error(`Role "${roleName}" not found in this server.`);
+  await validateBotCanManageRole(guild, role);
+  await validateBotCanManageMember(member, PermissionFlagsBits.ManageRoles);
 
   if (!member.roles.cache.has(role.id)) {
     throw new Error(

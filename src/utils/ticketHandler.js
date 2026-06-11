@@ -26,6 +26,7 @@ import { eReply, eSend, EMBED_COLOR, addFooter } from "./embed.js";
 import { i, icon } from "./icons.js";
 import { createLogger } from "./logger.js";
 import { swallow } from "./resilience.js";
+import { checkModerationPermission } from "./moderation.js";
 
 const log = createLogger("tickets");
 
@@ -34,6 +35,25 @@ const activeTickets = new Set();
 /** User IDs with a ticket creation currently in flight, used as a synchronous
  * single-flight lock so a double-click cannot create two tickets. */
 const ticketCreationInProgress = new Set();
+
+async function ensureTicketSetupPermission(interaction) {
+  if (
+    await checkModerationPermission(interaction.guild, interaction.user.id, "mod")
+  ) {
+    return true;
+  }
+
+  if (!interaction.replied && !interaction.deferred) {
+    await interaction.reply(
+      eReply(
+        `${i("ERROR")} ᴀᴄᴄᴇss ᴅᴇɴɪᴇᴅ`,
+        "ᴏɴʟʏ ᴍᴏᴅᴇʀᴀᴛᴏʀs ᴄᴀɴ ᴇᴅɪᴛ ᴛɪᴄᴋᴇᴛ sᴇᴛᴜᴘ.",
+      ),
+    );
+  }
+
+  return false;
+}
 
 /**
  * Handles ticket-related interactions (buttons, modals).
@@ -73,6 +93,8 @@ export async function handleTicketInteraction(interaction) {
   }
 
   if (interaction.customId.startsWith("tsetup_")) {
+    if (!(await ensureTicketSetupPermission(interaction))) return;
+
     const session = setupSessions.get(interaction.user.id);
     if (!session) {
       if (!interaction.replied && !interaction.deferred) {
@@ -319,6 +341,8 @@ export async function handleTicketInteraction(interaction) {
     interaction.isModalSubmit() &&
     interaction.customId.startsWith("tsetup_modal_")
   ) {
+    if (!(await ensureTicketSetupPermission(interaction))) return;
+
     const session = setupSessions.get(interaction.user.id);
     if (!session) {
       if (!interaction.replied && !interaction.deferred) {

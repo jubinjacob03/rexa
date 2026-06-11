@@ -3,6 +3,8 @@ import {
   canCreate,
   createPrivateVC,
   getVCByMember,
+  getVCByCreator,
+  hasVCAccess,
 } from "../utils/privateVCManager.js";
 import config from "../../config.js";
 import { eSend } from "../utils/embed.js";
@@ -57,7 +59,16 @@ export default {
     const guild = interaction.guild;
     const invoker = interaction.member;
 
-    if (getVCByMember(invoker.id)) {
+    if (!hasVCAccess(invoker)) {
+      return interaction.editReply(
+        eSend(
+          `${i("ERROR")} ᴀᴄᴄᴇss ᴅᴇɴɪᴇᴅ`,
+          "ʏᴏᴜ ɴᴇᴇᴅ ᴛʜᴇ ᴍᴇᴍʙᴇʀ ʀᴏʟᴇ ᴛᴏ ᴜsᴇ ᴘʀɪᴠᴀᴛᴇ ᴠᴄs.",
+        ),
+      );
+    }
+
+    if (getVCByMember(invoker.id) || getVCByCreator(invoker.id)) {
       return interaction.editReply(
         eSend(
           `${i("ERROR")} ᴀʟʀᴇᴀᴅʏ ᴀᴄᴛɪᴠᴇ`,

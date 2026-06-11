@@ -1,8 +1,6 @@
 import { ChannelType, PermissionFlagsBits } from "discord.js";
 import config from "../../config.js";
 
-import { icon } from "./icons.js";
-
 const ROMAN = ["ɪ", "ɪɪ", "ɪɪɪ", "ɪᴠ", "ᴠ"];
 /**
  * Converts a number to a Roman numeral (1-5).
@@ -15,6 +13,10 @@ function toRoman(n) {
 
 const activeVCs = new Map();
 let highestIndex = 0;
+
+function logPrivateVCError(action, err) {
+  console.error(`[PrivateVC] ${action} failed:`, err);
+}
 
 const {
   categoryId: CATEGORY_ID,
@@ -59,10 +61,12 @@ async function destroyVC(channelId, guild) {
     const lobby = guild.channels.cache.get(LOBBY_VC_ID);
     if (lobby) {
       for (const [, member] of channel.members) {
-        await member.voice.setChannel(lobby).catch(() => {});
+        await member.voice.setChannel(lobby).catch((err) =>
+          logPrivateVCError(`Move ${member.id} to lobby`, err),
+        );
       }
     }
-    await channel.delete().catch(() => {});
+    await channel.delete();
   }
 
   activeVCs.delete(channelId);
@@ -79,7 +83,11 @@ function startIdleTimer(channelId, guild) {
   const data = activeVCs.get(channelId);
   if (!data) return;
   clearTimeout(data.idleTimer);
-  data.idleTimer = setTimeout(() => destroyVC(channelId, guild), IDLE_MS);
+  data.idleTimer = setTimeout(() => {
+    destroyVC(channelId, guild).catch((err) =>
+      logPrivateVCError(`Idle cleanup for ${channelId}`, err),
+    );
+  }, IDLE_MS);
 }
 
 function stopIdleTimer(channelId) {
@@ -91,6 +99,45 @@ function stopIdleTimer(channelId) {
 
 export function canCreate() {
   return activeVCs.size < MAX_VCS;
+}
+
+export function getVCByCreator(userId) {
+  for (const [channelId, data] of activeVCs) {
+    if (data.creatorId === userId) return channelId;
+  }
+  return null;
+}
+
+export function isVCCreator(channelId, member) {
+  const data = activeVCs.get(channelId);
+  return data?.creatorId === member.id;
+}
+
+export function isOwner(member) {
+  return member.roles.cache.has(config.ownerRoleId);
+}
+
+export function canManageVC(channelId, member) {
+  return isVCCreator(channelId, member) || isOwner(member);
+}
+
+/**
+ * Checks whether a member is allowed to use the private VC feature.
+ * Access is granted to the Member role and any elevated role
+ * (Moderator, Administrator, Owner) as well as the server owner.
+ * @param {import('discord.js').GuildMember} member - The guild member.
+ * @returns {boolean} True if the member may use private VC features.
+ */
+export function hasVCAccess(member) {
+  if (!member) return false;
+  if (member.id === member.guild?.ownerId) return true;
+  const roles = member.roles.cache;
+  return [
+    config.memberRoleId,
+    config.moderatorRoleId,
+    config.administratorRoleId,
+    config.ownerRoleId,
+  ].some((roleId) => roleId && roles.has(roleId));
 }
 
 /**
@@ -166,10 +213,27 @@ export async function createPrivateVC(guild, members) {
     permissionOverwrites,
   });
 
+  try {
+    for (const member of members) {
+      if (member.voice?.channel) {
+        await member.voice.setChannel(channel);
+      }
+    }
+  } catch (err) {
+    await channel.delete().catch((deleteErr) =>
+      logPrivateVCError(`Rollback delete for ${channel.id}`, deleteErr),
+    );
+    throw err;
+  }
+
   const memberSet = new Set(members.map((m) => m.id));
   const creatorId = members[0]?.id ?? null;
 
-  const maxTimer = setTimeout(() => destroyVC(channel.id, guild), MAX_MS);
+  const maxTimer = setTimeout(() => {
+    destroyVC(channel.id, guild).catch((err) =>
+      logPrivateVCError(`Max lifetime cleanup for ${channel.id}`, err),
+    );
+  }, MAX_MS);
 
   activeVCs.set(channel.id, {
     members: memberSet,
@@ -178,12 +242,6 @@ export async function createPrivateVC(guild, members) {
     idleTimer: null,
     maxTimer,
   });
-
-  for (const member of members) {
-    if (member.voice?.channel) {
-      await member.voice.setChannel(channel).catch(() => {});
-    }
-  }
 
   if (channel.members.size === 0) {
     startIdleTimer(channel.id, guild);
@@ -203,8 +261,6 @@ export async function addMember(channelId, member, guild) {
   const data = activeVCs.get(channelId);
   if (!data) return false;
 
-  data.members.add(member.id);
-
   const channel = guild.channels.cache.get(channelId);
   if (!channel) return false;
 
@@ -218,9 +274,10 @@ export async function addMember(channelId, member, guild) {
   });
 
   if (member.voice?.channel) {
-    await member.voice.setChannel(channel).catch(() => {});
+    await member.voice.setChannel(channel);
   }
 
+  data.members.add(member.id);
   return true;
 }
 
@@ -228,18 +285,18 @@ export async function removeMember(channelId, member, guild) {
   const data = activeVCs.get(channelId);
   if (!data) return false;
 
-  data.members.delete(member.id);
-
   const channel = guild.channels.cache.get(channelId);
   if (!channel) return false;
 
-  await channel.permissionOverwrites.delete(member.id).catch(() => {});
+  await channel.permissionOverwrites.delete(member.id);
 
   if (member.voice?.channelId === channelId) {
     const lobby = guild.channels.cache.get(LOBBY_VC_ID);
-    if (lobby) await member.voice.setChannel(lobby).catch(() => {});
-    else await member.voice.disconnect().catch(() => {});
+    if (lobby) await member.voice.setChannel(lobby);
+    else await member.voice.disconnect();
   }
+
+  data.members.delete(member.id);
 
   const channel2 = guild.channels.cache.get(channelId);
   if (channel2 && channel2.members.size === 0) {

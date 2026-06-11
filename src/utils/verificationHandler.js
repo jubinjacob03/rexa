@@ -17,6 +17,7 @@ import { generateText } from "ai";
 import { eReply, eSend, addFooter } from "./embed.js";
 import { i, icon } from "./icons.js";
 import { getLanguageModel } from "../agents/config.js";
+import { checkModerationPermission } from "./moderation.js";
 import { createLogger } from "./logger.js";
 
 const log = createLogger("verify");
@@ -586,6 +587,21 @@ export async function handleApprovalAction(interaction) {
     }
     const [action, userId, roleId] = parts;
 
+    if (
+      !(await checkModerationPermission(
+        interaction.guild,
+        interaction.user.id,
+        "mod",
+      ))
+    ) {
+      return interaction.reply(
+        eReply(
+          `${i("ERROR")} ᴀᴄᴄᴇss ᴅᴇɴɪᴇᴅ`,
+          "ᴏɴʟʏ ᴍᴏᴅᴇʀᴀᴛᴏʀs ᴄᴀɴ ᴘʀᴏᴄᴇss ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴs.",
+        ),
+      );
+    }
+
     const request = await getRequest(userId);
     if (!request) {
       return interaction.reply(
@@ -693,6 +709,21 @@ export async function handleNicknameModal(interaction) {
     const rawNickname = interaction.fields.getTextInputValue("nickname_input");
     const nicknameInput = sanitizeNickname(rawNickname);
     const finalNickname = `God ${nicknameInput}`.slice(0, 32);
+
+    if (
+      !(await checkModerationPermission(
+        interaction.guild,
+        interaction.user.id,
+        "mod",
+      ))
+    ) {
+      return interaction.editReply(
+        eReply(
+          `${i("ERROR")} ᴀᴄᴄᴇss ᴅᴇɴɪᴇᴅ`,
+          "ᴏɴʟʏ ᴍᴏᴅᴇʀᴀᴛᴏʀs ᴄᴀɴ ᴘʀᴏᴄᴇss ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴs.",
+        ),
+      );
+    }
 
     const request = await getRequest(userId);
     if (!request) {

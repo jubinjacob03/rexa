@@ -11,6 +11,7 @@ import {
   SeparatorSpacingSize,
   MessageFlags,
   UserSelectMenuBuilder,
+  StringSelectMenuBuilder,
 } from "discord.js";
 import { SectionBuilder, ThumbnailBuilder } from "discord.js";
 import config from "../../config.js";
@@ -34,8 +35,15 @@ import {
   createPrivateVC,
   getVCByMember,
   getVCData,
+  getVCByCreator,
   addMember,
   removeMember,
+  listAllVCs,
+  forceDeleteVC,
+  isVCCreator,
+  isOwner,
+  canManageVC,
+  hasVCAccess,
 } from "../utils/privateVCManager.js";
 import { icon } from "../utils/icons.js";
 
@@ -71,18 +79,12 @@ function getTempSelection(key) {
   return tempSelections.get(key)?.value;
 }
 
-/**
- * Checks if a member has access to VC features.
- * @param {import("discord.js").Guild} guild - The guild.
- * @param {import("discord.js").GuildMember} member - The member.
- * @returns {Promise<boolean>} True if the member has access.
- */
-async function hasVCAccess(guild, member) {
-  if (!member) return false;
-  if (await checkModerationPermission(guild, member.id, "mod")) return true;
-  if (config.memberRoleId && member.roles.cache.has(config.memberRoleId))
-    return true;
-  return false;
+function formatDashboardError(err, fallback = "Action failed.") {
+  if (!err) return fallback;
+  const details = [];
+  if (err.code) details.push(`Discord code ${err.code}`);
+  if (err.message) details.push(err.message);
+  return details.length ? details.join(": ") : fallback;
 }
 
 /**
@@ -93,7 +95,7 @@ async function hasVCAccess(guild, member) {
 export async function buildDashboardContainer(member) {
   const guild = member.guild;
   const isMod = await checkModerationPermission(guild, member.user.id, "mod");
-  const _isOwner = await checkModerationPermission(
+  const isOwner = await checkModerationPermission(
     guild,
     member.user.id,
     "owner",
@@ -143,6 +145,10 @@ export async function buildDashboardContainer(member) {
         .setLabel("Remove")
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
+        .setCustomId("shantha_vc_delete")
+        .setLabel("Delete")
+        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
         .setCustomId("shantha_vc_leave")
         .setLabel("Leave")
         .setStyle(ButtonStyle.Secondary),
@@ -168,7 +174,7 @@ export async function buildDashboardContainer(member) {
         .setCustomId("shantha_automod_master")
         .setLabel(`Automod: ${onOff(automodOn)}`)
         .setStyle(ButtonStyle.Secondary)
-        .setDisabled(!isMod),
+        .setDisabled(!isOwner),
       new ButtonBuilder()
         .setCustomId("shantha_automod_limits")
         .setLabel("Edit Limits")
@@ -178,17 +184,17 @@ export async function buildDashboardContainer(member) {
         .setCustomId("shantha_automod_spam")
         .setLabel(`Spam: ${onOff(spamOn)}`)
         .setStyle(ButtonStyle.Secondary)
-        .setDisabled(!isMod),
+        .setDisabled(!isOwner),
       new ButtonBuilder()
         .setCustomId("shantha_automod_raid")
         .setLabel(`Raid: ${onOff(raidOn)}`)
         .setStyle(ButtonStyle.Secondary)
-        .setDisabled(!isMod),
+        .setDisabled(!isOwner),
       new ButtonBuilder()
         .setCustomId("shantha_automod_toxicity")
         .setLabel(`Toxicity: ${onOff(toxicityOn)}`)
         .setStyle(ButtonStyle.Secondary)
-        .setDisabled(!isMod),
+        .setDisabled(!isOwner),
     ),
   );
 
@@ -212,22 +218,22 @@ export async function buildDashboardContainer(member) {
         .setCustomId("shantha_purge_all")
         .setLabel("Purge All")
         .setStyle(ButtonStyle.Secondary)
-        .setDisabled(!isMod),
+        .setDisabled(!isOwner),
       new ButtonBuilder()
         .setCustomId("shantha_purge_user")
         .setLabel("Purge User")
         .setStyle(ButtonStyle.Secondary)
-        .setDisabled(!isMod),
+        .setDisabled(!isOwner),
       new ButtonBuilder()
         .setCustomId("shantha_purge_trail")
         .setLabel("Purge Trail")
         .setStyle(ButtonStyle.Secondary)
-        .setDisabled(!isMod),
+        .setDisabled(!isOwner),
       new ButtonBuilder()
         .setCustomId("shantha_purge_trail_user")
         .setLabel("Purge Trail User")
         .setStyle(ButtonStyle.Secondary)
-        .setDisabled(!isMod),
+        .setDisabled(!isOwner),
     ),
   );
 
@@ -286,12 +292,12 @@ export async function buildDashboardContainer(member) {
         .setCustomId("shantha_mod_kick")
         .setLabel("Kick")
         .setStyle(ButtonStyle.Danger)
-        .setDisabled(!isMod),
+        .setDisabled(!isOwner),
       new ButtonBuilder()
         .setCustomId("shantha_mod_ban")
         .setLabel("Ban")
         .setStyle(ButtonStyle.Danger)
-        .setDisabled(!isMod),
+        .setDisabled(!isOwner),
     ),
   );
 
@@ -426,18 +432,165 @@ export async function showSelectWithConfirm(
   });
 }
 
+async function showVCMemberSelectWithConfirm(
+  interaction,
+  channelId,
+  title,
+  description,
+  selectId,
+  confirmId,
+  confirmLabel,
+) {
+  const vcData = getVCData(channelId);
+  if (!vcData) {
+    return interaction.reply(eReply("Not found", "Private VC no longer exists."));
+  }
+
+  const options = [];
+  for (const userId of vcData.members) {
+    const member = await interaction.guild.members.fetch(userId).catch(() => null);
+    if (!member) continue;
+    options.push({
+      label: member.displayName.slice(0, 100),
+      value: member.id,
+      description: member.user.username.slice(0, 100),
+    });
+  }
+
+  if (!options.length) {
+    return interaction.reply(eReply("Not found", "This private VC has no removable members."));
+  }
+
+  const select = new StringSelectMenuBuilder()
+    .setCustomId(selectId)
+    .setPlaceholder("Select a member...")
+    .setMinValues(1)
+    .setMaxValues(1)
+    .addOptions(options.slice(0, 25));
+
+  const container = new ContainerBuilder().setAccentColor(0x00ced1);
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(`**${title}**\n${description}`),
+  );
+  container.addActionRowComponents(
+    new ActionRowBuilder().addComponents(select),
+  );
+  container.addActionRowComponents(
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(confirmId)
+        .setLabel(confirmLabel)
+        .setStyle(ButtonStyle.Danger),
+    ),
+  );
+  addFooter(container);
+
+  return interaction.reply({
+    components: [container],
+    flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+  });
+}
+
+async function showVCDeleteConfirm(interaction, channelId, title, description) {
+  const vcData = getVCData(channelId);
+  if (!vcData) {
+    return interaction.reply(eReply("Not found", "Private VC no longer exists."));
+  }
+
+  const channel = interaction.guild.channels.cache.get(channelId);
+  const container = new ContainerBuilder().setAccentColor(0xff5555);
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(
+      `**${title}**\n${description}\n\nSelected: **${channel?.name ?? "Private VC"}**`,
+    ),
+  );
+  container.addActionRowComponents(
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("shantha_vc_delete_confirm")
+        .setLabel("Confirm Delete")
+        .setStyle(ButtonStyle.Danger),
+    ),
+  );
+  addFooter(container);
+  setTempSelection(`${interaction.user.id}_delete_channel`, channelId);
+
+  return interaction.reply({
+    components: [container],
+    flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+  });
+}
+
+async function showOwnerVCSelect(
+  interaction,
+  title,
+  description,
+  selectId,
+  confirmLabel,
+) {
+  const vcs = listAllVCs(interaction.guild);
+  if (!vcs.length) {
+    return interaction.reply(eReply("Not found", "There are no active private VCs."));
+  }
+
+  const select = new StringSelectMenuBuilder()
+    .setCustomId(selectId)
+    .setPlaceholder("Select a private VC...")
+    .setMinValues(1)
+    .setMaxValues(1)
+    .addOptions(
+      vcs.slice(0, 25).map((vc) => ({
+        label: vc.name.slice(0, 100),
+        value: vc.channelId,
+        description: `Creator: ${(vc.creatorName ?? "Unknown").slice(0, 80)}`,
+      })),
+    );
+
+  const vcList = vcs
+    .slice(0, 10)
+    .map(
+      (vc, index) =>
+        `${index + 1}. **${vc.name}** — Creator: ${vc.creatorName ?? "Unknown"} — Members: ${vc.members.length}`,
+    )
+    .join("\n");
+
+  const container = new ContainerBuilder().setAccentColor(0x00ced1);
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(
+      `**${title}**\n${description}\n\n${vcList}`,
+    ),
+  );
+  container.addActionRowComponents(new ActionRowBuilder().addComponents(select));
+  container.addActionRowComponents(
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(selectId.replace("_select", "_confirm"))
+        .setLabel(confirmLabel)
+        .setStyle(ButtonStyle.Primary),
+    ),
+  );
+  addFooter(container);
+
+  return interaction.reply({
+    components: [container],
+    flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+  });
+}
+
 /**
  * Handles select menu interactions for the dashboard.
  * @param {import("discord.js").Interaction} interaction - The interaction to handle.
  * @returns {Promise<void>}
  */
 export async function handleDashboardSelect(interaction) {
-  if (!interaction.isUserSelectMenu()) return;
+  if (!interaction.isUserSelectMenu() && !interaction.isStringSelectMenu()) return;
   if (
     [
       "shantha_private_vc_select",
       "shantha_vc_add_select",
       "shantha_vc_remove_select",
+      "shantha_owner_vc_remove_select",
+      "shantha_owner_vc_delete_select",
       "shantha_purge_user_select",
       "shantha_purge_trail_user_select",
       "shantha_mod_timeout_select",
@@ -456,6 +609,13 @@ export async function handleDashboardSelect(interaction) {
     );
     return interaction.deferUpdate();
   }
+
+  return interaction.reply(
+    eReply(
+      "Notice",
+      "This dashboard selection is no longer available. Please use the latest Control Center message.",
+    ),
+  );
 }
 
 /**
@@ -489,7 +649,9 @@ export async function postDashboard(client) {
       flat.includes("Control Center") || flat.includes("shantha_vc_create")
     );
   });
-  const payload = await buildDashboardPayload(channel.guild.members.me);
+  const dashboardMember =
+    channel.guild.members.me ?? (await channel.guild.members.fetchMe());
+  const payload = await buildDashboardPayload(dashboardMember);
   if (existing) {
     const isLegacy = !!existing.embeds[0]?.title;
     if (isLegacy) {
@@ -525,18 +687,18 @@ export async function handleDashboardInteraction(interaction) {
   const { member } = interaction;
   switch (interaction.customId) {
     case "shantha_vc_create": {
-      if (!(await hasVCAccess(interaction.guild, member)))
+      if (!hasVCAccess(member))
         return interaction.reply(
           eReply(
             "Access denied",
-            "You need the Member role to use this.",
+            "You need the Member role to use private voice channels.",
           ),
         );
-      if (getVCByMember(interaction.user.id))
+      if (getVCByMember(interaction.user.id) || getVCByCreator(interaction.user.id))
         return interaction.reply(
           eReply(
             "Already active",
-            "You are already in a private VC. Leave it before creating a new one.",
+            "You already have an active private VC. Delete it or leave your current one before creating a new one.",
           ),
         );
       if (!canCreate())
@@ -558,17 +720,17 @@ export async function handleDashboardInteraction(interaction) {
       );
     }
     case "shantha_vc_add": {
-      if (!(await hasVCAccess(interaction.guild, member)))
+      if (!hasVCAccess(member))
         return interaction.reply(
           eReply(
             "Access denied",
-            "You need the Member role to use this.",
+            "You need the Member role to use private voice channels.",
           ),
         );
-      const addChannelId = getVCByMember(interaction.user.id);
+      const addChannelId = getVCByCreator(interaction.user.id);
       if (!addChannelId)
         return interaction.reply(
-          eReply("Not found", "You are not in a private VC."),
+          eReply("Not found", "You have not created a private VC."),
         );
       return showSelectWithConfirm(
         interaction,
@@ -581,53 +743,67 @@ export async function handleDashboardInteraction(interaction) {
       );
     }
     case "shantha_vc_remove": {
-      if (!(await hasVCAccess(interaction.guild, member)))
+      if (!hasVCAccess(member))
         return interaction.reply(
           eReply(
             "Access denied",
-            "You need the Member role to use this.",
+            "You need the Member role to use private voice channels.",
           ),
         );
-      const removeChannelId = getVCByMember(interaction.user.id);
-      if (!removeChannelId)
-        return interaction.reply(
-          eReply("Not found", "You are not in a private VC."),
-        );
-      const removeVcData = getVCData(removeChannelId);
-      if (
-        removeVcData &&
-        removeVcData.creatorId !== interaction.user.id &&
-        !(await checkModerationPermission(
-          interaction.guild,
-          interaction.user.id,
-          "mod",
-        ))
-      ) {
-        return interaction.reply(
-          eReply(
-            "Access denied",
-            "Only the creator of the VC or a moderator can remove members.",
-          ),
+      if (isOwner(member)) {
+        return showOwnerVCSelect(
+          interaction,
+          "Remove Member",
+          "Select a private VC first, then choose the member to remove.",
+          "shantha_owner_vc_remove_select",
+          "Select VC",
         );
       }
-      return showSelectWithConfirm(
+      const removeChannelId = getVCByCreator(interaction.user.id);
+      if (!removeChannelId)
+        return interaction.reply(
+          eReply("Not found", "You have not created a private VC."),
+        );
+      return showVCMemberSelectWithConfirm(
         interaction,
+        removeChannelId,
         "Remove Member",
-        "Select a member from the dropdown, then click Remove.",
+        "Select a member from your private VC, then click Remove Member.",
         "shantha_vc_remove_select",
         "shantha_vc_remove_confirm",
         "Remove Member",
-        1,
       );
     }
-    case "shantha_vc_leave": {
-      if (!(await hasVCAccess(interaction.guild, member)))
+    case "shantha_vc_delete": {
+      if (!hasVCAccess(member))
         return interaction.reply(
           eReply(
             "Access denied",
-            "You need the Member role to use this.",
+            "You need the Member role to use private voice channels.",
           ),
         );
+      if (isOwner(member)) {
+        return showOwnerVCSelect(
+          interaction,
+          "Delete Private VC",
+          "Select the private VC to delete.",
+          "shantha_owner_vc_delete_select",
+          "Review Delete",
+        );
+      }
+      const deleteChannelId = getVCByCreator(interaction.user.id);
+      if (!deleteChannelId)
+        return interaction.reply(
+          eReply("Not found", "You have not created a private VC."),
+        );
+      return showVCDeleteConfirm(
+        interaction,
+        deleteChannelId,
+        "Delete Private VC",
+        "Click Confirm Delete below to delete the private VC you created.",
+      );
+    }
+    case "shantha_vc_leave": {
       const leaveChannelId = getVCByMember(interaction.user.id);
       if (!leaveChannelId) {
         return interaction.reply(
@@ -642,7 +818,7 @@ export async function handleDashboardInteraction(interaction) {
       } catch (err) {
         console.error("[VC Leave]", err);
         return interaction.reply(
-          eReply("Error", "Failed to leave the VC."),
+          eReply("Error", formatDashboardError(err, "Failed to leave the VC.")),
         );
       }
     }
@@ -651,15 +827,23 @@ export async function handleDashboardInteraction(interaction) {
     case "shantha_automod_spam":
     case "shantha_automod_raid":
     case "shantha_automod_toxicity": {
+      const isLimitsAction =
+        interaction.customId === "shantha_automod_limits";
+      const requiredLevel = isLimitsAction ? "mod" : "owner";
       if (
         !(await checkModerationPermission(
           interaction.guild,
           interaction.user.id,
-          "mod",
+          requiredLevel,
         ))
       ) {
         return interaction.reply(
-          eReply("Access denied", "Only moderators can modify automod."),
+          eReply(
+            "Access denied",
+            isLimitsAction
+              ? "Only moderators can edit automod limits."
+              : "Only the owner can toggle automod.",
+          ),
         );
       }
       const current = await loadConfig();
@@ -714,6 +898,62 @@ export async function handleDashboardInteraction(interaction) {
       return interaction.update(await buildDashboardPayload(member));
     }
 
+    case "shantha_owner_vc_remove_confirm": {
+      if (!isOwner(member))
+        return interaction.reply(eReply("Access denied", "Owners only."));
+      const cacheKey = `${interaction.user.id}_shantha_owner_vc_remove_select`;
+      const values = getTempSelection(cacheKey) || [];
+      if (!values.length)
+        return interaction.reply(eReply("Notice", "Please select a VC first."));
+      tempSelections.delete(cacheKey);
+      setTempSelection(`${interaction.user.id}_owner_remove_channel`, values[0]);
+      return showVCMemberSelectWithConfirm(
+        interaction,
+        values[0],
+        "Remove Member",
+        "Select a member from the selected private VC, then click Remove Member.",
+        "shantha_vc_remove_select",
+        "shantha_vc_remove_confirm",
+        "Remove Member",
+      );
+    }
+    case "shantha_owner_vc_delete_confirm": {
+      if (!isOwner(member))
+        return interaction.reply(eReply("Access denied", "Owners only."));
+      const cacheKey = `${interaction.user.id}_shantha_owner_vc_delete_select`;
+      const values = getTempSelection(cacheKey) || [];
+      if (!values.length)
+        return interaction.reply(eReply("Notice", "Please select a VC first."));
+      tempSelections.delete(cacheKey);
+      const channelId = values[0];
+      return showVCDeleteConfirm(
+        interaction,
+        channelId,
+        "Delete Private VC",
+        "Click Confirm Delete below to delete the selected private VC.",
+      );
+    }
+    case "shantha_vc_delete_confirm": {
+      const channelId = getTempSelection(`${interaction.user.id}_delete_channel`);
+      tempSelections.delete(`${interaction.user.id}_delete_channel`);
+      if (!channelId)
+        return interaction.reply(eReply("Notice", "Please select a VC first."));
+      if (!getVCData(channelId))
+        return interaction.reply(eReply("Not found", "Private VC no longer exists."));
+      if (!canManageVC(channelId, interaction.member))
+        return interaction.reply(
+          eReply("Access denied", "Only the VC creator or owner can delete this VC."),
+        );
+      try {
+        await forceDeleteVC(channelId, interaction.guild);
+        return interaction.reply(eReply("VC deleted", "The selected private VC has been deleted."));
+      } catch (err) {
+        console.error("[VC Delete Confirm]", err);
+        return interaction.reply(
+          eReply("Error", formatDashboardError(err, "Failed to delete VC.")),
+        );
+      }
+    }
     case "shantha_private_vc_confirm": {
       const createCacheKey = `${interaction.user.id}_shantha_private_vc_select`;
       const createValues = getTempSelection(createCacheKey) || [];
@@ -721,9 +961,20 @@ export async function handleDashboardInteraction(interaction) {
 
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-      if (getVCByMember(interaction.user.id))
+      if (!hasVCAccess(member))
         return interaction.editReply(
-          eReply("Already active", "You are already in a private VC. Leave it before creating a new one."),
+          eReply(
+            "Access denied",
+            "You need the Member role to use private voice channels.",
+          ),
+        );
+
+      if (getVCByMember(interaction.user.id) || getVCByCreator(interaction.user.id))
+        return interaction.editReply(
+          eReply(
+            "Already active",
+            "You already have an active private VC. Delete it or leave your current one before creating a new one.",
+          ),
         );
       if (!canCreate())
         return interaction.editReply(
@@ -767,7 +1018,7 @@ export async function handleDashboardInteraction(interaction) {
       } catch (err) {
         console.error("[VC Create]", err);
         return interaction.editReply(
-          eReply("Error", "Failed to create VC."),
+          eReply("Error", formatDashboardError(err, "Failed to create VC.")),
         );
       }
     }
@@ -782,10 +1033,10 @@ export async function handleDashboardInteraction(interaction) {
 
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-      const addChannelId = getVCByMember(interaction.user.id);
+      const addChannelId = getVCByCreator(interaction.user.id);
       if (!addChannelId)
         return interaction.editReply(
-          eReply("Not found", "You are not in a private VC."),
+          eReply("Not found", "You have not created a private VC."),
         );
 
       const addTarget = await interaction.guild.members
@@ -797,7 +1048,12 @@ export async function handleDashboardInteraction(interaction) {
         return interaction.editReply(eReply("Invalid", "You cannot add bots."));
 
       const addVcData = getVCData(addChannelId);
-      if (addVcData && addVcData.members.has(addTarget.id))
+      if (!addVcData || !isVCCreator(addChannelId, interaction.member)) {
+        return interaction.editReply(
+          eReply("Access denied", "You can only add members to a VC you created."),
+        );
+      }
+      if (addVcData.members.has(addTarget.id))
         return interaction.editReply(
           eReply("Already added", `<@${addTarget.id}> is already in this VC.`),
         );
@@ -810,7 +1066,7 @@ export async function handleDashboardInteraction(interaction) {
         const ok = await addMember(addChannelId, addTarget, interaction.guild);
         if (!ok)
           return interaction.editReply(
-            eReply("Error", "Failed to add member."),
+            eReply("Error", "Private VC no longer exists."),
           );
         return interaction.editReply(
           eReply(
@@ -821,7 +1077,7 @@ export async function handleDashboardInteraction(interaction) {
       } catch (err) {
         console.error("[VC Add]", err);
         return interaction.editReply(
-          eReply("Error", "Failed to add member."),
+          eReply("Error", formatDashboardError(err, "Failed to add member.")),
         );
       }
     }
@@ -836,25 +1092,20 @@ export async function handleDashboardInteraction(interaction) {
 
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-      const rmChannelId = getVCByMember(interaction.user.id);
+      const ownerTarget = getTempSelection(
+        `${interaction.user.id}_owner_remove_channel`,
+      );
+      const rmChannelId = ownerTarget || getVCByCreator(interaction.user.id);
+      tempSelections.delete(`${interaction.user.id}_owner_remove_channel`);
       if (!rmChannelId)
         return interaction.editReply(
-          eReply("Not found", "You are not in a private VC."),
+          eReply("Not found", "You have not created a private VC."),
         );
 
       const rmVcData = getVCData(rmChannelId);
-      const isMod = await checkModerationPermission(
-        interaction.guild,
-        interaction.user.id,
-        "mod",
-      );
-      if (
-        rmVcData &&
-        rmVcData.creatorId !== interaction.user.id &&
-        !isMod
-      )
+      if (!rmVcData || !canManageVC(rmChannelId, interaction.member))
         return interaction.editReply(
-          eReply("Access denied", "Only the creator of the VC or a moderator can remove members."),
+          eReply("Access denied", "Only the VC creator or owner can remove members."),
         );
 
       const rmTarget = await interaction.guild.members
@@ -862,7 +1113,7 @@ export async function handleDashboardInteraction(interaction) {
         .catch(() => null);
       if (!rmTarget)
         return interaction.editReply(eReply("Not found", "Member not found."));
-      if (rmTarget.id === interaction.user.id)
+      if (!ownerTarget && rmTarget.id === interaction.user.id)
         return interaction.editReply(
           eReply("Invalid", "You cannot remove yourself. Use Leave instead."),
         );
@@ -879,7 +1130,7 @@ export async function handleDashboardInteraction(interaction) {
       } catch (err) {
         console.error("[VC Remove]", err);
         return interaction.editReply(
-          eReply("Error", "Failed to remove member."),
+          eReply("Error", formatDashboardError(err, "Failed to remove member.")),
         );
       }
     }
@@ -1035,6 +1286,7 @@ export async function handleDashboardInteraction(interaction) {
       setTempSelection(`${interaction.user.id}_mod_target`, member.id);
 
       if (action === "shantha_mod_remtimeout") {
+        tempSelections.delete(`${interaction.user.id}_mod_target`);
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         try {
           await removeTimeout(
@@ -1045,14 +1297,18 @@ export async function handleDashboardInteraction(interaction) {
             eReply("Success", `Removed timeout from ${member.user.tag}.`),
           );
         } catch (err) {
-          console.error(err);
+          console.error("[Dashboard Moderation] Remove timeout failed:", err);
           return interaction.editReply(
-            eReply("Error", "Failed to remove timeout."),
+            eReply(
+              "Error",
+              formatDashboardError(err, "Failed to remove timeout."),
+            ),
           );
         }
       }
 
       if (action === "shantha_mod_unmute") {
+        tempSelections.delete(`${interaction.user.id}_mod_target`);
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         try {
           await voiceUnmute(
@@ -1063,12 +1319,15 @@ export async function handleDashboardInteraction(interaction) {
             eReply("Success", `Unmuted ${member.user.tag}.`),
           );
         } catch (err) {
-          console.error(err);
-          return interaction.editReply(eReply("Error", "Failed to unmute."));
+          console.error("[Dashboard Moderation] Unmute failed:", err);
+          return interaction.editReply(
+            eReply("Error", formatDashboardError(err, "Failed to unmute.")),
+          );
         }
       }
 
       if (action === "shantha_mod_undeafen") {
+        tempSelections.delete(`${interaction.user.id}_mod_target`);
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         try {
           await voiceUndeafen(
@@ -1079,8 +1338,10 @@ export async function handleDashboardInteraction(interaction) {
             eReply("Success", `Undeafened ${member.user.tag}.`),
           );
         } catch (err) {
-          console.error(err);
-          return interaction.editReply(eReply("Error", "Failed to undeafen."));
+          console.error("[Dashboard Moderation] Undeafen failed:", err);
+          return interaction.editReply(
+            eReply("Error", formatDashboardError(err, "Failed to undeafen.")),
+          );
         }
       }
 
@@ -1213,6 +1474,13 @@ export async function handleDashboardInteraction(interaction) {
       )
         return interaction.reply(eReply("Notice", "Moderators only."));
       return await refresh.execute(interaction);
+    default:
+      return interaction.reply(
+        eReply(
+          "Notice",
+          "This dashboard action is no longer available. Please use the latest Control Center message.",
+        ),
+      );
   }
 }
 
@@ -1224,6 +1492,17 @@ export async function handleDashboardInteraction(interaction) {
 export async function handleDashboardModal(interaction) {
   if (!interaction.isModalSubmit()) return;
   if (interaction.customId === "shantha_automod_limits_modal") {
+    if (
+      !(await checkModerationPermission(
+        interaction.guild,
+        interaction.user.id,
+        "mod",
+      ))
+    ) {
+      return interaction.reply(
+        eReply("Access denied", "Only moderators can edit automod limits."),
+      );
+    }
     const rawMsg = parseInt(interaction.fields.getTextInputValue("limit_msg"));
     const msg = isNaN(rawMsg) ? 5 : rawMsg;
     const rawChDel = parseInt(
@@ -1249,58 +1528,6 @@ export async function handleDashboardModal(interaction) {
     });
     await interaction.reply(eReply("Notice", "Automod limits updated."));
     await postDashboard(interaction.client);
-    return;
-  }
-  if (interaction.customId === "shantha_private_vc_modal") {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-    const members = [];
-    for (let i = 1; i <= 5; i++) {
-      const val = interaction.fields.getTextInputValue(`member${i}`)?.trim();
-      if (val) members.push(val);
-    }
-    const resolvedMembers = [];
-    for (const val of members) {
-      const user = await resolveMemberFromInput(interaction.guild, val);
-      if (user && !user.user.bot) resolvedMembers.push(user);
-    }
-    if (!resolvedMembers.find((m) => m.id === interaction.user.id)) {
-      const invoker = await interaction.guild.members.fetch(
-        interaction.user.id,
-      );
-      resolvedMembers.unshift(invoker);
-    }
-
-    interaction.options = {
-      getUser: (key) =>
-        resolvedMembers[key.replace("member", "") - 1]?.user || null,
-    };
-    await privateVC.execute(interaction);
-    return;
-  }
-  if (interaction.customId === "shantha_vc_add_modal") {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-    const raw = interaction.fields.getTextInputValue("member")?.trim();
-    const member = raw
-      ? await resolveMemberFromInput(interaction.guild, raw)
-      : null;
-    if (!member) {
-      return interaction.editReply(eReply("Notice", "Member not found."));
-    }
-    interaction.options = { getUser: () => member.user };
-    await privateVCAdd.execute(interaction);
-    return;
-  }
-  if (interaction.customId === "shantha_vc_remove_modal") {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-    const raw = interaction.fields.getTextInputValue("member")?.trim();
-    const member = raw
-      ? await resolveMemberFromInput(interaction.guild, raw)
-      : null;
-    if (!member) {
-      return interaction.editReply(eReply("Notice", "Member not found."));
-    }
-    interaction.options = { getUser: () => member.user };
-    await privateVCRemove.execute(interaction);
     return;
   }
   if (
@@ -1363,11 +1590,19 @@ export async function handleDashboardModal(interaction) {
           resultStr = await ban(targetMember, days, reason);
           break;
         }
+        default:
+          return interaction.editReply(
+            eReply("Error", "Unknown moderation action."),
+          );
       }
       return interaction.editReply(eReply("Moderation Action", resultStr));
     } catch (err) {
+      console.error(
+        `[Dashboard Moderation] ${action} failed for ${targetMember.id}:`,
+        err,
+      );
       return interaction.editReply(
-        eReply("Error", err.message || "Action failed."),
+        eReply("Error", formatDashboardError(err)),
       );
     }
   }
@@ -1442,7 +1677,21 @@ export async function handleDashboardModal(interaction) {
       getString: (key) => (key === "mode" ? mode : messageId),
       getUser: () => (user ? user.user : null),
     };
-    await purge.execute(interaction);
+    try {
+      await purge.execute(interaction);
+    } catch (err) {
+      console.error(`[Dashboard Purge] ${interaction.customId} failed:`, err);
+      return interaction.editReply(
+        eReply("Error", formatDashboardError(err, "Failed to purge messages.")),
+      );
+    }
     return;
   }
+
+  return interaction.reply(
+    eReply(
+      "Notice",
+      "This dashboard form is no longer available. Please use the latest Control Center message.",
+    ),
+  );
 }

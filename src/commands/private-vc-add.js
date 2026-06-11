@@ -2,7 +2,10 @@ import { SlashCommandBuilder, MessageFlags } from "discord.js";
 import {
   getVCByMember,
   getVCData,
+  getVCByCreator,
   addMember,
+  isVCCreator,
+  hasVCAccess,
 } from "../utils/privateVCManager.js";
 import { eSend } from "../utils/embed.js";
 import { i } from "../utils/icons.js";
@@ -32,23 +35,23 @@ export default {
     const guild = interaction.guild;
     const invokerId = interaction.user.id;
 
-    const channelId = getVCByMember(invokerId);
+    if (!hasVCAccess(interaction.member)) {
+      return interaction.editReply(
+        eSend(
+          `${i("LOCK")} ᴀᴄᴄᴇss ᴅᴇɴɪᴇᴅ`,
+          "ʏᴏᴜ ɴᴇᴇᴅ ᴛʜᴇ ᴍᴇᴍʙᴇʀ ʀᴏʟᴇ ᴛᴏ ᴜsᴇ ᴘʀɪᴠᴀᴛᴇ ᴠᴄs.",
+        ),
+      );
+    }
+
+    const channelId = getVCByCreator(invokerId);
     if (!channelId) {
       return interaction.editReply(
-        eSend(`${i("ERROR")} ɴᴏᴛ ғᴏᴜɴᴅ`, "ʏᴏᴜ ᴀʀᴇ ɴᴏᴛ ɪɴ ᴀ ᴘʀɪᴠᴀᴛᴇ ᴠᴄ."),
+        eSend(`${i("ERROR")} ɴᴏᴛ ғᴏᴜɴᴅ`, "ʏᴏᴜ ʜᴀᴠᴇ ɴᴏᴛ ᴄʀᴇᴀᴛᴇᴅ ᴀ ᴘʀɪᴠᴀᴛᴇ ᴠᴄ."),
       );
     }
 
     const invokerMember = interaction.member;
-
-    if (invokerMember.voice?.channelId !== channelId) {
-      return interaction.editReply(
-        eSend(
-          `${i("ERROR")} ɴᴏᴛ ᴄᴏɴɴᴇᴄᴛᴇᴅ`,
-          "ʏᴏᴜ ᴍᴜsᴛ ʙᴇ ᴄᴏɴɴᴇᴄᴛᴇᴅ ᴛᴏ ʏᴏᴜʀ ᴘʀɪᴠᴀᴛᴇ ᴠᴄ ᴛᴏ ᴜsᴇ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ.",
-        ),
-      );
-    }
 
     const targetUser = interaction.options.getUser("member");
 
@@ -59,6 +62,14 @@ export default {
     }
 
     const data = getVCData(channelId);
+    if (!data || !isVCCreator(channelId, invokerMember)) {
+      return interaction.editReply(
+        eSend(
+          `${i("LOCK")} ᴀᴄᴄᴇss ᴅᴇɴɪᴇᴅ`,
+          "ʏᴏᴜ ᴄᴀɴ ᴏɴʟʏ ᴀᴅᴅ ᴍᴇᴍʙᴇʀs ᴛᴏ ᴀ ᴠᴄ ʏᴏᴜ ᴄʀᴇᴀᴛᴇᴅ.",
+        ),
+      );
+    }
 
     if (data.members.has(targetUser.id)) {
       return interaction.editReply(

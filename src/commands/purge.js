@@ -167,7 +167,7 @@ export default {
       !(await checkModerationPermission(
         interaction.guild,
         interaction.user.id,
-        "mod",
+        "owner",
       ))
     ) {
       return replyFn(

@@ -14,11 +14,14 @@ import {
   SeparatorSpacingSize,
 } from "discord.js";
 import { icon } from "../../utils/icons.js";
-import config from "../config.js";
+import agentConfig from "../config.js";
+import rootConfig from "../../../config.js";
 import {
   createPrivateVC,
   canCreate,
   getVCByMember,
+  getVCByCreator,
+  hasVCAccess,
 } from "../../utils/privateVCManager.js";
 import * as modTools from "../../utils/moderation.js";
 
@@ -77,10 +80,10 @@ export const commandExecutorTool = tool({
     username: z.string().optional().describe("invoking user's username"),
   }),
   execute: async ({ command, parameters, channelId, userId, guildId }) => {
-    if (!config.commandExecution.enabled) {
+    if (!agentConfig.commandExecution.enabled) {
       return { success: false, error: "Command execution disabled" };
     }
-    if (config.commandExecution.blockedCommands.includes(command)) {
+    if (agentConfig.commandExecution.blockedCommands.includes(command)) {
       return {
         success: false,
         error: `The /${command} command can only be used as a Discord slash command, not via chat.`,
@@ -622,7 +625,15 @@ export const createPrivateVCTool = tool({
       if (!invoker)
         return { success: false, error: "Invoker not found in server" };
 
-      if (getVCByMember(invokerUserId)) {
+      if (!hasVCAccess(invoker)) {
+        return {
+          success: false,
+          error:
+            "You need the Member role to use private voice channels.",
+        };
+      }
+
+      if (getVCByMember(invokerUserId) || getVCByCreator(invokerUserId)) {
         return {
           success: false,
           error: "You already have an active private VC. Leave it first.",
@@ -701,7 +712,7 @@ export const escalateTicketTool = tool({
       if (!channel) return { output: `[SYSTEM] Could not find channel.` };
 
       await channel.send({
-        content: `${icon("BELL")} <@&${config.moderatorRoleId}> **TICKET ESCALATION!**\n**AI Context Summary:**\n> ${summary}`,
+        content: `${icon("BELL")} <@&${rootConfig.moderatorRoleId}> **TICKET ESCALATION!**\n**AI Context Summary:**\n> ${summary}`,
       });
 
       return {
