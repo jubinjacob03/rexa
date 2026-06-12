@@ -93,12 +93,6 @@ function formatDashboardError(err, fallback = "Action failed.") {
  */
 export async function buildDashboardContainer(member) {
   const guild = member.guild;
-  const isMod = await checkModerationPermission(guild, member.user.id, "mod");
-  const isOwner = await checkModerationPermission(
-    guild,
-    member.user.id,
-    "owner",
-  );
 
   const automodConfig = await loadConfig();
   const automodOn = automodConfig.enabled;
@@ -161,39 +155,30 @@ export async function buildDashboardContainer(member) {
   );
 
   container.addTextDisplayComponents(
-    new TextDisplayBuilder().setContent(
-      isMod
-        ? `### ${icon("BOT")} AutoMOD\n**Master :** ${onOff(automodOn)} • **Spam :** ${onOff(spamOn)} • **Raid :** ${onOff(raidOn)} • **Toxicity :** ${onOff(toxicityOn)}`
-        : `### ${icon("BOT")} AutoMOD\n${icon("LOCK")} *Requires moderator permissions*`,
-    ),
+    new TextDisplayBuilder().setContent(`### ${icon("BOT")} AutoMOD\n**Master :** ${onOff(automodOn)} • **Spam :** ${onOff(spamOn)} • **Raid :** ${onOff(raidOn)} • **Toxicity :** ${onOff(toxicityOn)}`),
   );
   container.addActionRowComponents(
     new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("shantha_automod_master")
         .setLabel(`Automod: ${onOff(automodOn)}`)
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(!isOwner),
+        .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId("shantha_automod_limits")
         .setLabel("Edit Limits")
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(!isMod),
+        .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId("shantha_automod_spam")
         .setLabel(`Spam: ${onOff(spamOn)}`)
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(!isOwner),
+        .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId("shantha_automod_raid")
         .setLabel(`Raid: ${onOff(raidOn)}`)
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(!isOwner),
+        .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId("shantha_automod_toxicity")
         .setLabel(`Toxicity: ${onOff(toxicityOn)}`)
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(!isOwner),
+        .setStyle(ButtonStyle.Secondary),
     ),
   );
 
@@ -204,11 +189,7 @@ export async function buildDashboardContainer(member) {
   );
 
   container.addTextDisplayComponents(
-    new TextDisplayBuilder().setContent(
-      isMod
-        ? `### ${icon("PURGE")} Purge\nPurge messages and manage server content.`
-        : `### ${icon("PURGE")} Purge\n${icon("LOCK")} *Requires moderator permissions*`,
-    ),
+    new TextDisplayBuilder().setContent(`### ${icon("PURGE")} Purge\nPurge messages and manage server content.`),
   );
 
   container.addActionRowComponents(
@@ -216,23 +197,19 @@ export async function buildDashboardContainer(member) {
       new ButtonBuilder()
         .setCustomId("shantha_purge_all")
         .setLabel("Purge All")
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(!isOwner),
+        .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId("shantha_purge_user")
         .setLabel("Purge User")
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(!isOwner),
+        .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId("shantha_purge_trail")
         .setLabel("Purge Trail")
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(!isOwner),
+        .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId("shantha_purge_trail_user")
         .setLabel("Purge Trail User")
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(!isOwner),
+        .setStyle(ButtonStyle.Secondary),
     ),
   );
 
@@ -243,11 +220,7 @@ export async function buildDashboardContainer(member) {
   );
 
   container.addTextDisplayComponents(
-    new TextDisplayBuilder().setContent(
-      isMod
-        ? `### ${icon("CHANNELS")} System\nStatus and moderation tools.`
-        : `### ${icon("CHANNELS")} System\n${icon("LOCK")} *Requires moderator permissions*`,
-    ),
+    new TextDisplayBuilder().setContent(`### ${icon("CHANNELS")} System\nStatus and moderation tools.`),
   );
 
   container.addActionRowComponents(
@@ -255,23 +228,19 @@ export async function buildDashboardContainer(member) {
       new ButtonBuilder()
         .setCustomId("shantha_mod_timeout")
         .setLabel("Timeout")
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(!isMod),
+        .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId("shantha_mod_remtimeout")
         .setLabel("Remove Timeout")
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(!isMod),
+        .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId("shantha_mod_mute")
         .setLabel("Mute")
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(!isMod),
+        .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId("shantha_mod_unmute")
         .setLabel("Unmute")
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(!isMod),
+        .setStyle(ButtonStyle.Secondary),
     ),
   );
 
@@ -280,23 +249,19 @@ export async function buildDashboardContainer(member) {
       new ButtonBuilder()
         .setCustomId("shantha_mod_deafen")
         .setLabel("Deafen")
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(!isMod),
+        .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId("shantha_mod_undeafen")
         .setLabel("Undeafen")
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(!isMod),
+        .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId("shantha_mod_kick")
         .setLabel("Kick")
-        .setStyle(ButtonStyle.Danger)
-        .setDisabled(!isOwner),
+        .setStyle(ButtonStyle.Danger),
       new ButtonBuilder()
         .setCustomId("shantha_mod_ban")
         .setLabel("Ban")
-        .setStyle(ButtonStyle.Danger)
-        .setDisabled(!isOwner),
+        .setStyle(ButtonStyle.Danger),
     ),
   );
 
