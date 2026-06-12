@@ -362,7 +362,7 @@ export async function handleVerificationApply(interaction) {
     const approvalSection = new SectionBuilder()
       .addTextDisplayComponents(
         new TextDisplayBuilder().setContent(
-          `## ${isModerator ? icon("MODERATOR") : icon("MEMBER_ROLE")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ\n> <@${userId}> ɪs ʀᴇǫᴜᴇsᴛɪɴɢ ᴀᴄᴄᴇss ᴛᴏ ᴛʜᴇ sᴇʀᴠᴇʀ.\n\n${icon("USER")} **ᴀᴘᴘʟɪᴄᴀɴᴛ : ** <@${userId}>\n\n${icon("MEMO")} **ᴜsᴇʀɴᴀᴍᴇ : ** \`${username}\`\n\n${icon("TYPE")} **ᴛᴀʀɢᴇᴛ ʀᴏʟᴇ : ** \`${requestedRole}\`\n\n${icon("KEYLOCK")} **ɪᴅᴇɴᴛɪғɪᴇʀ : ** \`${userId}\``,
+          `## ${isModerator ? icon("MODERATOR") : icon("MEMBER_ROLE")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ\n> <@${userId}> ɪs ʀᴇǫᴜᴇsᴛɪɴɢ ᴀᴄᴄᴇss ᴛᴏ ᴛʜᴇ sᴇʀᴠᴇʀ.\n\n${icon("PROFILE")} **ᴀᴘᴘʟɪᴄᴀɴᴛ : ** <@${userId}>\n\n${icon("MEMO")} **ᴜsᴇʀɴᴀᴍᴇ : ** \`${username}\`\n\n${icon("TYPE")} **ᴛᴀʀɢᴇᴛ ʀᴏʟᴇ : ** \`${requestedRole}\`\n\n${icon("KEYLOCK")} **ɪᴅᴇɴᴛɪғɪᴇʀ : ** \`${userId}\``,
         ),
       )
       .setThumbnailAccessory(new ThumbnailBuilder().setURL(userAvatar));
@@ -438,11 +438,13 @@ export async function handleSelfRoleToggle(interaction) {
   const roleInfo = SELF_ROLE_MAP[interaction.customId];
   if (!roleInfo) return;
 
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
   const guild =
     interaction.guild ||
     (await interaction.client.guilds.fetch(GUILD_ID).catch(() => null));
   if (!guild) {
-    return interaction.reply(
+    return interaction.editReply(
       eReply(`${i("ERROR")} ɴᴏᴛ ғᴏᴜɴᴅ`, "sᴇʀᴠᴇʀ ɴᴏᴛ ғᴏᴜɴᴅ."),
     );
   }
@@ -451,7 +453,7 @@ export async function handleSelfRoleToggle(interaction) {
     .fetch(interaction.user.id)
     .catch(() => null);
   if (!member) {
-    return interaction.reply(
+    return interaction.editReply(
       eReply(`${i("ERROR")} ɴᴏᴛ ғᴏᴜɴᴅ`, "ᴜsᴇʀ ɴᴏᴛ ғᴏᴜɴᴅ."),
     );
   }
@@ -461,7 +463,7 @@ export async function handleSelfRoleToggle(interaction) {
   try {
     if (hasRole) {
       await member.roles.remove(roleInfo.id);
-      return interaction.reply(
+      return interaction.editReply(
         eReply(
           `${i("DONE")} ʀᴏʟᴇ ʀᴇᴍᴏᴠᴇᴅ`,
           `ʀᴇᴍᴏᴠᴇᴅ **${roleInfo.label}** ғʀᴏᴍ ʏᴏᴜʀ ʀᴏʟᴇs.`,
@@ -470,7 +472,7 @@ export async function handleSelfRoleToggle(interaction) {
     }
 
     await member.roles.add(roleInfo.id);
-    return interaction.reply(
+    return interaction.editReply(
       eReply(
         `${i("DONE")} ʀᴏʟᴇ ᴀᴅᴅᴇᴅ`,
         `ᴀssɪɢɴᴇᴅ **${roleInfo.label}** ᴛᴏ ʏᴏᴜʀ ʀᴏʟᴇs.`,
@@ -478,7 +480,7 @@ export async function handleSelfRoleToggle(interaction) {
     );
   } catch (error) {
     log.error("Failed to toggle self role:", error);
-    return interaction.reply(
+    return interaction.editReply(
       eReply(`${i("ERROR")} ᴇʀʀᴏʀ`, "ғᴀɪʟᴇᴅ ᴛᴏ ᴜᴘᴅᴀᴛᴇ ʏᴏᴜʀ ʀᴏʟᴇ."),
     );
   }
@@ -501,6 +503,8 @@ export async function handleVerificationDM(message) {
       .catch(() => null);
     return true;
   }
+
+  pendingInterrogations.delete(message.author.id);
 
   try {
     const analyzingMsg = await message.author
@@ -645,7 +649,7 @@ export async function handleApprovalAction(interaction) {
       const rejectedSection = new SectionBuilder()
         .addTextDisplayComponents(
           new TextDisplayBuilder().setContent(
-            `## ${icon("ERROR")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇᴊᴇᴄᴛᴇᴅ\n> <@${userId}> ᴡᴀs ᴅᴇɴɪᴇᴅ ᴀᴄᴄᴇss.\n\n${icon("USER")} **ᴀᴘᴘʟɪᴄᴀɴᴛ : ** <@${userId}>\n\n${icon("TYPE")} **ʀᴇǫᴜᴇsᴛᴇᴅ ʀᴏʟᴇ : ** \`${request.requestedRole}\`\n\n${icon("MODERATOR")} **ʀᴇᴊᴇᴄᴛᴇᴅ ʙʏ : ** <@${interaction.user.id}>`,
+            `## ${icon("ERROR")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇᴊᴇᴄᴛᴇᴅ\n> <@${userId}> ᴡᴀs ᴅᴇɴɪᴇᴅ ᴀᴄᴄᴇss.\n\n${icon("PROFILE")} **ᴀᴘᴘʟɪᴄᴀɴᴛ : ** <@${userId}>\n\n${icon("TYPE")} **ʀᴇǫᴜᴇsᴛᴇᴅ ʀᴏʟᴇ : ** \`${request.requestedRole}\`\n\n${icon("MODERATOR")} **ʀᴇᴊᴇᴄᴛᴇᴅ ʙʏ : ** <@${interaction.user.id}>`,
           ),
         )
         .setThumbnailAccessory(new ThumbnailBuilder().setURL(userAvatar));
@@ -760,7 +764,12 @@ export async function handleNicknameModal(interaction) {
 
     await member.roles.add(roleId);
 
-    await member.setNickname(finalNickname);
+    await member.setNickname(finalNickname).catch((err) => {
+      log.warn(
+        `Could not set nickname for ${userId} (role still granted):`,
+        err?.message ?? err,
+      );
+    });
 
     const userAvatar = member.user.displayAvatarURL({
       dynamic: true,
@@ -769,7 +778,7 @@ export async function handleNicknameModal(interaction) {
     const approvedSection = new SectionBuilder()
       .addTextDisplayComponents(
         new TextDisplayBuilder().setContent(
-          `## ${icon("SUCCESS")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ\n> <@${userId}> ᴡᴀs ɢʀᴀɴᴛᴇᴅ ᴀᴄᴄᴇss.\n\n${icon("USER")} **ᴍᴇᴍʙᴇʀ : ** <@${userId}>\n\n${icon("TYPE")} **ᴀssɪɢɴᴇᴅ ʀᴏʟᴇ : ** \`${request.requestedRole}\`\n\n${icon("EDITOR")} **ɴɪᴄᴋɴᴀᴍᴇ : ** \`${finalNickname}\`\n\n${icon("MODERATOR")} **ᴀᴘᴘʀᴏᴠᴇᴅ ʙʏ : ** <@${interaction.user.id}>`,
+          `## ${icon("SUCCESS")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ\n> <@${userId}> ᴡᴀs ɢʀᴀɴᴛᴇᴅ ᴀᴄᴄᴇss.\n\n${icon("PROFILE")} **ᴍᴇᴍʙᴇʀ : ** <@${userId}>\n\n${icon("TYPE")} **ᴀssɪɢɴᴇᴅ ʀᴏʟᴇ : ** \`${request.requestedRole}\`\n\n${icon("EDITOR")} **ɴɪᴄᴋɴᴀᴍᴇ : ** \`${finalNickname}\`\n\n${icon("MODERATOR")} **ᴀᴘᴘʀᴏᴠᴇᴅ ʙʏ : ** <@${interaction.user.id}>`,
         ),
       )
       .setThumbnailAccessory(new ThumbnailBuilder().setURL(userAvatar));

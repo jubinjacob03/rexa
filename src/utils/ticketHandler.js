@@ -287,6 +287,10 @@ export async function handleTicketInteraction(interaction) {
             type: btn.type,
             content: btn.content,
           });
+          if (global.customActions.size > 500) {
+            const oldestKey = global.customActions.keys().next().value;
+            global.customActions.delete(oldestKey);
+          }
 
           if (supabase) {
             try {

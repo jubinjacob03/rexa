@@ -123,6 +123,6 @@ export default {
       }
     }
 
-    setTimeout(() => updateStatusMessage(member.client), 2000);
+    setTimeout(() => updateStatusMessage(member.client, false), 2000);
   },
 };

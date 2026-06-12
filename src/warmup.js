@@ -1,4 +1,7 @@
 import { soundCache } from "./voice/SoundCache.js";
+import { installGlobalConsole } from "./utils/logger.js";
+
+installGlobalConsole();
 
 console.log("[INFO] Warmup: starting cache restore...");
 

@@ -26,7 +26,6 @@ let _discordClient = null;
  */
 export function initializeExecutor(client) {
   _discordClient = client;
-  console.log("[EXECUTOR] Initialized with Discord client");
 }
 
 /**

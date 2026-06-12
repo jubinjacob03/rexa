@@ -5,14 +5,6 @@
 
 import { tool } from "ai";
 import { z } from "zod";
-import {
-  ContainerBuilder,
-  TextDisplayBuilder,
-  SeparatorBuilder,
-  SectionBuilder,
-  ThumbnailBuilder,
-  SeparatorSpacingSize,
-} from "discord.js";
 import { icon } from "../../utils/icons.js";
 import agentConfig from "../config.js";
 import rootConfig from "../../../config.js";
@@ -21,7 +13,6 @@ import {
   canCreate,
   getVCByMember,
   getVCByCreator,
-  hasVCAccess,
 } from "../../utils/privateVCManager.js";
 import * as modTools from "../../utils/moderation.js";
 
@@ -34,7 +25,6 @@ let client = null;
 export function initializeTools(discordClient) {
   client = discordClient;
   modTools.setupModerationTools(discordClient);
-  console.log("[TOOLS] Initialized with Discord client");
 }
 
 const memberCacheMap = new Map();
@@ -478,122 +468,6 @@ export const musicControlTool = tool({
 });
 
 /**
- * Embed Generator Tool - Creates beautiful Discord embeds.
- */
-export const embedGeneratorTool = tool({
-  description: `Create beautiful Discord embeds with rich formatting, colors, fields, and images.`,
-  parameters: z.object({
-    title: z.string(),
-    description: z.string().optional(),
-    color: z.string().optional(),
-    fields: z
-      .array(
-        z.object({
-          name: z.string(),
-          value: z.string(),
-          inline: z.boolean().optional(),
-        }),
-      )
-      .optional(),
-    thumbnail: z.string().optional(),
-    image: z.string().optional(),
-    footer: z.string().optional(),
-    userId: z.string().optional().describe("invoking user's Discord ID"),
-    guildId: z.string().optional().describe("server ID"),
-    username: z.string().optional().describe("invoking user's username"),
-  }),
-  execute: async ({
-    title,
-    description,
-    color,
-    fields,
-    thumbnail,
-    image,
-    footer,
-  }) => {
-    try {
-      const container = new ContainerBuilder();
-      const colors = {
-        blue: "#3498db",
-        green: "#2ecc71",
-        red: "#e74c3c",
-        purple: "#9b59b6",
-        gold: "#f1c40f",
-        orange: "#e67e22",
-      };
-
-      let hexColor = colors[color?.toLowerCase()] || color || "#3498db";
-      if (typeof hexColor === "string") {
-        hexColor = parseInt(hexColor.replace("#", ""), 16);
-      }
-      container.setAccentColor(hexColor);
-
-      let headerText = "";
-      if (title) headerText += `## ${title}\n`;
-      if (description) headerText += `${description}`;
-
-      if (headerText) {
-        if (thumbnail) {
-          const section = new SectionBuilder()
-            .addTextDisplayComponents(
-              new TextDisplayBuilder().setContent(headerText.trim()),
-            )
-            .setThumbnailAccessory(new ThumbnailBuilder().setURL(thumbnail));
-          container.addSectionComponents(section);
-        } else {
-          container.addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(headerText.trim()),
-          );
-        }
-      }
-
-      if (fields && Array.isArray(fields) && fields.length > 0) {
-        container.addSeparatorComponents(
-          new SeparatorBuilder()
-            .setDivider(true)
-            .setSpacing(SeparatorSpacingSize.Small),
-        );
-        fields.forEach((f) => {
-          container.addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(`**${f.name}**\n${f.value}`),
-          );
-        });
-      }
-
-      if (image) {
-        container.addSeparatorComponents(
-          new SeparatorBuilder()
-            .setDivider(true)
-            .setSpacing(SeparatorSpacingSize.Small),
-        );
-        container.addTextDisplayComponents(
-          new TextDisplayBuilder().setContent(`[Image](${image})`),
-        );
-      }
-
-      if (footer) {
-        container.addSeparatorComponents(
-          new SeparatorBuilder()
-            .setDivider(true)
-            .setSpacing(SeparatorSpacingSize.Small),
-        );
-        container.addTextDisplayComponents(
-          new TextDisplayBuilder().setContent(`-*${footer}*-`),
-        );
-      }
-
-      return {
-        success: true,
-        components: [container],
-        preview: `Embed: ${title}`,
-      };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  },
-});
-
-/**
  * Create Private VC Tool - Creates a real private voice channel for specified members.
  */
 export const createPrivateVCTool = tool({
@@ -624,14 +498,6 @@ export const createPrivateVCTool = tool({
         .catch(() => null);
       if (!invoker)
         return { success: false, error: "Invoker not found in server" };
-
-      if (!hasVCAccess(invoker)) {
-        return {
-          success: false,
-          error:
-            "You need the Member role to use private voice channels.",
-        };
-      }
 
       if (getVCByMember(invokerUserId) || getVCByCreator(invokerUserId)) {
         return {
@@ -906,7 +772,6 @@ export default {
   commandExecutorTool,
   serverInfoTool,
   musicControlTool,
-  embedGeneratorTool,
   createPrivateVCTool,
   discordActionTool,
 };

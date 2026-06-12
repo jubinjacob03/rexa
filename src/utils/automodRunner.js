@@ -61,16 +61,16 @@ async function sendActionEmbed(
 const userTrackers = new Map();
 const UserWarnings = new Map();
 
-const TRACKER_TTL = 10000;const WARNING_COOLDOWN = 20 * 60 * 1000;
+const TRACKER_TTL = 10000;
+const SPAM_WINDOW_MS = 7000;
+const WARNING_COOLDOWN = 20 * 60 * 1000;
 function getTracker(userId) {
   if (!userTrackers.has(userId)) {
     userTrackers.set(userId, {
-      messageCount: 0,
       channelDeleteCount: 0,
       nicknameChangeCount: 0,
       messageDeleteCount: 0,
       lastCheck: Date.now(),
-      recentMessages: [],
       recentMessageIds: [],
     });
   }
@@ -102,17 +102,29 @@ export async function checkSpam(message) {
   const cfg = await loadConfig();
   if (!cfg.enabled || !cfg.spam) return;
 
+  const now = Date.now();
   const tracker = getTracker(message.author.id);
-  tracker.messageCount++;
-  tracker.recentMessages.push(message.content);
-  tracker.recentMessageIds.push({ id: message.id, channel: message.channel });
-  tracker.lastCheck = Date.now();
+  tracker.recentMessageIds.push({
+    id: message.id,
+    channel: message.channel,
+    content: message.content,
+    ts: now,
+  });
+  tracker.lastCheck = now;
+
+  const cutoff = now - SPAM_WINDOW_MS;
+  tracker.recentMessageIds = tracker.recentMessageIds.filter(
+    (m) => m.ts >= cutoff,
+  );
 
   const msgSpamLimit = cfg.limits?.messageSpam || 5;
 
-  if (tracker.messageCount > msgSpamLimit) {
+  if (tracker.recentMessageIds.length > msgSpamLimit) {
+    const burst = tracker.recentMessageIds;
+    const burstContents = burst.map((m) => m.content);
+    const burstCount = burst.length;
     try {
-      for (const msgData of tracker.recentMessageIds) {
+      for (const msgData of burst) {
         ignoredDeletes.add(msgData.id);
         await msgData.channel.messages.delete(msgData.id).catch(() => {});
       }
@@ -130,7 +142,7 @@ export async function checkSpam(message) {
           message.guild,
           message.author.id,
           "Spam Filter Anomaly",
-          `User sent ${tracker.messageCount} messages in a few seconds. Messages: ${JSON.stringify(tracker.recentMessages)}`,
+          `User sent ${burstCount} messages within ${SPAM_WINDOW_MS / 1000}s. Messages: ${JSON.stringify(burstContents)}`,
           message.channel,
         );
       },

@@ -70,7 +70,6 @@ class ContextManager {
     this.startAutoSave();
 
     this.initialized = true;
-    log.info("Initialized with Supabase persistence");
   }
 
   /**
@@ -105,14 +104,11 @@ class ContextManager {
         log.info(
           `Loaded ${data.length} conversations with ${totalMessages} messages from Supabase`,
         );
-      } else {
-        log.info("No existing conversations found in Supabase");
       }
     } catch (error) {
       log.error("Failed to load from Supabase:", error.message);
     }
   }
-
   /**
    * Saves a single conversation to Supabase (upsert).
    * @param {string} contextId - The ID of the context to save.
@@ -164,7 +160,7 @@ class ContextManager {
           context_id: contextId,
           guild_id: context.guildId,
           user_id: context.userId,
-          messages: context.messages.map(({ embedding, ...msg }) => msg),
+          messages: context.messages.map(({ embedding: _embedding, ...msg }) => msg),
           metadata: context.metadata,
           created_at: context.createdAt,
           last_activity: context.lastActivity,
@@ -217,8 +213,6 @@ class ContextManager {
       },
       60 * 60 * 1000,
     );
-
-    log.info("Auto-save enabled (batch every 2s), cleanup every 1h");
   }
 
   /**
@@ -233,7 +227,6 @@ class ContextManager {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }
-    log.info("Auto-save and cleanup disabled");
   }
 
   /**
@@ -244,7 +237,6 @@ class ContextManager {
     const contextIds = Array.from(this.conversations.keys());
     contextIds.forEach((id) => this.queueSave(id));
     await this.batchSave();
-    log.info("Force saved all conversations");
   }
 
   /**
@@ -542,7 +534,9 @@ class ContextManager {
       }
     }
 
-    log.info(`Cleaned up ${cleaned} old conversations`);
+    if (cleaned > 0) {
+      log.info(`Cleaned up ${cleaned} old conversations`);
+    }
     return { success: true, cleaned };
   }
 
@@ -551,10 +545,8 @@ class ContextManager {
    * @returns {Promise<void>}
    */
   async shutdown() {
-    log.info("Shutting down...");
     this.stopAutoSave();
     await this.forceSaveAll();
-    log.info("Shutdown complete");
   }
 
   /**

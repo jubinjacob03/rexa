@@ -14,7 +14,6 @@ import {
   isVCCreator,
   isOwner,
   canManageVC,
-  hasVCAccess,
 } from "../../utils/privateVCManager.js";
 
 const router = Router();
@@ -52,12 +51,6 @@ router.post("/create", async (req, res) => {
         .status(404)
         .json({ success: false, error: "Requester not found." });
 
-    if (!hasVCAccess(requester))
-      return res.status(403).json({
-        success: false,
-        error: "You need the Member role to use private voice channels.",
-      });
-
     if (!canCreate()) {
       return res.status(409).json({
         success: false,
@@ -66,9 +59,10 @@ router.post("/create", async (req, res) => {
     }
 
     if (getVCByMember(userId) || getVCByCreator(userId)) {
-      return res
-        .status(409)
-        .json({ success: false, error: "User is already in a private VC." });
+      return res.status(409).json({
+        success: false,
+        error: "User already has an active private VC.",
+      });
     }
 
     const inviteIds = [...new Set(memberIds)].filter((id) => id !== userId);
@@ -143,6 +137,10 @@ router.post("/add", async (req, res) => {
       return res
         .status(404)
         .json({ success: false, error: "Member not found." });
+    if (member.user.bot)
+      return res
+        .status(400)
+        .json({ success: false, error: "Cannot add bots to private VCs." });
 
     await addMember(channelId, member, guild);
     res.json({ success: true, data: { channelId } });
@@ -217,7 +215,7 @@ router.post("/remove", async (req, res) => {
 
 /**
  * DELETE /api/private-vc/:channelId
- * Force deletes a private voice channel (owner-role only).
+ * Deletes a private voice channel (creator or owner only).
  * Expects { requesterId } in the request body.
  */
 router.delete("/:channelId", async (req, res) => {

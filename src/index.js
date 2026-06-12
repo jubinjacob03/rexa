@@ -5,6 +5,9 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+import { installGlobalConsole } from "./utils/logger.js";
+installGlobalConsole();
+
 import {
   Client,
   GatewayIntentBits,
@@ -33,7 +36,7 @@ import {
   handleDashboardModal,
   handleDashboardSelect,
 } from "./dashboard/dashboard.js";
-import { handleRolesInfo } from "./utils/rolesEmbed.js";
+import { handleRolesInfo, handleRoleButton } from "./utils/rolesEmbed.js";
 import { handleEmbedBuilderInteraction } from "./utils/embedBuilderHandler.js";
 
 if (ffmpegPath) {
@@ -85,23 +88,17 @@ const loadedCommands = await loadCommands(undefined, {
 
 for (const command of loadedCommands) {
   client.commands.set(command.data.name, command);
-  console.log(`[INFO] Loaded command: ${command.data.name}`);
 }
+console.log(`[INFO] Loaded ${loadedCommands.length} commands`);
 
 const eventsPath = join(__dirname, "events");
 const eventFiles = readdirSync(eventsPath).filter((file) =>
   file.endsWith(".js"),
 );
 
-console.log(`[DEBUG] Found ${eventFiles.length} event files to load`);
-
 for (const file of eventFiles) {
   const filePath = join(eventsPath, file);
   const event = await import(`file://${filePath}`);
-
-  console.log(
-    `[DEBUG] Registering event: ${event.default.name} from ${file} (once: ${!!event.default.once})`,
-  );
 
   if (event.default.once) {
     client.once(event.default.name, (...args) =>
@@ -110,8 +107,8 @@ for (const file of eventFiles) {
   } else {
     client.on(event.default.name, (...args) => event.default.execute(...args));
   }
-  console.log(`[INFO] Loaded event: ${event.default.name}`);
 }
+console.log(`[INFO] Loaded ${eventFiles.length} events`);
 
 client.once(Events.ClientReady, async () => {
   console.log(`[INFO] Logged in as ${client.user.tag}`);
@@ -167,8 +164,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
       }
 
-      if (interaction.customId.startsWith("dummy_role_")) {
-        await interaction.deferUpdate().catch(() => {});
+      if (
+        interaction.customId.startsWith("dummy_role_") ||
+        interaction.customId.startsWith("selfrole_toggle_")
+      ) {
+        await handleRoleButton(interaction);
         return;
       }
 
@@ -355,7 +355,12 @@ process.on("unhandledRejection", (err) => {
 });
 
 process.on("uncaughtException", (err) => {
-  console.error("[ERROR] Uncaught exception:", err?.message ?? err);
+  console.error("[ERROR] Uncaught exception:", err);
+  contextManager
+    .forceSaveAll()
+    .catch(() => {})
+    .finally(() => process.exit(1));
+  setTimeout(() => process.exit(1), 5000).unref();
 });
 
 client.on("error", (err) => {

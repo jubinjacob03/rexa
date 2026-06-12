@@ -51,6 +51,18 @@ export function attachWsServer(httpServer, discordClient) {
       }
 
       if (msg.type === "play") {
+        const now = Date.now();
+        if (ws.lastPlayAt && now - ws.lastPlayAt < 1000) {
+          send(ws, {
+            type: "play_result",
+            id: msg.id,
+            ok: false,
+            error: "Rate limited — slow down.",
+          });
+          return;
+        }
+        ws.lastPlayAt = now;
+
         const {
           id,
           soundId,
@@ -62,6 +74,16 @@ export function attachWsServer(httpServer, discordClient) {
           userId,
           username,
         } = msg;
+
+        if (!soundId || !soundUrl || !guildId || !channelId) {
+          send(ws, {
+            type: "play_result",
+            id,
+            ok: false,
+            error: "Missing required fields.",
+          });
+          return;
+        }
 
         try {
           const guild = discordClient.guilds.cache.get(guildId);

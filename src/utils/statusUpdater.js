@@ -18,36 +18,52 @@ import { icon } from "./icons.js";
 let statusMessage = null;
 let updateInterval = null;
 
-export async function createStatusContainer(guild) {
+/**
+ * Pulls a fresh member + presence snapshot from the gateway, bounded by a short
+ * timeout so it can never hang the way an unbounded fetch can. Falls back to the
+ * existing cache if the live fetch times out or fails.
+ * @param {import('discord.js').Guild} guild - The Discord guild.
+ * @returns {Promise<void>}
+ */
+async function refreshMemberData(guild) {
   try {
-    await guild.members.fetch();
+    await guild.members.fetch({ withPresences: true, time: 15_000 });
   } catch (error) {
-    if (
+    const benign =
+      error.code === "GuildMembersTimeout" ||
       error.code === "RateLimitError" ||
-      error.name === "GatewayRateLimitError"
-    ) {
-      console.log(
-        "[WARN] Rate limited, using cached member data for status update",
-      );
-    } else {
+      error.name === "GatewayRateLimitError";
+    if (!benign) {
       console.error("[ERROR] Failed to fetch members:", error);
     }
+  }
+}
+
+/**
+ * Builds the server-stats container.
+ * @param {import('discord.js').Guild} guild - The Discord guild.
+ * @param {boolean} [live=true] - When true, pull a fresh member/presence snapshot
+ *   before counting; when false, use the in-memory cache as-is.
+ * @returns {Promise<import('discord.js').ContainerBuilder>}
+ */
+export async function createStatusContainer(guild, live = true) {
+  if (live) {
+    await refreshMemberData(guild);
   }
 
   const totalMembers = guild.memberCount;
   const botCount = guild.members.cache.filter((member) => member.user.bot).size;
-  const humanCount = totalMembers - botCount;
-  const onlineMembers = guild.members.cache.filter(
-    (member) =>
-      member.presence?.status === "online" ||
-      member.presence?.status === "idle" ||
-      member.presence?.status === "dnd",
-  ).size;
+  const humanCount = Math.max(totalMembers - botCount, 0);
+  const onlineMembers = guild.presences.cache.filter((p) => {
+    if (p.status === "offline") return false;
+    const member = guild.members.cache.get(p.userId);
+    return member && !member.user.bot;
+  }).size;
 
   const container = new ContainerBuilder().setAccentColor(EMBED_COLOR);
   const updatedAt = Math.floor(Date.now() / 1000);
 
-  const content = `## ${icon("LOCK")} sᴇʀᴠᴇʀ sᴛᴀᴛs \u200B\n\n\n• **${humanCount}** ᴍᴇᴍʙᴇʀs • **${botCount}** ʙᴏᴛs • **${guild.channels.cache.size}** ᴄʜᴀɴɴᴇʟs\n\n\`\`\`ansi\n\u001b[1;32m ${onlineMembers} ᴏɴʟɪɴᴇ \u001b[0m\`\`\`\`\`\`ansi\n\u001b[1;31m ${totalMembers - onlineMembers} ᴏғғʟɪɴᴇ \u001b[0m\`\`\`\nLast updated <t:${updatedAt}:R>`;
+  const content = `## ${icon("LOCK")} sᴇʀᴠᴇʀ sᴛᴀᴛs \u200B\n\n\n• **${humanCount}** ᴍᴇᴍʙᴇʀs • **${botCount}** ʙᴏᴛs • **${guild.channels.cache.size}** ᴄʜᴀɴɴᴇʟs\n\n\`\`\`ansi\n\u001b[1;32m ${onlineMembers} ᴏɴʟɪɴᴇ \u001b[0m\`\`\`\`\`\`ansi\n\u001b[1;31m ${Math.max(totalMembers - onlineMembers, 0)} ᴏғғʟɪɴᴇ \u001b[0m\`\`\`\nLast updated <t:${updatedAt}:R>`;
   const iconUrl = guild.iconURL({ dynamic: true, size: 256 });
 
   if (iconUrl) {
@@ -70,7 +86,15 @@ export async function createStatusContainer(guild) {
   return container;
 }
 
-export async function updateStatusMessage(client) {
+/**
+ * Updates (or creates) the server-stats dashboard message.
+ * @param {import('discord.js').Client} client - The Discord client.
+ * @param {boolean} [live=true] - When true, pull a fresh member/presence snapshot
+ *   before rendering; when false, render from the in-memory cache (used by the
+ *   high-frequency join/leave/update events that already keep the cache current).
+ * @returns {Promise<void>}
+ */
+export async function updateStatusMessage(client, live = true) {
   try {
     const guild = client.guilds.cache.get(config.guildId);
     if (!guild) {
@@ -84,7 +108,7 @@ export async function updateStatusMessage(client) {
       return;
     }
 
-    const container = await createStatusContainer(guild);
+    const container = await createStatusContainer(guild, live);
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -181,9 +205,6 @@ export async function updateStatusMessage(client) {
             components: [container],
             flags: MessageFlags.IsComponentsV2,
           });
-          console.log(
-            `[INFO] Server info updated at ${new Date().toLocaleTimeString()}`,
-          );
         }
       } catch (error) {
         console.error(

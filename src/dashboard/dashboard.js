@@ -43,7 +43,6 @@ import {
   isVCCreator,
   isOwner,
   canManageVC,
-  hasVCAccess,
 } from "../utils/privateVCManager.js";
 import { icon } from "../utils/icons.js";
 
@@ -687,13 +686,6 @@ export async function handleDashboardInteraction(interaction) {
   const { member } = interaction;
   switch (interaction.customId) {
     case "shantha_vc_create": {
-      if (!hasVCAccess(member))
-        return interaction.reply(
-          eReply(
-            "Access denied",
-            "You need the Member role to use private voice channels.",
-          ),
-        );
       if (getVCByMember(interaction.user.id) || getVCByCreator(interaction.user.id))
         return interaction.reply(
           eReply(
@@ -720,13 +712,6 @@ export async function handleDashboardInteraction(interaction) {
       );
     }
     case "shantha_vc_add": {
-      if (!hasVCAccess(member))
-        return interaction.reply(
-          eReply(
-            "Access denied",
-            "You need the Member role to use private voice channels.",
-          ),
-        );
       const addChannelId = getVCByCreator(interaction.user.id);
       if (!addChannelId)
         return interaction.reply(
@@ -743,13 +728,6 @@ export async function handleDashboardInteraction(interaction) {
       );
     }
     case "shantha_vc_remove": {
-      if (!hasVCAccess(member))
-        return interaction.reply(
-          eReply(
-            "Access denied",
-            "You need the Member role to use private voice channels.",
-          ),
-        );
       if (isOwner(member)) {
         return showOwnerVCSelect(
           interaction,
@@ -775,13 +753,6 @@ export async function handleDashboardInteraction(interaction) {
       );
     }
     case "shantha_vc_delete": {
-      if (!hasVCAccess(member))
-        return interaction.reply(
-          eReply(
-            "Access denied",
-            "You need the Member role to use private voice channels.",
-          ),
-        );
       if (isOwner(member)) {
         return showOwnerVCSelect(
           interaction,
@@ -960,14 +931,6 @@ export async function handleDashboardInteraction(interaction) {
       tempSelections.delete(createCacheKey);
 
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-      if (!hasVCAccess(member))
-        return interaction.editReply(
-          eReply(
-            "Access denied",
-            "You need the Member role to use private voice channels.",
-          ),
-        );
 
       if (getVCByMember(interaction.user.id) || getVCByCreator(interaction.user.id))
         return interaction.editReply(

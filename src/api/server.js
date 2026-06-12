@@ -41,11 +41,14 @@ export function createApiServer(discordClient) {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
-  if (process.env.NODE_ENV !== "production") {
-    app.use(morgan("dev"));
-  } else {
-    app.use(morgan("combined"));
-  }
+  app.use(
+    morgan("tiny", {
+      skip: (req, res) => {
+        if (res.statusCode >= 500) return false;
+        return req.method === "GET" || res.statusCode === 404;
+      },
+    }),
+  );
 
   const limiter = rateLimit({
     windowMs: 60 * 1000,

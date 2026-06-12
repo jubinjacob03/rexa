@@ -14,6 +14,6 @@ export default {
    */
   async execute(member) {
     console.log(`[INFO] Member left: ${member.user.tag}`);
-    setTimeout(() => updateStatusMessage(member.client), 2000);
+    setTimeout(() => updateStatusMessage(member.client, false), 2000);
   },
 };

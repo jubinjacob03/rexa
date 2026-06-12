@@ -13,6 +13,7 @@ function toRoman(n) {
 
 const activeVCs = new Map();
 let highestIndex = 0;
+let pendingCreations = 0;
 
 function logPrivateVCError(action, err) {
   console.error(`[PrivateVC] ${action} failed:`, err);
@@ -49,9 +50,20 @@ function memberOverwrite(userId) {
   };
 }
 
+/**
+ * Tears down a private VC: moves any remaining members to the lobby, deletes the
+ * channel, and clears its timers. Idempotent — the registry entry is claimed
+ * before any await, so overlapping calls (idle timer, max-lifetime timer, or a
+ * manual delete) for the same channel become no-ops rather than deleting twice.
+ * @param {string} channelId - The ID of the private VC channel.
+ * @param {import('discord.js').Guild} guild - The Discord guild.
+ * @returns {Promise<void>}
+ */
 async function destroyVC(channelId, guild) {
   const data = activeVCs.get(channelId);
   if (!data) return;
+
+  activeVCs.delete(channelId);
 
   clearTimeout(data.idleTimer);
   clearTimeout(data.maxTimer);
@@ -68,8 +80,6 @@ async function destroyVC(channelId, guild) {
     }
     await channel.delete();
   }
-
-  activeVCs.delete(channelId);
 
   if (activeVCs.size === 0) highestIndex = 0;
 }
@@ -98,7 +108,7 @@ function stopIdleTimer(channelId) {
 }
 
 export function canCreate() {
-  return activeVCs.size < MAX_VCS;
+  return activeVCs.size + pendingCreations < MAX_VCS;
 }
 
 export function getVCByCreator(userId) {
@@ -119,25 +129,6 @@ export function isOwner(member) {
 
 export function canManageVC(channelId, member) {
   return isVCCreator(channelId, member) || isOwner(member);
-}
-
-/**
- * Checks whether a member is allowed to use the private VC feature.
- * Access is granted to the Member role and any elevated role
- * (Moderator, Administrator, Owner) as well as the server owner.
- * @param {import('discord.js').GuildMember} member - The guild member.
- * @returns {boolean} True if the member may use private VC features.
- */
-export function hasVCAccess(member) {
-  if (!member) return false;
-  if (member.id === member.guild?.ownerId) return true;
-  const roles = member.roles.cache;
-  return [
-    config.memberRoleId,
-    config.moderatorRoleId,
-    config.administratorRoleId,
-    config.ownerRoleId,
-  ].some((roleId) => roleId && roles.has(roleId));
 }
 
 /**
@@ -174,80 +165,90 @@ export function getVCByMember(userId) {
 }
 
 /**
- * Creates a new private VC.
+ * Creates a new private VC, moving any voice-connected members into it.
+ *
+ * A synchronous reservation counter (`pendingCreations`) holds a slot across the
+ * asynchronous channel creation so concurrent invocations cannot exceed
+ * `MAX_VCS`. If moving members fails, the freshly created channel is rolled back.
+ *
  * @param {import('discord.js').Guild} guild - The Discord guild.
  * @param {import('discord.js').GuildMember[]} members - Array of members to add (invoker included).
- * @returns {Promise<import('discord.js').VoiceChannel|null>} The created channel or null.
+ * @returns {Promise<import('discord.js').VoiceChannel|null>} The created channel, or null if the cap is reached.
  */
 export async function createPrivateVC(guild, members) {
-  if (activeVCs.size >= MAX_VCS) return null;
+  if (activeVCs.size + pendingCreations >= MAX_VCS) return null;
 
-  highestIndex++;
-  const index = highestIndex;
-  const name = vcName(index);
-
-  const permissionOverwrites = [
-    {
-      id: guild.roles.everyone.id,
-      deny: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect],
-    },
-    {
-      id: config.ownerRoleId,
-      allow: [
-        PermissionFlagsBits.ViewChannel,
-        PermissionFlagsBits.Connect,
-        PermissionFlagsBits.Speak,
-        PermissionFlagsBits.Stream,
-        PermissionFlagsBits.UseVAD,
-        PermissionFlagsBits.SendMessages,
-        PermissionFlagsBits.MoveMembers,
-      ],
-    },
-    ...members.map((m) => memberOverwrite(m.id)),
-  ];
-
-  const channel = await guild.channels.create({
-    name,
-    type: ChannelType.GuildVoice,
-    parent: CATEGORY_ID,
-    permissionOverwrites,
-  });
-
+  pendingCreations++;
   try {
-    for (const member of members) {
-      if (member.voice?.channel) {
-        await member.voice.setChannel(channel);
+    highestIndex++;
+    const index = highestIndex;
+    const name = vcName(index);
+
+    const permissionOverwrites = [
+      {
+        id: guild.roles.everyone.id,
+        deny: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect],
+      },
+      {
+        id: config.ownerRoleId,
+        allow: [
+          PermissionFlagsBits.ViewChannel,
+          PermissionFlagsBits.Connect,
+          PermissionFlagsBits.Speak,
+          PermissionFlagsBits.Stream,
+          PermissionFlagsBits.UseVAD,
+          PermissionFlagsBits.SendMessages,
+          PermissionFlagsBits.MoveMembers,
+        ],
+      },
+      ...members.map((m) => memberOverwrite(m.id)),
+    ];
+
+    const channel = await guild.channels.create({
+      name,
+      type: ChannelType.GuildVoice,
+      parent: CATEGORY_ID,
+      permissionOverwrites,
+    });
+
+    try {
+      for (const member of members) {
+        if (member.voice?.channel) {
+          await member.voice.setChannel(channel);
+        }
       }
+    } catch (err) {
+      await channel.delete().catch((deleteErr) =>
+        logPrivateVCError(`Rollback delete for ${channel.id}`, deleteErr),
+      );
+      throw err;
     }
-  } catch (err) {
-    await channel.delete().catch((deleteErr) =>
-      logPrivateVCError(`Rollback delete for ${channel.id}`, deleteErr),
-    );
-    throw err;
+
+    const memberSet = new Set(members.map((m) => m.id));
+    const creatorId = members[0]?.id ?? null;
+
+    const maxTimer = setTimeout(() => {
+      destroyVC(channel.id, guild).catch((err) =>
+        logPrivateVCError(`Max lifetime cleanup for ${channel.id}`, err),
+      );
+    }, MAX_MS);
+
+    activeVCs.set(channel.id, {
+      members: memberSet,
+      creatorId,
+      index,
+      idleTimer: null,
+      maxTimer,
+    });
+
+    if (channel.members.size === 0) {
+      startIdleTimer(channel.id, guild);
+    }
+
+    return channel;
+  } finally {
+    pendingCreations--;
   }
-
-  const memberSet = new Set(members.map((m) => m.id));
-  const creatorId = members[0]?.id ?? null;
-
-  const maxTimer = setTimeout(() => {
-    destroyVC(channel.id, guild).catch((err) =>
-      logPrivateVCError(`Max lifetime cleanup for ${channel.id}`, err),
-    );
-  }, MAX_MS);
-
-  activeVCs.set(channel.id, {
-    members: memberSet,
-    creatorId,
-    index,
-    idleTimer: null,
-    maxTimer,
-  });
-
-  if (channel.members.size === 0) {
-    startIdleTimer(channel.id, guild);
-  }
-
-  return channel;
 }
 
 /**

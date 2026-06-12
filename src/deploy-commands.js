@@ -1,6 +1,9 @@
 import { REST, Routes } from "discord.js";
 import config from "../config.js";
 import { loadCommands } from "./utils/commandLoader.js";
+import { installGlobalConsole } from "./utils/logger.js";
+
+installGlobalConsole();
 
 const loadedCommands = await loadCommands(undefined, {
   allowlist: [

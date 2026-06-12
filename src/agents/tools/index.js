@@ -16,8 +16,6 @@ import * as discordTools from "./tools.js";
  */
 export async function initializeTools(client = null) {
   try {
-    console.log("[TOOLS] Initializing all tools...");
-
     await knowledgeBase.initialize();
 
     if (contextManager.initialize) {
@@ -32,7 +30,6 @@ export async function initializeTools(client = null) {
       discordTools.initializeTools(client);
     }
 
-    console.log("[TOOLS] All tools initialized successfully");
     return { success: true };
   } catch (error) {
     console.error("[TOOLS] Initialization error:", error);

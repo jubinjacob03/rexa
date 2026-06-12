@@ -569,28 +569,29 @@ export async function processMessage(
     const cutIdx = allCuts.length > 0 ? Math.min(...allCuts) : -1;
     if (cutIdx !== -1) {
       finalResponse = finalResponse.substring(0, cutIdx).trim();
-      if (!finalResponse) {
-        if (finalToolResult?.success !== false) {
-          const results = finalToolResult?.results;
-          if (
-            finalToolName === "serverInfo" &&
-            Array.isArray(results) &&
-            results.length > 0
-          ) {
-            const user = results[0];
-            if (/mention/i.test(message) && user.id) {
-              finalResponse = `<@${user.id}>`;
-            } else {
-              finalResponse = `Here's what I found: **${user.displayName || user.username}** (${user.status || "unknown"})`;
-            }
+    }
+
+    if (!finalResponse) {
+      if (finalToolResult?.success !== false) {
+        const results = finalToolResult?.results;
+        if (
+          finalToolName === "serverInfo" &&
+          Array.isArray(results) &&
+          results.length > 0
+        ) {
+          const user = results[0];
+          if (/mention/i.test(message) && user.id) {
+            finalResponse = `<@${user.id}>`;
           } else {
-            finalResponse =
-              "I looked into it but couldn't get the information right now. Please try again!";
+            finalResponse = `Here's what I found: **${user.displayName || user.username}** (${user.status || "unknown"})`;
           }
         } else {
           finalResponse =
             "I looked into it but couldn't get the information right now. Please try again!";
         }
+      } else {
+        finalResponse =
+          "I looked into it but couldn't get the information right now. Please try again!";
       }
     }
     log.info(

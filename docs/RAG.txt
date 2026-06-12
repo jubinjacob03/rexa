@@ -37,8 +37,7 @@ MY CORE CAPABILITIES:
 7. Web search and content fetching
 8. Knowledge base search (that's me accessing this document!)
 9. Real Discord moderation actions (voice-mute/unmute, deafen/undeafen, timeout, kick, ban, change nickname, add/remove roles)
-10. Image generation (Google Imagen via AI, with Pollinations as fallback)
-11. Escalate support tickets to human staff when needed
+10. Escalate support tickets to human staff when needed
 
 ================================================================================
 SHANTHA'S AVAILABLE TOOLS
@@ -168,7 +167,6 @@ PARAMETERS:
   - footer: Footer text (string, optional)
   - author: Author name text (string, optional)
   - url: URL to link the title to (string, optional)
-  - timestamp: Show current time in footer (boolean, optional, default true)
   - userId: Current user's ID from context (string, optional)
   - guildId: Current guild ID from context (string, optional)
   - username: Current user's username from context (string, optional)
@@ -247,11 +245,12 @@ RETURNS: Response data from the API
 
 TOOL: executeCommand
 PURPOSE: Execute one of Shantha's built-in slash commands programmatically
-WHEN TO USE: Private VC management and general bot commands (add, remove, join, leave, purge, refresh, status, private, setup-ticket)
+WHEN TO USE: Private VC management and general bot commands
 NOTE: This does NOT handle moderation — use discordAction for mute/ban/kick/timeout.
-NOTE: setup-verification is BLOCKED from chat execution by default — it must be run as a Discord slash command directly.
+NOTE: This does NOT create private VCs — use createPrivateVC for that.
+NOTE: ban, kick, delete-channel, and setup-verification are BLOCKED from chat execution by default — they must be run as Discord slash commands directly.
 PARAMETERS:
-  - command: One of: add, remove, join, leave, purge, refresh, status, private, setup-ticket (string, required)
+  - command: One of the deployed slash commands: private-vc, private-vc-add, private-vc-remove, purge, setup-ticket, embed-builder (string, required)
   - parameters: Parameters for the command (object, optional)
   - channelId: The ID of the channel (string, optional)
   - guildId: Guild ID context (string, optional)
@@ -329,7 +328,7 @@ NOTE: Role enforcement is built into the tool itself — it will deny unauthoriz
 
 EXECUTION FLOW for moderation:
 1. User requests a moderation action
-2. Use serverInfo(queryType="memberDetails", targetId=userId) to get invoker's roleIds
+2. Use serverInfo(infoType="member", targetId=userId) to get invoker's roleIds
 3. Determine required level: mod actions → check for 1473075468088377349/50/52; owner actions → check for 1473075468088377352
 4. If unauthorized → politely deny (do NOT call discordAction)
 5. If authorized → call discordAction with the appropriate action and targetName
@@ -465,7 +464,7 @@ User says: "ban @baduser" / "kick that troll"
         permissions 🔒"
 
 SCENARIO 7: Question About Bot/Commands
-User asks: "what can you do?" / "how do I play music?" / "what's /private?"
+User asks: "what can you do?" / "how do I play music?" / "what's /private-vc?"
 │
 ├─ Step 1: Identify topic
 │   └─ Bot capabilities / Commands / Specific feature
@@ -595,11 +594,12 @@ SHANTHA'S SLASH COMMANDS
 ================================================================================
 
 PRIVATE VOICE CHANNELS:
-/private [member1] [member2] [member3] [member4] [member5]
+/private-vc [member1] [member2] [member3] [member4] [member5]
   - Creates a private voice channel for you and invited members
+  - Requires the Member role or above to use
   - Max 5 members can be invited initially
   - Channel auto-deletes when empty for 5 minutes or after 3 hours
-  - You can add/remove members later
+  - The creator can add/remove members later; you can only have one active VC at a time
 
 /join
   - Bot joins your voice channel (for playing sounds/audio)
@@ -608,13 +608,14 @@ PRIVATE VOICE CHANNELS:
 /leave
   - Bot leaves the voice channel
 
-/add [member]
-  - Add someone to your private voice channel
-  - Must be in your own private VC to use this
+/private-vc-add [member]
+  - Add someone to a private voice channel you created
+  - Only the VC creator (or Owner) can add members
 
-/remove [member]
-  - Remove someone from your private voice channel
-  - Cannot remove yourself (use /leave instead)
+/private-vc-remove [member]
+  - Remove someone from a private voice channel you created
+  - Only the VC creator (or Owner) can remove members
+  - Cannot remove yourself (disconnect to leave instead)
 
 ADMIN COMMANDS:
 /refresh
@@ -634,7 +635,7 @@ ADMIN COMMANDS:
 
 /purge [channel] [mode] [user?] [message_id?]
   - Purge messages in any channel
-  - RESTRICTED: Only users with Moderator permissions can use this
+  - RESTRICTED: Owner role only (1473075468088377352)
   - Required params: channel (the target channel), mode (deletion mode)
   - Optional params: user (for user/trail_user modes), message_id (for trail/trail_user modes)
   
@@ -661,7 +662,7 @@ ADMIN COMMANDS:
 INTERACTING WITH SHANTHA:
 - Just mention @Shantha and ask anything
 - Works in regular channels (not everywhere - some channels are restricted)
-- Special channel: #no-mention-channel (1482781492106236036) - no need to mention
+- Special channels where you don't need to @mention Shantha: 1482781492106236036 and 1485024851109613758
 
 ================================================================================
 SERVER STRUCTURE & PERMISSIONS
@@ -669,7 +670,7 @@ SERVER STRUCTURE & PERMISSIONS
 
 GUILD INFO:
 - Guild Name: Saiyan Gods
-- Guild ID: 882490955662516224
+- Guild ID: 1473075468088377346
 - Owner & Creator: God Blaze (User ID: 882490956002242581)
 - Developer: God Blaze (User ID: 882490956002242581)
 - Bot Creator (Shantha & Remani): God Blaze (User ID: 882490956002242581)
@@ -688,9 +689,13 @@ LEVEL 2 - MODERATORS:
 - Check: roleIds.includes("1473075468088377349") || roleIds.includes("1473075468088377350") || roleIds.includes("1473075468088377352")
 
 LEVEL 3 - EVERYONE:
-- Can do: Private voice channels (no restrictions)
 - Can do: Use music commands
 - Can do: Ask you questions
+
+LEVEL 3b - PRIVATE VOICE CHANNELS (Member and above):
+- Requires one of: 1473075468088377347 (Member), 1473075468088377349 (Moderator), 1473075468088377350 (Administrator), 1473075468088377352 (Owner)
+- Anyone with Member or higher can create a private VC, and add/remove/delete a VC they created
+- The Owner role (1473075468088377352) can manage (add/remove/delete) ANY private VC, not just their own
 
 PERMISSION VERIFICATION PROCESS:
 1. User requests moderation action
@@ -714,7 +719,7 @@ SPECIAL CHANNELS:
 - Approvals Channel: Where admins approve/reject verifications
 - Announcements Channel: Owner-only, deletes non-owner messages
 - Image-Only Channels: Only media allowed, text deleted automatically
-- No-Mention Channel (1482781492106236036): Can talk to you without @mention
+- No-Mention Channels (1482781492106236036, 1485024851109613758): Can talk to you without @mention
 
 ================================================================================
 COMMUNITY & GAMING INFORMATION
@@ -806,17 +811,18 @@ PRIVATE VOICE CHANNELS
 ================================================================================
 
 HOW THEY WORK:
-- Users use /private command with up to 5 initial members
+- Users use /private-vc command with up to 5 initial members
+- Requires the Member role or above (Member/Moderator/Administrator/Owner)
 - Bot creates temporary voice channel in Private VC category
 - Channel is named using a numbered format: "🎟️〢・ᴘʀɪᴠᴀᴛᴇ-ᴠᴄ ɪ" (Roman numerals ɪ through ᴠ)
 - Only invited members can join
-- Owner can /add or /remove members
+- The creator can /private-vc-add or /private-vc-remove members; the Owner can manage any VC
 - Auto-deletes when empty for 5 minutes
 - Max lifetime: 3 hours
 - Max simultaneous: 5 private VCs
 
 LIFECYCLE:
-1. Created via /private command
+1. Created via /private-vc command
 2. Members get permission overwrites to join
 3. Members in voice are automatically moved (if possible)
 4. Idle timer starts if channel is empty
@@ -825,9 +831,9 @@ LIFECYCLE:
 7. Cleanup happens in voiceStateUpdate event
 
 USER COMMANDS:
-- /private - Create new private VC
-- /add - Add member to your VC
-- /remove - Remove member from your VC
+- /private-vc - Create new private VC (Member role or above)
+- /private-vc-add - Add member to a VC you created
+- /private-vc-remove - Remove member from a VC you created
 - Use regular Discord "Disconnect" to leave
 
 TROUBLESHOOTING:
@@ -841,7 +847,7 @@ COMMON USER QUESTIONS & ANSWERS
 ================================================================================
 
 "What can you do?"
-I can do a bunch of stuff around here — play music through Remani, set up private VCs, look up members, moderate the server (if you've got the right role), do web searches, make embeds, even generate images. Just ask.
+I can do a bunch of stuff around here — play music through Remani, set up private VCs, look up members, moderate the server (if you've got the right role), do web searches, and make embeds. Just ask.
 
 "How do I play music?"
 Just say "play [song name]" and I'll handle it through Remani. Or use Remani's /play directly. Just be in a voice channel first.
@@ -853,7 +859,7 @@ Remani handles all the actual audio playback. I can control her remotely so you 
 Head to the verification channel and click the Member or Moderator button. Fill in what nickname you want (both roles will prompt for a name to be prefixed with "God "), and an admin will review it. You'll get a DM when they approve or reject.
 
 "How do I create a private VC?"
-Use /private and select up to 5 members. Channel gets created just for you all. Use /add and /remove to manage who's in it later.
+Use /private-vc and select up to 5 members. Channel gets created just for you all. You'll need the Member role (or higher). Use /private-vc-add and /private-vc-remove to manage who's in it later.
 
 "Can you play [song] for me?"
 Yeah, just be in a voice channel and I'll put it on.
@@ -869,8 +875,7 @@ Check these: Are you in a voice channel? Is Remani also in that channel? Try
 with /queue to see if songs are queued.
 
 "How do I add someone to my private VC?"
-Use the /add command and select the member. They'll get permission to join your
-private voice channel. If they're already in voice, they may be automatically moved.
+Use the /private-vc-add command and select the member — you have to be the one who created the VC. They'll get permission to join your private voice channel. If they're already in voice, they may be automatically moved.
 
 "What does /refresh do?"
 It manually updates the server statistics dashboard in the Status Channel. Only admins can use it.
@@ -1090,17 +1095,17 @@ Response: "Playing Despacito! 🎵"
 
 EXAMPLE 2: Server Info
 User: "how many people are online?"
-You: Use serverInfo(queryType="serverStats", guildId="...")
+You: Use serverInfo(infoType="stats", guildId="...")
 Response: "Right now we have [X] members online out of [Y] total members in Saiyan Gods!"
 
 EXAMPLE 3: Member Lookup
 User: "who is God Blaze?"
-You: Use serverInfo(queryType="searchMembers", guildId="...", searchQuery="God Blaze")
+You: Use serverInfo(infoType="search", guildId="...", searchQuery="God Blaze")
 Response: "That's <@882490956002242581> - he's the server owner and creator of Shantha and Remani! 👑 He's also a PC player."
 
 EXAMPLE 4: Permission Denial
 User: "ban that guy"
-You: Use serverInfo(queryType="memberDetails", targetId=userId, guildId="...")
+You: Use serverInfo(infoType="member", targetId=userId, guildId="...")
 Check roleIds: Not owner
 Response: "I understand what you're trying to do, but banning requires Owner permissions 🔒 Only <@882490956002242581> can do that."
 
@@ -1134,7 +1139,7 @@ Response: "Remani has music commands like /play, /pause, /skip, /queue, and more
 
 EXAMPLE 8: Creating Private VC
 User: "make a private vc"
-Response: "You can create a private voice channel with /private and select members to invite. Or tell me who you want to invite and I can guide you through it!"
+Response: "You can create a private voice channel with /private-vc and select members to invite (you'll need the Member role). Or tell me who you want to invite and I can set it up for you!"
 
 ================================================================================
 KNOWLEDGE BASE CATEGORIES
@@ -1151,15 +1156,16 @@ moderation - Moderation actions, permissions
 general - General information, troubleshooting
 
 COMMAND QUICK REFERENCE:
-- /purge: Moderator-only message deletion (modes: user, all, trail, trail_user)
-- /private: Create private voice channel
-- /add: Add member to private VC
-- /remove: Remove member from private VC
+- /purge: Owner-only message deletion (modes: user, all, trail, trail_user)
+- /private-vc: Create private voice channel (Member role or above)
+- /private-vc-add: Add member to a private VC you created
+- /private-vc-remove: Remove member from a private VC you created
 - /join: Join voice channel
 - /leave: Leave voice channel
 - /refresh: Refresh server stats dashboard (admin)
 - /setup-verification: Set up verification system (admin)
 - /setup-ticket: Set up support ticket panel (admin)
+- /embed-builder: Launch the interactive embed builder (Manage Server)
 - /status: Show bot status
 
 Use categories to get more relevant results faster.
@@ -1168,5 +1174,5 @@ Use categories to get more relevant results faster.
 END OF KNOWLEDGE BASE
 ================================================================================
 
-Last Updated: June 9, 2026 (removed Friends role references, updated verification buttons to Member and Moderator, added Administrator role definition, documented "God " prefix nickname logic for Member and Moderator roles)
+Last Updated: June 12, 2026 (corrected guild ID; private VCs now require Member role or above with creator/owner management; /purge is Owner-only; renamed slash commands to /private-vc, /private-vc-add, /private-vc-remove; corrected executeCommand allowlist and serverInfo infoType parameter naming; removed non-existent createEmbed timestamp param; removed image-generation capability claims (no image tool exists); listed both no-mention channels)
 This knowledge base is used by Shantha for RAG queries. Keep all info accurate and up to date.

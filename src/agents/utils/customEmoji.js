@@ -42,8 +42,8 @@ export function initEmojis(client) {
     }
   }
   const count = Object.keys(resolved).length;
-  if (count > 0) console.log(`[EMOJI] ✅ Loaded ${count} custom emojis`);
-  else console.log(`[EMOJI] No custom emojis found, using unicode fallbacks`);
+  if (count === 0)
+    console.log(`[EMOJI] No custom emojis found, using unicode fallbacks`);
 }
 
 /**

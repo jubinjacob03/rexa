@@ -2,8 +2,9 @@
   "title": "Saiyan Gods — Roles",
   "sections": [
     {
-      "name": "🏆 Staff Roles",
+      "name": "{STAFF} Staff Roles",
       "inline": false,
+      "selfAssignable": false,
       "roles": [
         {
           "emoji": "{OWNER}",
@@ -23,8 +24,9 @@
       ]
     },
     {
-      "name": "👥 Member Roles",
+      "name": "{MEMBERS} Member Roles",
       "inline": false,
+      "selfAssignable": false,
       "roles": [
         {
           "emoji": "{MEMBER}",
@@ -44,36 +46,90 @@
       ]
     },
     {
-      "name": "🎮 Self Roles — Device",
+      "name": "{DEVICE} Self Roles — Device",
       "inline": true,
+      "selfAssignable": true,
       "roles": [
         {
           "emoji": "\ud83d\udda5️",
           "name": "PC",
-          "description": "Plays on PC."
+          "description": "Plays on PC.",
+          "id": "1484879284265943120"
         },
         {
           "emoji": "📱",
           "name": "Mobile",
-          "description": "Plays on Mobile."
+          "description": "Plays on Mobile.",
+          "id": "1484879494731923496"
         },
         {
           "emoji": "💻",
           "name": "Mobile-PC",
-          "description": "Plays on a mobile with keyboard & mouse peripherals."
+          "description": "Plays on a mobile with keyboard & mouse peripherals.",
+          "id": "1484879567280672778"
         }
       ]
     },
     {
-      "name": "🔰 Self Roles — Age",
+      "name": "{AGE} Self Roles — Age",
       "inline": true,
+      "selfAssignable": true,
       "roles": [
         {
           "emoji": "{18PLUS}",
           "name": "18+",
-          "description": "18 or above."
+          "description": "18 or above.",
+          "id": "1484879828871286995"
         },
-        { "emoji": "{18MINUS}", "name": "18-", "description": "Below 18." }
+        {
+          "emoji": "{18MINUS}",
+          "name": "18-",
+          "description": "Below 18.",
+          "id": "1484879875947888670"
+        }
+      ]
+    },
+    {
+      "name": "{GAMES} Self Roles — Games",
+      "inline": true,
+      "selfAssignable": true,
+      "roles": [
+        {
+          "emoji": "{GAME_BGMI}",
+          "name": "BGMI",
+          "description": "Battlegrounds Mobile India players.",
+          "id": "1508194631123341352"
+        },
+        {
+          "emoji": "{GAME_MINECRAFT}",
+          "name": "Minecraft",
+          "description": "Minecraft players.",
+          "id": "1508194574575861770"
+        },
+        {
+          "emoji": "{GAME_COD}",
+          "name": "Call of Duty",
+          "description": "Call of Duty players.",
+          "id": "1508194507848417501"
+        },
+        {
+          "emoji": "{GAME_FREEFIRE}",
+          "name": "FreeFire",
+          "description": "Free Fire players.",
+          "id": "1514749927169986761"
+        },
+        {
+          "emoji": "{GAME_AMONGUS}",
+          "name": "Among Us",
+          "description": "Among Us players.",
+          "id": "1510515943103664218"
+        },
+        {
+          "emoji": "{GAME_SAMP}",
+          "name": "SA-MP",
+          "description": "San Andreas Multiplayer players.",
+          "id": "1514751217824432270"
+        }
       ]
     }
   ]

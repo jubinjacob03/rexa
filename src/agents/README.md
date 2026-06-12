@@ -74,8 +74,11 @@ All tools in `tools/tools.js`:
 2. **commandExecutorTool** - Execute Discord commands
 3. **serverInfoTool** - Real-time server data
 4. **musicControlTool** - Remani bot integration
-5. **embedGeneratorTool** - Discord embeds
-6. **imageGeneratorTool** - AI images
+5. **embedTool** (`createEmbed`) - Discord embeds
+6. **createPrivateVCTool** - Private voice channels
+7. **discordActionTool** - Moderation actions
+8. **escalateTicketTool** - Ticket escalation
+9. **webSearchTool / webFetchTool / httpRequestTool** - Web access
 
 ## Customization
 

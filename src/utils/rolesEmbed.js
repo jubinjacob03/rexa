@@ -21,6 +21,28 @@ import { i, icon } from "./icons.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+const ROLES_INFO_PATH = join(__dirname, "..", "..", "data", "roles-info.json");
+const ROLES_CACHE_TTL = 5 * 60 * 1000;
+let _rolesCache = null;
+let _rolesCacheAt = 0;
+
+/**
+ * Loads and caches roles-info.json, re-reading from disk at most once per TTL.
+ * @returns {Promise<object|null>} Parsed roles data, or null if unreadable.
+ */
+async function loadRolesData() {
+  if (_rolesCache && Date.now() - _rolesCacheAt < ROLES_CACHE_TTL) {
+    return _rolesCache;
+  }
+  try {
+    _rolesCache = JSON.parse(await readFile(ROLES_INFO_PATH, "utf8"));
+    _rolesCacheAt = Date.now();
+  } catch {
+    _rolesCache = null;
+  }
+  return _rolesCache;
+}
+
 /**
  * Handles the roles info interaction.
  * @param {import('discord.js').Interaction} interaction - The interaction object.
@@ -28,13 +50,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
  * @returns {Promise<void>}
  */
 export async function handleRolesInfo(interaction, selectedCategory = "home") {
-  const rolesPath = join(__dirname, "..", "..", "data", "roles-info.json");
-  let rolesData = null;
+  const rolesData = await loadRolesData();
 
-  try {
-    const fileContent = await readFile(rolesPath, "utf8");
-    rolesData = JSON.parse(fileContent);
-  } catch {
+  if (!rolesData) {
     const errPayload = eReply(
       `${i("ERROR")} ᴇʀʀᴏʀ`,
       "ʀᴏʟᴇs ɪɴғᴏ ɴᴏᴛ ᴄᴏɴғɪɢᴜʀᴇᴅ.",
@@ -87,21 +105,29 @@ export async function handleRolesInfo(interaction, selectedCategory = "home") {
         ),
       );
 
-      const row = new ActionRowBuilder();
-      section.roles.forEach((r, rIdx) => {
-        row.addComponents(
-          new ButtonBuilder()
-            .setCustomId(`dummy_role_${sectionIndex}_${rIdx}`)
-            .setLabel(r.name)
-            .setEmoji(resolveEmoji(r.emoji))
-            .setStyle(ButtonStyle.Secondary),
-        );
+      const buttons = section.roles.map((r, rIdx) => {
+        const selfAssignable = section.selfAssignable && r.id;
+        return new ButtonBuilder()
+          .setCustomId(
+            selfAssignable
+              ? `selfrole_toggle_${r.id}`
+              : `dummy_role_${sectionIndex}_${rIdx}`,
+          )
+          .setLabel(r.name)
+          .setEmoji(resolveEmoji(r.emoji))
+          .setStyle(ButtonStyle.Secondary);
       });
-      container.addActionRowComponents(row);
+
+      for (let start = 0; start < buttons.length; start += 5) {
+        container.addActionRowComponents(
+          new ActionRowBuilder().addComponents(buttons.slice(start, start + 5)),
+        );
+      }
     }
   }
 
   const navRow = new ActionRowBuilder();
+  const homeEmoji = icon("HOME") || "🏠";
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId("roles_nav_dropdown")
     .setPlaceholder("Select a category to explore...")
@@ -110,21 +136,25 @@ export async function handleRolesInfo(interaction, selectedCategory = "home") {
         .setLabel("Home Hub")
         .setValue("home")
         .setDescription("Return to the roles overview")
-        .setEmoji("🏠")
+        .setEmoji(homeEmoji)
         .setDefault(selectedCategory === "home"),
     );
 
   rolesData.sections.forEach((sec, idx) => {
+    const emojiToken = sec.name.match(/\{(\w+)\}/)?.[1];
     const rawName = sec.name.replace(/\{(\w+)\}/g, "").trim();
     const cleanLabel = rawName || `Category ${idx + 1}`;
 
-    selectMenu.addOptions(
-      new StringSelectMenuOptionBuilder()
-        .setLabel(cleanLabel)
-        .setValue(idx.toString())
-        .setDescription(`View all ${cleanLabel}`)
-        .setDefault(selectedCategory === idx.toString()),
-    );
+    const option = new StringSelectMenuOptionBuilder()
+      .setLabel(cleanLabel)
+      .setValue(idx.toString())
+      .setDescription(`View all ${cleanLabel}`)
+      .setDefault(selectedCategory === idx.toString());
+
+    const resolvedEmoji = emojiToken ? icon(emojiToken) : null;
+    if (resolvedEmoji) option.setEmoji(resolvedEmoji);
+
+    selectMenu.addOptions(option);
   });
   navRow.addComponents(selectMenu);
 
@@ -146,5 +176,102 @@ export async function handleRolesInfo(interaction, selectedCategory = "home") {
     return await interaction.update(payload);
   } else {
     return await interaction.reply(payload);
+  }
+}
+
+/**
+ * Builds a set of self-assignable role IDs (with labels) from roles-info.json.
+ * @returns {Promise<Map<string, string>>} Map of roleId -> role label.
+ */
+async function getSelfAssignableRoles() {
+  const map = new Map();
+  const data = await loadRolesData();
+  if (!data) return map;
+  for (const section of data.sections ?? []) {
+    if (!section.selfAssignable) continue;
+    for (const role of section.roles ?? []) {
+      if (role.id) map.set(role.id, role.name);
+    }
+  }
+  return map;
+}
+
+/**
+ * Handles a role button click from the interactive roles hub.
+ * Self-assignable roles are toggled (add/remove); other roles return an
+ * ephemeral notice that they cannot be self-assigned.
+ * @param {import('discord.js').ButtonInteraction} interaction - The button interaction.
+ * @returns {Promise<void>}
+ */
+export async function handleRoleButton(interaction) {
+  const customId = interaction.customId;
+
+  if (customId.startsWith("dummy_role_")) {
+    return interaction.reply(
+      eReply(
+        `${i("LOCK")} ɴᴏᴛ sᴇʟғ-ᴀssɪɢɴᴀʙʟᴇ`,
+        "ᴛʜɪs ʀᴏʟᴇ ᴄᴀɴ'ᴛ ʙᴇ sᴇʟғ-ᴀssɪɢɴᴇᴅ.",
+      ),
+    );
+  }
+
+  if (!customId.startsWith("selfrole_toggle_")) return;
+
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+  const roleId = customId.slice("selfrole_toggle_".length);
+  const selfRoles = await getSelfAssignableRoles();
+  const label = selfRoles.get(roleId);
+
+  if (!label) {
+    return interaction.editReply(
+      eReply(
+        `${i("LOCK")} ɴᴏᴛ sᴇʟғ-ᴀssɪɢɴᴀʙʟᴇ`,
+        "ᴛʜɪs ʀᴏʟᴇ ᴄᴀɴ'ᴛ ʙᴇ sᴇʟғ-ᴀssɪɢɴᴇᴅ.",
+      ),
+    );
+  }
+
+  const guild = interaction.guild;
+  const member = await guild?.members
+    .fetch(interaction.user.id)
+    .catch(() => null);
+  if (!member) {
+    return interaction.editReply(
+      eReply(`${i("ERROR")} ᴇʀʀᴏʀ`, "ᴄᴏᴜʟᴅ ɴᴏᴛ ʀᴇsᴏʟᴠᴇ ʏᴏᴜʀ ᴍᴇᴍʙᴇʀ ᴅᴀᴛᴀ."),
+    );
+  }
+
+  const role = guild.roles.cache.get(roleId);
+  if (!role) {
+    return interaction.editReply(
+      eReply(`${i("ERROR")} ɴᴏᴛ ғᴏᴜɴᴅ`, "ᴛʜᴀᴛ ʀᴏʟᴇ ɴᴏ ʟᴏɴɢᴇʀ ᴇxɪsᴛs."),
+    );
+  }
+
+  try {
+    if (member.roles.cache.has(roleId)) {
+      await member.roles.remove(roleId);
+      return interaction.editReply(
+        eReply(
+          `${i("DONE")} ʀᴏʟᴇ ʀᴇᴍᴏᴠᴇᴅ`,
+          `ʀᴇᴍᴏᴠᴇᴅ **${label}** ғʀᴏᴍ ʏᴏᴜʀ ʀᴏʟᴇs.`,
+        ),
+      );
+    }
+    await member.roles.add(roleId);
+    return interaction.editReply(
+      eReply(
+        `${i("DONE")} ʀᴏʟᴇ ᴀᴅᴅᴇᴅ`,
+        `ᴀssɪɢɴᴇᴅ **${label}** ᴛᴏ ʏᴏᴜʀ ʀᴏʟᴇs.`,
+      ),
+    );
+  } catch {
+    return interaction.editReply(
+      eReply(
+        `${i("ERROR")} ᴇʀʀᴏʀ`,
+        "ғᴀɪʟᴇᴅ ᴛᴏ ᴜᴘᴅᴀᴛᴇ ʏᴏᴜʀ ʀᴏʟᴇ. ᴍʏ ʀᴏʟᴇ ᴍᴀʏ ʙᴇ ᴛᴏᴏ ʟᴏᴡ ɪɴ ᴛʜᴇ ʜɪᴇʀᴀʀᴄʜʏ.",
+      ),
+    );
   }
 }

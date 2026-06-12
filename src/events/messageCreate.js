@@ -74,8 +74,7 @@ export default {
         if (fromVerification) return;
       }
     }
-    await checkSpam(message);
-    await checkToxicity(message);
+    await Promise.allSettled([checkSpam(message), checkToxicity(message)]);
 
     if (message.attachments.size >= 1) {
       const imageUrls = [];
@@ -110,16 +109,10 @@ export default {
     if (isBroadcastMention && !isMentioned) return;
 
     if (isMentioned || isNoMentionChannel || isAITicketChannel) {
-      console.log(`[DEBUG] AI mention detected - Message ID: ${message.id}`);
-
       if (processedMessages.has(message.id)) {
-        console.log(`[AI] Skipping duplicate message ${message.id}`);
         return;
       }
       processedMessages.add(message.id);
-      console.log(
-        `[DEBUG] Added message ${message.id} to processed set (size: ${processedMessages.size})`,
-      );
 
       if (processedMessages.size > 100) {
         const firstId = processedMessages.values().next().value;

@@ -21,7 +21,7 @@ export default {
       console.log(`[INFO] Member roles updated: ${newMember.user.tag}`);
       clearTimeout(_statusDebounceTimer);
       _statusDebounceTimer = setTimeout(
-        () => updateStatusMessage(newMember.client),
+        () => updateStatusMessage(newMember.client, false),
         15000,
       );
     }

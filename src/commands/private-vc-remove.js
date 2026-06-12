@@ -4,7 +4,6 @@ import {
   getVCByCreator,
   removeMember,
   isVCCreator,
-  hasVCAccess,
 } from "../utils/privateVCManager.js";
 import { eSend } from "../utils/embed.js";
 import { i } from "../utils/icons.js";
@@ -33,15 +32,6 @@ export default {
 
     const guild = interaction.guild;
     const invokerId = interaction.user.id;
-
-    if (!hasVCAccess(interaction.member)) {
-      return interaction.editReply(
-        eSend(
-          `${i("LOCK")} ᴀᴄᴄᴇss ᴅᴇɴɪᴇᴅ`,
-          "ʏᴏᴜ ɴᴇᴇᴅ ᴛʜᴇ ᴍᴇᴍʙᴇʀ ʀᴏʟᴇ ᴛᴏ ᴜsᴇ ᴘʀɪᴠᴀᴛᴇ ᴠᴄs.",
-        ),
-      );
-    }
 
     const channelId = getVCByCreator(invokerId);
     if (!channelId) {
