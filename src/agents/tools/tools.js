@@ -13,6 +13,8 @@ import {
   canCreate,
   getVCByMember,
   getVCByCreator,
+  forceDeleteVC,
+  canManageVC,
 } from "../../utils/privateVCManager.js";
 import * as modTools from "../../utils/moderation.js";
 
@@ -414,7 +416,17 @@ export const musicControlTool = tool({
     ].indexOf(voiceChannelId);
 
     const port = channelIndex !== -1 ? 8001 + channelIndex : 8000;
-    const baseURL = `http://localhost:${port}`;
+    
+    let baseURL = `http://localhost:${port}`;
+    if (process.env.REMANI_API_URL) {
+      try {
+        const urlObj = new URL(process.env.REMANI_API_URL);
+        urlObj.port = port;
+        baseURL = urlObj.origin;
+      } catch (e) {
+        // fallback to localhost if invalid url
+      }
+    }
 
     const headers = {
       "Content-Type": "application/json",
@@ -768,10 +780,44 @@ The tool enforces role-based permissions internally. Always pass userId (invoker
   },
 });
 
+/**
+ * Delete Private VC Tool - Deletes a private voice channel.
+ */
+export const deletePrivateVCTool = tool({
+  description: `Delete a real private voice channel. Use this whenever a user asks to delete, remove, close, or destroy their private VC.`,
+  parameters: z.object({
+    guildId: z.string().describe("The Discord server/guild ID"),
+    userId: z.string().optional().describe("invoking user's Discord ID"),
+    username: z.string().optional().describe("invoking user's username"),
+  }),
+  execute: async ({ guildId, userId }) => {
+    if (!client) return { success: false, error: "Client not initialized" };
+    try {
+      const guild = await client.guilds.fetch({ guild: guildId, force: true });
+      const channelId = getVCByCreator(userId) || getVCByMember(userId);
+      
+      if (!channelId) {
+        return { success: false, error: "You are not in any private VC, or you do not have a private VC to delete." };
+      }
+      
+      const member = await guild.members.fetch(userId);
+      if (!canManageVC(channelId, member)) {
+        return { success: false, error: "You do not have permission to delete this private VC. Only the creator or an owner can do this." };
+      }
+      
+      await forceDeleteVC(channelId, guild);
+      return { success: true, message: "Private VC deleted successfully." };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+});
+
 export default {
   commandExecutorTool,
   serverInfoTool,
   musicControlTool,
   createPrivateVCTool,
+  deletePrivateVCTool,
   discordActionTool,
 };
