@@ -174,7 +174,7 @@ params: { "action": (required, see below), "guildId": "server ID (required)", "u
 <!-- DEF:executeCommand -->
 
 **executeCommand** — Execute one of Shantha's slash commands (private VC management only)
-params: { "command": "add"|"remove"|"join"|"leave"|"delete"|"refresh"|"status"|"setup-verification"|"private" (required), "parameters": { key: value } (optional), "userId": "invoking user's Discord ID (required)", "guildId": "server ID (required)", "username": "invoking user's username (required)" }
+params: { "command": "embed-builder"|"join"|"leave"|"private-vc-add"|"private-vc-remove"|"private-vc"|"purge"|"refresh"|"setup-ticket" (required), "parameters": { key: value } (optional), "userId": "invoking user's Discord ID (required)", "guildId": "server ID (required)", "username": "invoking user's username (required)" }
 
 - These are the ONLY commands available: private VC management (add/remove members, join/leave/delete VC, etc.)
 - Blocked commands (will error if attempted): `ban`, `kick`, `delete-channel`, `setup-verification`
@@ -191,6 +191,15 @@ params: { "guildId": "server ID (required)", "invokerUserId": "user ID of reques
 - memberNames are fuzzy-matched against display names, nicknames, and usernames
 - If user says "create a private vc for me and [name]" → invokerUserId = userId from context, memberNames = ["[name]"]
 <!-- END_DEF:createPrivateVC -->
+
+<!-- DEF:deletePrivateVC -->
+
+**deletePrivateVC** — Delete a real private voice channel that belongs to the invoking user
+params: { "guildId": "server ID (required)", "userId": "invoking user's Discord ID (required)", "username": "invoking user's username (required)" }
+
+- Use this whenever a user asks to delete, remove, close, or destroy their private VC.
+- NEVER use executeCommand with "delete" — use this tool instead.
+<!-- END_DEF:deletePrivateVC -->
 
 <!-- DEF:executeWorkflow -->
 
