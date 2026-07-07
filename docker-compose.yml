@@ -12,13 +12,13 @@ services:
     environment:
       - NODE_ENV=production
       - TZ=UTC
-      - NODE_OPTIONS=--max-old-space-size=256
+      - NODE_OPTIONS=--max-old-space-size=512
     deploy:
       resources:
         limits:
-          memory: 320M
+          memory: 700M
         reservations:
-          memory: 128M
+          memory: 256M
     logging:
       driver: "json-file"
       options:
