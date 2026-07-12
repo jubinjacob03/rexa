@@ -1,9 +1,52 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { AttachmentBuilder } from "discord.js";
+import { createClient } from "@supabase/supabase-js";
+import config from "../../../config.js";
+import { icon } from "../../utils/icons.js";
 
 const GEMINI_IMAGE_MODEL = "gemini-3.1-flash-image";
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+const DAILY_LIMIT = 10;
+
+const supabase = createClient(config.supabase.url, config.supabase.serviceKey, {
+  auth: { autoRefreshToken: false, persistSession: false },
+});
+
+async function checkAndIncrementUsage(userId) {
+  const today = new Date().toISOString().split("T")[0];
+
+  const { data, error } = await supabase
+    .from("image_gen_usage")
+    .select("count")
+    .eq("user_id", userId)
+    .eq("date", today)
+    .single();
+
+  if (error && error.code !== "PGRST116") {
+    console.error("[ImageTool] Usage check error:", error.message);
+    return { allowed: true, remaining: DAILY_LIMIT };
+  }
+
+  const currentCount = data?.count || 0;
+
+  if (currentCount >= DAILY_LIMIT) {
+    const tomorrow = new Date();
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    tomorrow.setUTCHours(0, 0, 0, 0);
+    const resetTime = `<t:${Math.floor(tomorrow.getTime() / 1000)}:R>`;
+    return { allowed: false, remaining: 0, resetTime };
+  }
+
+  await supabase
+    .from("image_gen_usage")
+    .upsert(
+      { user_id: userId, date: today, count: currentCount + 1 },
+      { onConflict: "user_id,date" },
+    );
+
+  return { allowed: true, remaining: DAILY_LIMIT - currentCount - 1 };
+}
 
 async function fetchImageAsBase64(url) {
   const res = await fetch(url);
@@ -27,10 +70,20 @@ If the user provides reference image URLs, include them in referenceImages to ed
     username: z.string().optional(),
   }),
 
-  execute: async ({ prompt, referenceImages, aspectRatio }) => {
+  execute: async ({ prompt, referenceImages, aspectRatio, userId }) => {
     const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
     if (!apiKey) {
       return { success: false, error: "Image generation API key not configured." };
+    }
+
+    if (userId) {
+      const usage = await checkAndIncrementUsage(userId);
+      if (!usage.allowed) {
+        return {
+          success: false,
+          error: `${icon("WARNING")} Daily image generation limit reached (${DAILY_LIMIT}/${DAILY_LIMIT}). Resets ${usage.resetTime}.`,
+        };
+      }
     }
 
     try {
@@ -74,10 +127,30 @@ If the user provides reference image URLs, include them in referenceImages to ed
 
       if (!imagePart) {
         const textPart = responseParts.find((p) => p.text);
-        return {
-          success: false,
-          error: textPart?.text || "No image was generated. Try a different prompt.",
-        };
+        const blockReason = data?.candidates?.[0]?.finishReason;
+        const safetyRatings = data?.candidates?.[0]?.safetyRatings || data?.promptFeedback?.safetyRatings;
+        const blockedCategory = safetyRatings?.find((r) => r.blocked || r.probability === "HIGH")?.category;
+
+        let errorMsg;
+        if (blockReason === "SAFETY" || blockedCategory) {
+          const categoryMap = {
+            HARM_CATEGORY_SEXUALLY_EXPLICIT: "sexually explicit content",
+            HARM_CATEGORY_HATE_SPEECH: "hate speech",
+            HARM_CATEGORY_HARASSMENT: "harassment",
+            HARM_CATEGORY_DANGEROUS_CONTENT: "dangerous content",
+            HARM_CATEGORY_CIVIC_INTEGRITY: "civic integrity violation",
+          };
+          const reason = categoryMap[blockedCategory] || "safety policy violation";
+          errorMsg = `${icon("WARNING")} Image blocked by Google's safety filters: **${reason}**. This includes real public figures, celebrities, and inappropriate content.`;
+        } else if (textPart?.text) {
+          errorMsg = `${icon("WARNING")} Image generation refused: ${textPart.text}`;
+        } else if (blockReason) {
+          errorMsg = `${icon("WARNING")} Image blocked (reason: ${blockReason}). Try a different prompt — real people and sensitive content are not allowed.`;
+        } else {
+          errorMsg = `${icon("WARNING")} No image was generated. This usually means the prompt involves a real person or violates content policies. Try a different prompt.`;
+        }
+
+        return { success: false, error: errorMsg };
       }
 
       const buffer = Buffer.from(imagePart.inlineData.data, "base64");
