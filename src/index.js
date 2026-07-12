@@ -38,7 +38,7 @@ import {
 } from "./dashboard/dashboard.js";
 import { handleRolesInfo, handleRoleButton } from "./utils/rolesEmbed.js";
 import { handleEmbedBuilderInteraction } from "./utils/embedBuilderHandler.js";
-import { handlePersonalVCButton, handlePersonalVCSelect } from "./utils/personalVCManager.js";
+import { handlePersonalVCButton, handlePersonalVCSelect, initPersonalVC } from "./utils/personalVCManager.js";
 
 if (ffmpegPath) {
   process.env.FFMPEG_PATH = ffmpegPath;
@@ -114,6 +114,7 @@ console.log(`[INFO] Loaded ${eventFiles.length} events`);
 client.once(Events.ClientReady, async () => {
   console.log(`[INFO] Logged in as ${client.user.tag}`);
   await postDashboard(client);
+  await initPersonalVC(client);
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {

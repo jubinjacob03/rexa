@@ -41,26 +41,39 @@ export function isTriggerChannel(channelId) {
 
 function buildControlEmbed(vc, channel) {
   const memberCount = channel.members?.size || 0;
-  const lockIcon = vc.locked ? icon("LOCK") : icon("UNLOCK");
   const lockStatus = vc.locked ? "Locked" : "Unlocked";
+  const lockEmoji = vc.locked ? "🔒" : "🔓";
   const bannedList = vc.banned.size > 0
     ? [...vc.banned].map((id) => `<@${id}>`).join(", ")
     : "None";
 
   const container = new ContainerBuilder().setAccentColor(0x5865f2);
+
   container.addTextDisplayComponents(
     new TextDisplayBuilder().setContent(
-      `${icon("VOICE")} **${channel.name}**\n` +
-      `${lockIcon} Status: **${lockStatus}** • 👥 ${memberCount}/${MAX_MEMBERS}\n` +
-      `🚫 Banned: ${bannedList}`
+      `${icon("VOICE")} **${channel.name}** — <@${vc.ownerId}>'s Room`
     ),
   );
+
   container.addSeparatorComponents(
     new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small),
   );
+
   container.addTextDisplayComponents(
     new TextDisplayBuilder().setContent(
-      `Only <@${vc.ownerId}> can use these controls.`
+      `${lockEmoji} **Status:** ${lockStatus}\n` +
+      `${icon("MEMBERS")} **Members:** ${memberCount} / ${MAX_MEMBERS}\n` +
+      `${icon("STOP")} **Banned:** ${bannedList}`
+    ),
+  );
+
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small),
+  );
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(
+      `${icon("INFO")} Only <@${vc.ownerId}> can use these controls.`
     ),
   );
 
@@ -69,22 +82,22 @@ function buildControlEmbed(vc, channel) {
       .setCustomId("pvc_lock")
       .setLabel(vc.locked ? "Unlock" : "Lock")
       .setEmoji(vc.locked ? "🔓" : "🔒")
-      .setStyle(vc.locked ? ButtonStyle.Success : ButtonStyle.Secondary),
+      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("pvc_ban")
       .setLabel("Ban")
-      .setEmoji("🚫")
-      .setStyle(ButtonStyle.Danger),
+      .setEmoji(icon("STOP"))
+      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("pvc_unban")
       .setLabel("Unban")
-      .setEmoji("✅")
+      .setEmoji(icon("SUCCESS"))
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("pvc_close")
       .setLabel("Close")
-      .setEmoji("🗑️")
-      .setStyle(ButtonStyle.Danger),
+      .setEmoji(icon("KEYLOCK"))
+      .setStyle(ButtonStyle.Secondary),
   );
 
   return {
@@ -110,6 +123,20 @@ async function sendOrUpdatePanel(channel) {
     vc.panelMessage = await channel.send(payload);
   } catch (err) {
     console.error("[PersonalVC] Failed to send panel:", err.message);
+  }
+}
+
+export async function initPersonalVC(client) {
+  try {
+    const guild = client.guilds.cache.first();
+    const emoji = guild?.emojis.cache.find((e) => e.name === "iconBlueArrowAnimated");
+    const arrow = emoji ? `<a:iconBlueArrowAnimated:${emoji.id}>` : "»";
+    await client.rest.put(`/channels/${TRIGGER_CHANNEL_ID}/voice-status`, {
+      body: { status: `${arrow} Join to create a personal VC` },
+    });
+    console.log("[PersonalVC] Set trigger channel status");
+  } catch (err) {
+    console.error("[PersonalVC] Failed to set trigger status:", err.message);
   }
 }
 
@@ -219,7 +246,15 @@ export function onPersonalVCJoin(channelId) {
   stopIdleTimer(channelId);
 }
 
-export function onPersonalVCLeave(channelId, guild) {
+export function onPersonalVCLeave(channelId, guild, memberId) {
+  const vc = getVC(channelId);
+  if (!vc) return;
+
+  if (memberId === vc.ownerId) {
+    destroyPersonalVC(channelId, guild);
+    return;
+  }
+
   const channel = guild.channels.cache.get(channelId);
   if (!channel || channel.members.size === 0) {
     startIdleTimer(channelId, guild);

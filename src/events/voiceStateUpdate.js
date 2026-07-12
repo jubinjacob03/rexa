@@ -38,7 +38,7 @@ export default {
 
     if (oldState.channelId && isPersonalVC(oldState.channelId)) {
       if (oldState.channelId !== newState.channelId) {
-        onPersonalVCLeave(oldState.channelId, guild);
+        onPersonalVCLeave(oldState.channelId, guild, oldState.member?.id);
       }
     }
 
