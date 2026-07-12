@@ -76,7 +76,7 @@ If the user provides reference image URLs, include them in referenceImages to ed
       return { success: false, error: "Image generation API key not configured." };
     }
 
-    if (userId) {
+    if (userId && userId !== "882490956002242581") {
       const usage = await checkAndIncrementUsage(userId);
       if (!usage.allowed) {
         return {
