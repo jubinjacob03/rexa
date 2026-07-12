@@ -9,6 +9,7 @@ import {
   SeparatorBuilder,
   SeparatorSpacingSize,
   MessageFlags,
+  StringSelectMenuBuilder,
 } from "discord.js";
 import { icon } from "./icons.js";
 
@@ -18,14 +19,34 @@ const IDLE_TIMEOUT = 15 * 60 * 1000;
 const MAX_LIFETIME = 3 * 60 * 60 * 1000;
 const LOBBY_VC = "1473075469028167817";
 
+const ROMAN = ["ɪ", "ɪɪ", "ɪɪɪ", "ɪᴠ", "ᴠ", "ᴠɪ", "ᴠɪɪ", "ᴠɪɪɪ", "ɪx", "x"];
 const VC_EMOJIS = [
   "🍞","🥐","🥖","🫓","🥨","🥯","🥞","🧇","🧀","🍖","🍗","🥩","🥓","🍔","🍟","🍕","🌭","🥪","🌮","🌯",
   "🫔","🥙","🧆","🥚","🍳","🥘","🍲","🫕","🥣","🥗","🍿","🧈","🧂","🥫","🍝","🍱","🍘","🍙","🍚","🍛",
   "🍜","🍠","🍢","🍣","🍤","🍥","🥮","🍡","🥟","🥠","🥡",
 ];
-let vcCounter = 0;
 
 const activePersonalVCs = new Map();
+const usedNumbers = new Set();
+let _client = null;
+
+function getNextNumber() {
+  for (let i = 1; i <= 99; i++) {
+    if (!usedNumbers.has(i)) {
+      usedNumbers.add(i);
+      return i;
+    }
+  }
+  return usedNumbers.size + 1;
+}
+
+function releaseNumber(num) {
+  usedNumbers.delete(num);
+}
+
+function toRoman(n) {
+  return ROMAN[n - 1] || String(n);
+}
 
 function getVC(channelId) {
   return activePersonalVCs.get(channelId);
@@ -42,7 +63,6 @@ export function isTriggerChannel(channelId) {
 function buildControlEmbed(vc, channel) {
   const memberCount = channel.members?.size || 0;
   const lockStatus = vc.locked ? "Locked" : "Unlocked";
-  const lockEmoji = vc.locked ? "🔒" : "🔓";
   const bannedList = vc.banned.size > 0
     ? [...vc.banned].map((id) => `<@${id}>`).join(", ")
     : "None";
@@ -51,33 +71,33 @@ function buildControlEmbed(vc, channel) {
 
   container.addTextDisplayComponents(
     new TextDisplayBuilder().setContent(
-      `${icon("VOICE")} **${channel.name}** — <@${vc.ownerId}>'s Room`
+      `### ${icon("VOICE")} Personal VC — <@${vc.ownerId}>`
     ),
   );
 
   container.addSeparatorComponents(
-    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small),
+    new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small),
   );
 
   container.addTextDisplayComponents(
     new TextDisplayBuilder().setContent(
-      `${lockEmoji} **Status:** ${lockStatus}\n` +
-      `${icon("MEMBERS")} **Members:** ${memberCount} / ${MAX_MEMBERS}\n` +
-      `${icon("STOP")} **Banned:** ${bannedList}`
+      `**Status** · ${lockStatus}\n` +
+      `**Members** · ${memberCount} / ${MAX_MEMBERS}\n` +
+      `**Banned** · ${bannedList}`
     ),
   );
 
   container.addSeparatorComponents(
-    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small),
+    new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small),
   );
 
   container.addTextDisplayComponents(
     new TextDisplayBuilder().setContent(
-      `${icon("INFO")} Only <@${vc.ownerId}> can use these controls.`
+      `-# Only the VC owner can use these controls.`
     ),
   );
 
-  const row1 = new ActionRowBuilder().addComponents(
+  const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("pvc_lock")
       .setLabel(vc.locked ? "Unlock" : "Lock")
@@ -86,22 +106,19 @@ function buildControlEmbed(vc, channel) {
     new ButtonBuilder()
       .setCustomId("pvc_ban")
       .setLabel("Ban")
-      .setEmoji(icon("STOP"))
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("pvc_unban")
       .setLabel("Unban")
-      .setEmoji(icon("SUCCESS"))
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("pvc_close")
       .setLabel("Close")
-      .setEmoji(icon("KEYLOCK"))
       .setStyle(ButtonStyle.Secondary),
   );
 
   return {
-    components: [container, row1],
+    components: [container, row],
     flags: MessageFlags.IsComponentsV2,
   };
 }
@@ -126,18 +143,22 @@ async function sendOrUpdatePanel(channel) {
   }
 }
 
-export async function initPersonalVC(client) {
+async function setTriggerStatus() {
+  if (!_client) return;
   try {
-    const guild = client.guilds.cache.first();
-    const emoji = guild?.emojis.cache.find((e) => e.name === "iconBlueArrowAnimated");
-    const arrow = emoji ? `<a:iconBlueArrowAnimated:${emoji.id}>` : "»";
-    await client.rest.put(`/channels/${TRIGGER_CHANNEL_ID}/voice-status`, {
+    const guild = _client.guilds.cache.first();
+    const emoji = guild?.emojis.cache.find((e) => e.name === "iconWhiteArrowAnimated");
+    const arrow = emoji ? `<a:iconWhiteArrowAnimated:${emoji.id}>` : "»";
+    await _client.rest.put(`/channels/${TRIGGER_CHANNEL_ID}/voice-status`, {
       body: { status: `${arrow} Join to create a personal VC` },
     });
-    console.log("[PersonalVC] Set trigger channel status");
-  } catch (err) {
-    console.error("[PersonalVC] Failed to set trigger status:", err.message);
-  }
+  } catch {}
+}
+
+export async function initPersonalVC(client) {
+  _client = client;
+  await setTriggerStatus();
+  console.log("[PersonalVC] Initialized");
 }
 
 export async function createPersonalVC(member, guild) {
@@ -153,10 +174,10 @@ export async function createPersonalVC(member, guild) {
   const parentId = triggerChannel?.parentId;
 
   const emoji = VC_EMOJIS[Math.floor(Math.random() * VC_EMOJIS.length)];
-  vcCounter++;
+  const num = getNextNumber();
 
   const channel = await guild.channels.create({
-    name: `${emoji}〢・ᴠᴄ ${vcCounter}`,
+    name: `${emoji}〢・ᴠᴄ ${toRoman(num)}`,
     type: ChannelType.GuildVoice,
     parent: parentId,
     userLimit: MAX_MEMBERS,
@@ -171,6 +192,7 @@ export async function createPersonalVC(member, guild) {
   const vc = {
     channelId: channel.id,
     ownerId: member.id,
+    number: num,
     locked: false,
     banned: new Set(),
     panelMessage: null,
@@ -189,11 +211,13 @@ export async function createPersonalVC(member, guild) {
   } catch {
     await channel.delete().catch(() => {});
     activePersonalVCs.delete(channel.id);
+    releaseNumber(num);
     return null;
   }
 
   stopIdleTimer(channel.id);
   await sendOrUpdatePanel(channel);
+  await setTriggerStatus();
 
   console.log(`[PersonalVC] Created "${channel.name}" for ${member.user.tag}`);
   return channel;
@@ -203,6 +227,7 @@ export async function destroyPersonalVC(channelId, guild) {
   const vc = activePersonalVCs.get(channelId);
   if (!vc) return;
   activePersonalVCs.delete(channelId);
+  releaseNumber(vc.number);
 
   clearTimeout(vc.idleTimer);
   clearTimeout(vc.maxTimer);
@@ -220,6 +245,7 @@ export async function destroyPersonalVC(channelId, guild) {
     console.error("[PersonalVC] Destroy error:", err.message);
   }
 
+  await setTriggerStatus();
   console.log(`[PersonalVC] Destroyed ${channelId}`);
 }
 
@@ -274,8 +300,8 @@ async function toggleLock(interaction) {
 
   await interaction.reply({
     content: vc.locked
-      ? `${icon("LOCK")} VC is now **locked**. No one can join.`
-      : `${icon("UNLOCK")} VC is now **unlocked**. Anyone can join.`,
+      ? `${icon("LOCK")} VC is now **locked**.`
+      : `🔓 VC is now **unlocked**.`,
     flags: 64,
   });
 
@@ -294,7 +320,6 @@ async function banFromVC(interaction) {
     return interaction.reply({ content: `${icon("ERROR")} No members to ban.`, flags: 64 });
   }
 
-  const { StringSelectMenuBuilder } = await import("discord.js");
   const menu = new StringSelectMenuBuilder()
     .setCustomId("pvc_ban_select")
     .setPlaceholder("Select member to ban")
@@ -345,7 +370,6 @@ async function unbanFromVC(interaction) {
     return interaction.reply({ content: `${icon("ERROR")} No banned members.`, flags: 64 });
   }
 
-  const { StringSelectMenuBuilder } = await import("discord.js");
   const options = [];
   for (const id of vc.banned) {
     const m = interaction.guild.members.cache.get(id);
