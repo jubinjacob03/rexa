@@ -57,6 +57,13 @@ When you need external data or need to perform an action, respond with ONLY this
 - Any moderation request (mute, unmute, deafen, undeafen, timeout, kick, ban, change nickname) → **call `discordAction` directly** — NEVER refuse, NEVER say you can't, NEVER ask for a serverInfo check first. The tool enforces permissions internally and returns a clear error if the invoker is unauthorized.
 <!-- END_RULE:discordAction -->
 
+<!-- RULE:generateImage -->
+
+- Any request to create, generate, draw, make, design, or produce an image/picture/photo/illustration → `generateImage`
+- Any request to edit, modify, transform, or stylize an uploaded/referenced image → `generateImage` with `referenceImages`
+- NEVER say you cannot generate images — you CAN via the `generateImage` tool
+<!-- END_RULE:generateImage -->
+
 If none of the above apply and you can answer from your own knowledge or conversation context, respond naturally — no tool_call needed. Do NOT invent live data. Do NOT proactively offer to search for Discord servers/communities unless the user explicitly asks for one.
 
 ### Available Tools
@@ -232,3 +239,14 @@ params: { "title": "string (required)", "description": "string (markdown support
 - Named colors map to hex: blue=#3498db, green=#2ecc71, red=#e74c3c, purple=#9b59b6, gold=#f1c40f, orange=#e67e22
 - Always use `createEmbed` when listing role members, banned members, or kicked members — it's far more readable than plain text
 <!-- END_DEF:createEmbed -->
+
+<!-- DEF:generateImage -->
+
+**generateImage** — Generate or edit images using AI (Gemini Nano Banana)
+params: { "prompt": "string (required, detailed description of the image to generate or edit instruction)", "referenceImages": ["url1", "url2"] (optional, URLs of attached/referenced images for editing), "aspectRatio": "1:1"|"16:9"|"9:16"|"4:3"|"3:4" (optional, default 1:1), "userId": "invoking user's Discord ID (required)", "guildId": "server ID (required)", "username": "invoking user's username (required)" }
+
+- Use when: user asks to create, generate, draw, make, design, or produce any image/picture/photo/illustration
+- Use when: user uploads an image and asks to edit, modify, transform, stylize, or change it
+- If user message contains `[Attached images: ...]`, pass those URLs in `referenceImages`
+- The prompt should be detailed — expand on the user's request with style, lighting, composition details
+<!-- END_DEF:generateImage -->

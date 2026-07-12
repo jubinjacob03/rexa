@@ -2,7 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import { AttachmentBuilder } from "discord.js";
 
-const GEMINI_IMAGE_MODEL = "gemini-2.0-flash-exp";
+const GEMINI_IMAGE_MODEL = "gemini-3.1-flash-image";
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
 async function fetchImageAsBase64(url) {
