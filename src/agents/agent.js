@@ -348,6 +348,11 @@ export async function processMessage(
 
     const enrichedParams = { ...toolParams, userId, guildId, username };
 
+    if (toolName === "generateImage") {
+      const rawPrompt = message.replace(/\[Attached images:.*?\]/g, "").trim();
+      enrichedParams.prompt = rawPrompt;
+    }
+
     let toolResult = await executeToolByName(toolName, enrichedParams);
     if (toolName === "serverInfo" && toolParams.infoType === "members") {
       const personMatch = message.match(RE_PERSON_MATCH);
