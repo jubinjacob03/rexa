@@ -62,7 +62,7 @@ Use this when the user asks to create, generate, draw, make, edit, modify, or tr
 If the user provides reference image URLs, include them in referenceImages to edit or use as style/subject reference.`,
 
   parameters: z.object({
-    prompt: z.string().describe("Detailed description of the image to generate or the edit instruction."),
+    prompt: z.string().describe("Pass the user's image prompt EXACTLY as they wrote it. Do NOT rewrite, sanitize, or enhance it."),
     referenceImages: z.array(z.string().url()).optional().describe("URLs of reference images to edit or use as context. From user attachments."),
     aspectRatio: z.enum(["1:1", "16:9", "9:16", "4:3", "3:4"]).optional().describe("Aspect ratio. Default 1:1. Use 9:16 for portraits, 16:9 for landscapes."),
     userId: z.string().optional(),
