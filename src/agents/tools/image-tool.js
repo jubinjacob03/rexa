@@ -109,7 +109,7 @@ If the user provides reference image URLs, include them in referenceImages to ed
             contents: [{ parts }],
             generationConfig: {
               responseModalities: ["IMAGE", "TEXT"],
-              ...(aspectRatio && { aspectRatio }),
+              ...(aspectRatio && { imageGenerationConfig: { aspectRatio } }),
             },
           }),
         },
