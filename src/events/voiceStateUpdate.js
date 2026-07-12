@@ -4,23 +4,25 @@ import {
   onMemberLeft,
   onMemberJoined,
 } from "../utils/privateVCManager.js";
+import {
+  isTriggerChannel,
+  isPersonalVC,
+  createPersonalVC,
+  onPersonalVCJoin,
+  onPersonalVCLeave,
+} from "../utils/personalVCManager.js";
 
-/**
- * Handles the VoiceStateUpdate event.
- * @module events/voiceStateUpdate
- */
 export default {
   name: Events.VoiceStateUpdate,
   once: false,
 
-  /**
-   * Executes the event handler.
-   * @param {import("discord.js").VoiceState} oldState - The voice state before the update.
-   * @param {import("discord.js").VoiceState} newState - The voice state after the update.
-   * @returns {Promise<void>}
-   */
   async execute(oldState, newState) {
     const guild = oldState.guild || newState.guild;
+
+    if (newState.channelId && isTriggerChannel(newState.channelId)) {
+      await createPersonalVC(newState.member, guild);
+      return;
+    }
 
     if (oldState.channelId && isPrivateVC(oldState.channelId)) {
       if (oldState.channelId !== newState.channelId) {
@@ -31,6 +33,18 @@ export default {
     if (newState.channelId && isPrivateVC(newState.channelId)) {
       if (oldState.channelId !== newState.channelId) {
         onMemberJoined(newState.channelId);
+      }
+    }
+
+    if (oldState.channelId && isPersonalVC(oldState.channelId)) {
+      if (oldState.channelId !== newState.channelId) {
+        onPersonalVCLeave(oldState.channelId, guild);
+      }
+    }
+
+    if (newState.channelId && isPersonalVC(newState.channelId)) {
+      if (oldState.channelId !== newState.channelId) {
+        onPersonalVCJoin(newState.channelId);
       }
     }
   },

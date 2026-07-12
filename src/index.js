@@ -38,6 +38,7 @@ import {
 } from "./dashboard/dashboard.js";
 import { handleRolesInfo, handleRoleButton } from "./utils/rolesEmbed.js";
 import { handleEmbedBuilderInteraction } from "./utils/embedBuilderHandler.js";
+import { handlePersonalVCButton, handlePersonalVCSelect } from "./utils/personalVCManager.js";
 
 if (ffmpegPath) {
   process.env.FFMPEG_PATH = ffmpegPath;
@@ -146,6 +147,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isButton()) {
+      if (interaction.customId.startsWith("pvc_")) {
+        await handlePersonalVCButton(interaction);
+        return;
+      }
+
       if (interaction.customId === "refresh_stats") {
         try {
           await interaction.deferUpdate();
@@ -277,6 +283,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isStringSelectMenu()) {
+      if (interaction.customId.startsWith("pvc_")) {
+        await handlePersonalVCSelect(interaction);
+        return;
+      }
       if (interaction.customId.startsWith("shantha_")) {
         await handleDashboardSelect(interaction);
         return;
