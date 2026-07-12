@@ -11,6 +11,7 @@ export const ACTION_ONLY_TOOLS = new Set([
   "executeWorkflow",
   "createPrivateVC",
   "discordAction",
+  "generateImage",
 ]);
 
 /** Music actions that return info (need synthesis) vs pure actions */

@@ -35,7 +35,8 @@ When you need external data or need to perform an action, respond with ONLY this
 
 <!-- RULE:webSearch -->
 
-- Any other current events or real-time information → `webSearch`
+- Any question that requires live, real-time, or factually grounded information → `webSearch`
+- If you are NOT 100% certain your answer is current and accurate, use `webSearch` — do NOT guess or answer from memory
 <!-- END_RULE:webSearch -->
 
 <!-- RULE:musicControl -->

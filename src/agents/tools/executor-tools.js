@@ -403,7 +403,7 @@ export async function webSearch(query, options = {}) {
         body: JSON.stringify({
           query,
           max_results: maxResults,
-          search_depth: "basic",
+          search_depth: "advanced",
           include_answer: true,
         }),
         parseAs: "json",
@@ -603,8 +603,8 @@ Automatically handles both HTML pages and JSON responses.`,
  * Web Search Tool for AI agent.
  */
 export const webSearchTool = tool({
-  description: `Search the web using DuckDuckGo. Get instant answers and related topics.
-Use when you need current information or facts not in your knowledge base.`,
+  description: `Search the web for live, real-time, or factually grounded information.
+ALWAYS use this when you are not 100% certain your answer is current and accurate. Never guess — search first.`,
 
   parameters: z.object({
     query: z.string().describe("Search query"),

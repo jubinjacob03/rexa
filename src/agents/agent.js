@@ -472,7 +472,7 @@ export async function processMessage(
         contextManager.addMessage(userId, guildId, "user", message),
         contextManager.addMessage(userId, guildId, "assistant", finalResp),
       ]);
-      return { success: true, response: finalResp, components: [] };
+      return { success: true, response: finalResp, components: [], files: finalToolResult?.files };
     }
 
     if (

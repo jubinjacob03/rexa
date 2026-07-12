@@ -7,6 +7,7 @@ import knowledgeBase from "./knowledge-base.js";
 import contextManager from "./context-manager.js";
 import executorTools from "./executor-tools.js";
 import agentTools from "./agent-tools.js";
+import imageTool from "./image-tool.js";
 import * as discordTools from "./tools.js";
 
 /**
@@ -53,6 +54,7 @@ export const tools = {
   webSearch: executorTools.webSearchTool,
   executeWorkflow: executorTools.workflowTool,
   httpRequest: executorTools.httpRequestTool,
+  generateImage: imageTool.generateImageTool,
 };
 
 export {

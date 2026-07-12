@@ -131,10 +131,26 @@ export default {
         setTimeout(keepTyping, 9000);
 
         try {
-          const question = message.content
+          let question = message.content
             .replace(new RegExp(`<@!?${message.client.user.id}>`, "g"), "")
             .replace(/<@&\d+>/g, "")
             .trim();
+
+          const imageUrls = [];
+          for (const att of message.attachments.values()) {
+            if (att.contentType?.startsWith("image/")) imageUrls.push(att.url);
+          }
+          if (message.reference?.messageId) {
+            try {
+              const ref = await message.channel.messages.fetch(message.reference.messageId);
+              for (const att of ref.attachments.values()) {
+                if (att.contentType?.startsWith("image/")) imageUrls.push(att.url);
+              }
+            } catch {}
+          }
+          if (imageUrls.length > 0) {
+            question += `\n[Attached images: ${imageUrls.join(" , ")}]`;
+          }
 
           if (!question) {
             await message.reply({
@@ -169,8 +185,14 @@ export default {
             const response = result.response || "";
             const hasEmbeds = result.embeds?.length > 0;
             const hasComponents = result.components?.length > 0;
+            const hasFiles = result.files?.length > 0;
 
-            if (hasEmbeds || hasComponents) {
+            if (hasFiles) {
+              await safeReply({
+                content: response || undefined,
+                files: result.files,
+              });
+            } else if (hasEmbeds || hasComponents) {
               await safeReply({
                 content: response || undefined,
                 embeds: result.embeds,

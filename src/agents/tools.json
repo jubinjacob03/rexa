@@ -10,5 +10,6 @@
   "createPrivateVC": true,
   "escalateTicket": true,
   "executeWorkflow": true,
-  "createEmbed": true
+  "createEmbed": true,
+  "generateImage": true
 }
