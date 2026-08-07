@@ -2,6 +2,7 @@ import { Router } from "express";
 import http from "http";
 import https from "https";
 import axios from "axios";
+import { isZyraConnected, sendToZyra } from "../zyraRelay.js";
 
 const router = Router();
 
@@ -60,6 +61,10 @@ const proxyPost =
   (remaniPath, timeout = CMD_TIMEOUT) =>
   async (req, res) => {
     try {
+      if (isZyraConnected()) {
+        const result = await sendToZyra("POST", remaniPath, req.body);
+        return res.status(result.status || 200).json(result.data);
+      }
       const botIndex =
         req.body.botIndex !== undefined ? Number(req.body.botIndex) : 0;
       const { data } = await getRemaniInstance(botIndex).post(
@@ -72,12 +77,21 @@ const proxyPost =
       const status = err.response?.status || 502;
       res
         .status(status)
-        .json(err.response?.data || { error: "Remani API unreachable" });
+        .json(
+          err.response?.data || {
+            error: err.message || "Remani API unreachable",
+          },
+        );
     }
   };
 
 const proxyGet = (remaniPath, getParams) => async (req, res) => {
   try {
+    if (isZyraConnected()) {
+      const params = getParams ? getParams(req) : req.query;
+      const result = await sendToZyra("GET", remaniPath, null, params);
+      return res.status(result.status || 200).json(result.data);
+    }
     const botIndex =
       req.query.botIndex !== undefined ? Number(req.query.botIndex) : 0;
     const params = getParams ? getParams(req) : req.query;
@@ -90,7 +104,11 @@ const proxyGet = (remaniPath, getParams) => async (req, res) => {
     const status = err.response?.status || 502;
     res
       .status(status)
-      .json(err.response?.data || { error: "Remani API unreachable" });
+      .json(
+        err.response?.data || {
+          error: err.message || "Remani API unreachable",
+        },
+      );
   }
 };
 
@@ -124,6 +142,8 @@ router.get(
 );
 
 router.get("/health", proxyGet("/health"));
+
+router.get("/trending", proxyGet("/trending"));
 
 router.post("/search", proxyPost("/search", 12_000));
 

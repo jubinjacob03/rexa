@@ -17,6 +17,7 @@ import membersRoute from "./routes/members.js";
 import verificationRoute from "./routes/verification.js";
 import musicRoute from "./routes/music.js";
 import { attachWsServer } from "./wsServer.js";
+import { attachZyraRelay } from "./zyraRelay.js";
 
 /**
  * Creates and configures the Express API server.
@@ -71,7 +72,10 @@ export function createApiServer(discordClient) {
     max: 20,
     message: {
       success: false,
-      error: { code: "RATE_LIMIT_EXCEEDED", message: "Too many token requests" },
+      error: {
+        code: "RATE_LIMIT_EXCEEDED",
+        message: "Too many token requests",
+      },
     },
     standardHeaders: true,
     legacyHeaders: false,
@@ -128,6 +132,7 @@ export function startApiServer(discordClient) {
   });
 
   attachWsServer(server, discordClient);
+  attachZyraRelay(server);
 
   server.on("error", (err) => {
     if (err.code === "EADDRINUSE") {
