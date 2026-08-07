@@ -14,7 +14,13 @@ export function isZyraConnected() {
   return _zyraSocket?.readyState === 1;
 }
 
-export function sendToZyra(method, path, body, query) {
+export function sendToZyra(
+  method,
+  path,
+  body,
+  query,
+  timeoutMs = REQUEST_TIMEOUT,
+) {
   return new Promise((resolve, reject) => {
     if (!isZyraConnected()) {
       return reject(new Error("Zyra not connected"));
@@ -24,7 +30,7 @@ export function sendToZyra(method, path, body, query) {
     const timeout = setTimeout(() => {
       _pendingRequests.delete(id);
       reject(new Error("Relay timeout"));
-    }, REQUEST_TIMEOUT);
+    }, timeoutMs);
 
     _pendingRequests.set(id, { resolve, reject, timeout });
 
@@ -93,9 +99,20 @@ export function attachZyraRelay() {
     });
 
     const heartbeat = setInterval(() => {
-      if (ws.readyState === 1) ws.ping();
-    }, 30_000);
+      if (ws.readyState === 1) {
+        ws.ping();
+        ws._pongReceived = false;
+        setTimeout(() => {
+          if (ws.readyState === 1 && !ws._pongReceived) {
+            ws.terminate();
+          }
+        }, 5000);
+      }
+    }, 15_000);
 
+    ws.on("pong", () => {
+      ws._pongReceived = true;
+    });
     ws.on("close", () => clearInterval(heartbeat));
   });
 
