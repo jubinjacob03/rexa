@@ -32,18 +32,12 @@ export function sendToZyra(method, path, body, query) {
   });
 }
 
-export function attachZyraRelay(httpServer) {
-  const wss = new WebSocketServer({ noServer: true });
+let _wss = null;
 
-  httpServer.on("upgrade", (req, socket, head) => {
-    if (req.url === "/relay/zyra") {
-      wss.handleUpgrade(req, socket, head, (ws) => {
-        wss.emit("connection", ws, req);
-      });
-    }
-  });
+export function attachZyraRelay() {
+  _wss = new WebSocketServer({ noServer: true });
 
-  wss.on("connection", (ws) => {
+  _wss.on("connection", (ws) => {
     ws.authenticated = false;
 
     const authTimeout = setTimeout(() => {
@@ -104,4 +98,6 @@ export function attachZyraRelay(httpServer) {
 
     ws.on("close", () => clearInterval(heartbeat));
   });
+
+  return { getRelayWss: () => _wss };
 }

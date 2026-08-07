@@ -132,7 +132,16 @@ export function startApiServer(discordClient) {
   });
 
   attachWsServer(server, discordClient);
-  attachZyraRelay(server);
+
+  const { getRelayWss } = attachZyraRelay();
+
+  server.on("upgrade", (req, socket, head) => {
+    if (req.url === "/relay/zyra") {
+      getRelayWss().handleUpgrade(req, socket, head, (ws) => {
+        getRelayWss().emit("connection", ws, req);
+      });
+    }
+  });
 
   server.on("error", (err) => {
     if (err.code === "EADDRINUSE") {
