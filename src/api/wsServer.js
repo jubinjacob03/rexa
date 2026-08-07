@@ -21,8 +21,17 @@ export function broadcastWs(payload) {
 
 /** @param {import('http').Server} httpServer */
 export function attachWsServer(httpServer, discordClient) {
-  const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
+  const wss = new WebSocketServer({ noServer: true });
   _wss = wss;
+
+  httpServer.on("upgrade", (req, socket, head) => {
+    const pathname = new URL(req.url, "http://localhost").pathname;
+    if (pathname === "/ws") {
+      wss.handleUpgrade(req, socket, head, (ws) => {
+        wss.emit("connection", ws, req);
+      });
+    }
+  });
 
   wss.on("connection", (ws) => {
     ws.authenticated = false;
