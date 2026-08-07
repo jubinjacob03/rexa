@@ -33,9 +33,14 @@ export function sendToZyra(method, path, body, query) {
 }
 
 export function attachZyraRelay(httpServer) {
-  const wss = new WebSocketServer({
-    server: httpServer,
-    path: "/relay/zyra",
+  const wss = new WebSocketServer({ noServer: true });
+
+  httpServer.on("upgrade", (req, socket, head) => {
+    if (req.url === "/relay/zyra") {
+      wss.handleUpgrade(req, socket, head, (ws) => {
+        wss.emit("connection", ws, req);
+      });
+    }
   });
 
   wss.on("connection", (ws) => {
