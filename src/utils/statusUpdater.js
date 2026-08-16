@@ -116,9 +116,11 @@ export async function updateStatusMessage(client, live = true) {
         .setLabel("sʏɴᴄ")
         .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
-        .setCustomId("status_roles_info")
-        .setLabel("ʀᴏʟᴇs")
-        .setStyle(ButtonStyle.Success),
+        .setLabel("ɢᴜɪᴅᴇ")
+        .setStyle(ButtonStyle.Link)
+        .setURL(
+          `https://discord.com/channels/${config.guildId}/1515070265221185596`,
+        ),
       new ButtonBuilder()
         .setLabel("ʀᴜʟᴇs")
         .setStyle(ButtonStyle.Link)
@@ -173,10 +175,7 @@ export async function updateStatusMessage(client, live = true) {
           const existing = messages.find((m) => {
             if (m.author.id !== client.user.id) return false;
             const flat = JSON.stringify(m.components ?? []);
-            return (
-              flat.includes("refresh_stats") ||
-              flat.includes("status_roles_info")
-            );
+            return flat.includes("refresh_stats");
           });
           if (existing) {
             statusMessage = existing;

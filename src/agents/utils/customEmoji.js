@@ -27,11 +27,26 @@ const resolved = {};
  * Call this once after the client is ready.
  * @param {import('discord.js').Client} client
  */
-export function initEmojis(client) {
+export async function initEmojis(client) {
+  try {
+    const appEmojis = await client.application.emojis.fetch();
+    for (const emoji of appEmojis.values()) {
+      const key = EMOJI_NAMES[emoji.name];
+      if (key) {
+        resolved[key] = {
+          id: emoji.id,
+          name: emoji.name,
+          animated: emoji.animated,
+          full: `<${emoji.animated ? "a" : ""}:${emoji.name}:${emoji.id}>`,
+        };
+      }
+    }
+  } catch {}
+
   for (const guild of client.guilds.cache.values()) {
     for (const emoji of guild.emojis.cache.values()) {
       const key = EMOJI_NAMES[emoji.name];
-      if (key) {
+      if (key && !resolved[key]) {
         resolved[key] = {
           id: emoji.id,
           name: emoji.name,

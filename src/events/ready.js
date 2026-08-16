@@ -47,7 +47,7 @@ export default {
     console.log(`[SUCCESS] Shantha logged in as ${client.user.tag}`);
     console.log(`[INFO] Serving ${client.guilds.cache.size} guild(s)`);
 
-    initIcons(client);
+    await initIcons(client);
 
     try {
       const { initializeAgent } = await import("../agents/agent.js");

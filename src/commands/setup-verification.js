@@ -11,12 +11,6 @@ import {
   MessageFlags,
 } from "discord.js";
 import config from "../../config.js";
-import {
-  getAutoDmEnabled,
-  setAutoDmEnabled,
-  getAutoApprove,
-  setAutoApprove,
-} from "../utils/verificationHandler.js";
 import { eReply, addFooter } from "../utils/embed.js";
 import { i, icon } from "../utils/icons.js";
 import { checkModerationPermission } from "../utils/moderation.js";
@@ -28,29 +22,8 @@ import { checkModerationPermission } from "../utils/moderation.js";
 export default {
   data: new SlashCommandBuilder()
     .setName("setup-verification")
-    .setDescription("Set up verification embeds in the verification channel")
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .addStringOption((option) =>
-      option
-        .setName("auto")
-        .setDescription(
-          "Auto-DM new members with the verification embed when they join (default: off)",
-        )
-        .setRequired(false)
-        .addChoices({ name: "on", value: "on" }, { name: "off", value: "off" }),
-    )
-    .addStringOption((option) =>
-      option
-        .setName("approve")
-        .setDescription(
-          "auto: AI DM auto-grants role. manual: sends to #approvals for human review.",
-        )
-        .setRequired(false)
-        .addChoices(
-          { name: "auto", value: "auto" },
-          { name: "manual", value: "manual" },
-        ),
-    ),
+    .setDescription("Set up self-role embed in the verification channel")
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
   /**
    * Executes the setup-verification command.
@@ -73,20 +46,6 @@ export default {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       }
 
-      const autoOption = interaction.options.getString("auto");
-      if (autoOption !== null) {
-        const enabled = autoOption === "on";
-        await setAutoDmEnabled(enabled);
-      }
-
-      const approveOption = interaction.options.getString("approve");
-      if (approveOption !== null) {
-        await setAutoApprove(approveOption === "auto");
-      }
-
-      const currentAutoDm = await getAutoDmEnabled();
-      const currentAutoApprove = await getAutoApprove();
-
       const verificationChannel = await interaction.guild.channels.fetch(
         config.verificationChannelId,
       );
@@ -96,21 +55,6 @@ export default {
           eReply(`${i("ERROR")} ɴᴏᴛ ғᴏᴜɴᴅ`, "ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴄʜᴀɴɴᴇʟ ɴᴏᴛ ғᴏᴜɴᴅ!"),
         );
       }
-
-      const buttonRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("dev_check")
-          .setLabel("ᴅᴇᴠ ᴄʜᴇᴄᴋ")
-          .setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder()
-          .setCustomId("verify_member")
-          .setLabel("ᴍᴇᴍʙᴇʀ")
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId("verify_moderator")
-          .setLabel("ᴍᴏᴅᴇʀᴀᴛᴏʀ")
-          .setStyle(ButtonStyle.Success),
-      );
 
       const selfRoleRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -139,22 +83,13 @@ export default {
         .setAccentColor(0x00ddff)
         .addTextDisplayComponents(
           new TextDisplayBuilder().setContent(
-            `## ${icon("KEYLOCK")} ʀᴏʟᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ\nᴄʟɪᴄᴋ ᴛʜᴇ ʀᴏʟᴇ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴀᴘᴘʟʏ.`,
+            `## ${icon("KEYLOCK")} sᴇʟғ-ʀᴏʟᴇs\nᴄʟɪᴄᴋ ᴛᴏ ᴛᴏɢɢʟᴇ ʏᴏᴜʀ ʀᴏʟᴇs.`,
           ),
         )
         .addSeparatorComponents(
           new SeparatorBuilder()
             .setDivider(true)
             .setSpacing(SeparatorSpacingSize.Small),
-        )
-        .addActionRowComponents(buttonRow)
-        .addSeparatorComponents(
-          new SeparatorBuilder()
-            .setDivider(true)
-            .setSpacing(SeparatorSpacingSize.Small),
-        )
-        .addTextDisplayComponents(
-          new TextDisplayBuilder().setContent("### sᴇʟғ-ʀᴏʟᴇs"),
         )
         .addActionRowComponents(selfRoleRow);
 
@@ -171,6 +106,7 @@ export default {
       const VERIF_NEEDLES = [
         "role verification",
         "ʀᴏʟᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ",
+        "sᴇʟғ-ʀᴏʟᴇs",
         "moderator verification",
         "ᴍᴏᴅᴇʀᴀᴛᴏʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ",
         "member verification",
@@ -246,10 +182,7 @@ export default {
         }
 
         await interaction.editReply(
-          eReply(
-            `${i("SUCCESS")} ᴜᴘᴅᴀᴛᴇᴅ`,
-            `ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴇᴍʙᴇᴅ ᴜᴘᴅᴀᴛᴇᴅ.\n\n${icon("MAILBOX")} ᴀᴜᴛᴏ-ᴅᴍ ᴏɴ ᴊᴏɪɴ: **${currentAutoDm ? "on" : "off"}**\n${icon("BOT")} ᴀᴘᴘʀᴏᴠᴇ ᴍᴏᴅᴇ: **${currentAutoApprove ? "auto (AI DM)" : "manual (approvals channel)"}**`,
-          ),
+          eReply(`${i("SUCCESS")} ᴜᴘᴅᴀᴛᴇᴅ`, `sᴇʟғ-ʀᴏʟᴇs ᴇᴍʙᴇᴅ ᴜᴘᴅᴀᴛᴇᴅ.`),
         );
       } else {
         await verificationChannel
@@ -259,10 +192,7 @@ export default {
           );
         console.log("[INFO] Created new verification embed");
         await interaction.editReply(
-          eReply(
-            `${i("SUCCESS")} ᴄᴏᴍᴘʟᴇᴛᴇ`,
-            `ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴇᴍʙᴇᴅ ᴄʀᴇᴀᴛᴇᴅ.\n\n${icon("MAILBOX")} ᴀᴜᴛᴏ-ᴅᴍ ᴏɴ ᴊᴏɪɴ: **${currentAutoDm ? "on" : "off"}**\n${icon("BOT")} ᴀᴘᴘʀᴏᴠᴇ ᴍᴏᴅᴇ: **${currentAutoApprove ? "auto (AI DM)" : "manual (approvals channel)"}**`,
-          ),
+          eReply(`${i("SUCCESS")} ᴄᴏᴍᴘʟᴇᴛᴇ`, `sᴇʟғ-ʀᴏʟᴇs ᴇᴍʙᴇᴅ ᴄʀᴇᴀᴛᴇᴅ.`),
         );
       }
     } catch (error) {

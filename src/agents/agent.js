@@ -171,7 +171,7 @@ export async function initializeAgent(client) {
   }
 
   await initializeTools(client);
-  initEmojis(client);
+  await initEmojis(client);
 
   await Promise.all([
     getSystemPrompt(),
@@ -217,7 +217,10 @@ async function executeToolByName(toolName, params) {
         validatedParams = toolObj.parameters.parse(params);
       } catch (zodError) {
         log.warn(`Zod validation failed for ${toolName}:`, zodError.message);
-        return { success: false, error: `Invalid parameters: ${zodError.message}` };
+        return {
+          success: false,
+          error: `Invalid parameters: ${zodError.message}`,
+        };
       }
     }
 
@@ -323,9 +326,7 @@ export async function processMessage(
         const xmlCutIdx = rawOutput.search(RE_XML_TOOL_BLEED);
         if (xmlCutIdx !== -1) {
           safeResponse = rawOutput.substring(0, xmlCutIdx).trim();
-          log.info(
-            "Stripped XML tool-call bleed from Pass 1 direct response",
-          );
+          log.info("Stripped XML tool-call bleed from Pass 1 direct response");
           if (!safeResponse)
             safeResponse =
               "I looked into it but couldn't get the information right now. Please try again!";
@@ -358,9 +359,7 @@ export async function processMessage(
       const personMatch = message.match(RE_PERSON_MATCH);
       if (personMatch) {
         const searchTerm = personMatch[1].trim();
-        log.info(
-          `Redirecting infoType=members → search for: "${searchTerm}"`,
-        );
+        log.info(`Redirecting infoType=members → search for: "${searchTerm}"`);
         const searchResult = await executeToolByName("serverInfo", {
           ...enrichedParams,
           infoType: "search",
@@ -477,7 +476,12 @@ export async function processMessage(
         contextManager.addMessage(userId, guildId, "user", message),
         contextManager.addMessage(userId, guildId, "assistant", finalResp),
       ]);
-      return { success: true, response: finalResp, components: [], files: finalToolResult?.files };
+      return {
+        success: true,
+        response: finalResp,
+        components: [],
+        files: finalToolResult?.files,
+      };
     }
 
     if (
@@ -599,9 +603,7 @@ export async function processMessage(
           "I looked into it but couldn't get the information right now. Please try again!";
       }
     }
-    log.info(
-      `Pass 2 synthesized: ${finalResponse.substring(0, 120)}`,
-    );
+    log.info(`Pass 2 synthesized: ${finalResponse.substring(0, 120)}`);
 
     await Promise.all([
       contextManager.addMessage(userId, guildId, "user", message),
@@ -661,12 +663,8 @@ export async function initializeAgentSystem(discordClient) {
 
   const agent = await initializeAgent(discordClient);
 
-  log.info(
-    `Model: ${config.model.provider} - ${config.model.name}`,
-  );
-  log.info(
-    `RAG: ${config.rag.enabled ? "Enabled" : "Disabled"}`,
-  );
+  log.info(`Model: ${config.model.provider} - ${config.model.name}`);
+  log.info(`RAG: ${config.rag.enabled ? "Enabled" : "Disabled"}`);
   log.info(
     `Commands: ${config.commandExecution.enabled ? "Enabled" : "Disabled"}`,
   );

@@ -13,11 +13,21 @@ const resolved = {};
  * to a Discord custom emoji string (e.g. <:si_success:1234567890>).
  * @param {import('discord.js').Client} client
  */
-export function initIcons(client) {
+export async function initIcons(client) {
   const emojiByName = new Map();
+
+  try {
+    const appEmojis = await client.application.emojis.fetch();
+    for (const emoji of appEmojis.values()) {
+      if (emoji.name) emojiByName.set(emoji.name, emoji);
+    }
+  } catch {}
+
   for (const guild of client.guilds.cache.values()) {
     for (const emoji of guild.emojis.cache.values()) {
-      if (emoji.name) emojiByName.set(emoji.name, emoji);
+      if (emoji.name && !emojiByName.has(emoji.name)) {
+        emojiByName.set(emoji.name, emoji);
+      }
     }
   }
 

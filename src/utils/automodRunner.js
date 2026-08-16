@@ -70,6 +70,9 @@ function getTracker(userId) {
       channelDeleteCount: 0,
       nicknameChangeCount: 0,
       messageDeleteCount: 0,
+      banCount: 0,
+      kickCount: 0,
+      roleDeleteCount: 0,
       lastCheck: Date.now(),
       recentMessageIds: [],
     });
@@ -368,11 +371,78 @@ export async function checkMessageDelete(message, executor) {
   }
 }
 
-/**
- * Checks if a message contains toxic content and takes appropriate action.
- * @param {import('discord.js').Message} message - The message to check.
- * @returns {Promise<void>}
- */
+export async function checkMassBan(guild, executor) {
+  const cfg = await loadConfig();
+  if (!cfg.enabled || !cfg.raid) return;
+  if (!executor || executor.bot) return;
+  if (executor.id === guild.ownerId) return;
+
+  const tracker = getTracker(executor.id);
+  tracker.banCount++;
+  tracker.lastCheck = Date.now();
+
+  const banLimit = cfg.limits?.massBan || 3;
+
+  if (tracker.banCount >= banLimit) {
+    await instantAntiNuke(
+      guild,
+      executor.id,
+      `Mass Ban detected (${tracker.banCount} bans in rapid succession).`,
+      "ban",
+      guild.systemChannel,
+    );
+    userTrackers.delete(executor.id);
+  }
+}
+
+export async function checkMassKick(guild, executor) {
+  const cfg = await loadConfig();
+  if (!cfg.enabled || !cfg.raid) return;
+  if (!executor || executor.bot) return;
+  if (executor.id === guild.ownerId) return;
+
+  const tracker = getTracker(executor.id);
+  tracker.kickCount++;
+  tracker.lastCheck = Date.now();
+
+  const kickLimit = cfg.limits?.massKick || 3;
+
+  if (tracker.kickCount >= kickLimit) {
+    await instantAntiNuke(
+      guild,
+      executor.id,
+      `Mass Kick detected (${tracker.kickCount} kicks in rapid succession).`,
+      "ban",
+      guild.systemChannel,
+    );
+    userTrackers.delete(executor.id);
+  }
+}
+
+export async function checkRoleDelete(guild, executor) {
+  const cfg = await loadConfig();
+  if (!cfg.enabled || !cfg.raid) return;
+  if (!executor || executor.bot) return;
+  if (executor.id === guild.ownerId) return;
+
+  const tracker = getTracker(executor.id);
+  tracker.roleDeleteCount++;
+  tracker.lastCheck = Date.now();
+
+  const roleDeleteLimit = cfg.limits?.roleDelete || 2;
+
+  if (tracker.roleDeleteCount >= roleDeleteLimit) {
+    await instantAntiNuke(
+      guild,
+      executor.id,
+      `Mass Role Deletion detected (${tracker.roleDeleteCount} roles deleted rapidly).`,
+      "ban",
+      guild.systemChannel,
+    );
+    userTrackers.delete(executor.id);
+  }
+}
+
 export async function checkToxicity(message) {
   const cfg = await loadConfig();
   if (!cfg.enabled || !cfg.toxicity) return;

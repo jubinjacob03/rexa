@@ -7,10 +7,6 @@ import {
 } from "../utils/automodRunner.js";
 import { eSend } from "../utils/embed.js";
 import { i } from "../utils/icons.js";
-import {
-  handleVerificationDM,
-  getAutoApprove,
-} from "../utils/verificationHandler.js";
 import { processMessage } from "../agents/agent.js";
 
 const ANNOUNCEMENTS_CHANNEL = "1473075468805738540";
@@ -69,10 +65,7 @@ export default {
     if (message.author.bot) return;
 
     if (!message.guild) {
-      if (await getAutoApprove()) {
-        const fromVerification = await handleVerificationDM(message);
-        if (fromVerification) return;
-      }
+      return;
     }
     await Promise.allSettled([checkSpam(message), checkToxicity(message)]);
 
@@ -142,9 +135,12 @@ export default {
           }
           if (message.reference?.messageId) {
             try {
-              const ref = await message.channel.messages.fetch(message.reference.messageId);
+              const ref = await message.channel.messages.fetch(
+                message.reference.messageId,
+              );
               for (const att of ref.attachments.values()) {
-                if (att.contentType?.startsWith("image/")) imageUrls.push(att.url);
+                if (att.contentType?.startsWith("image/"))
+                  imageUrls.push(att.url);
               }
             } catch {}
           }

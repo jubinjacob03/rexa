@@ -24,9 +24,7 @@ import ffmpegPath from "ffmpeg-static";
 import config from "../config.js";
 import { updateStatusMessage } from "./utils/statusUpdater.js";
 import {
-  handleVerificationApply,
   handleApprovalAction,
-  handleNicknameModal,
   handleSelfRoleToggle,
 } from "./utils/verificationHandler.js";
 import { handleTicketInteraction } from "./utils/ticketHandler.js";
@@ -36,9 +34,12 @@ import {
   handleDashboardModal,
   handleDashboardSelect,
 } from "./dashboard/dashboard.js";
-import { handleRolesInfo, handleRoleButton } from "./utils/rolesEmbed.js";
 import { handleEmbedBuilderInteraction } from "./utils/embedBuilderHandler.js";
-import { handlePersonalVCButton, handlePersonalVCSelect, initPersonalVC } from "./utils/personalVCManager.js";
+import {
+  handlePersonalVCButton,
+  handlePersonalVCSelect,
+  initPersonalVC,
+} from "./utils/personalVCManager.js";
 
 if (ffmpegPath) {
   process.env.FFMPEG_PATH = ffmpegPath;
@@ -161,24 +162,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
       }
 
-      if (interaction.customId === "dismiss_roles_info") {
-        await interaction.deferUpdate().catch(() => {});
-        return await interaction.deleteReply().catch(() => {});
-      }
-
-      if (interaction.customId === "status_roles_info") {
-        await handleRolesInfo(interaction);
-        return;
-      }
-
-      if (
-        interaction.customId.startsWith("dummy_role_") ||
-        interaction.customId.startsWith("selfrole_toggle_")
-      ) {
-        await handleRoleButton(interaction);
-        return;
-      }
-
       if (interaction.customId === "status_whatsapp") {
         const memberRoles = [
           config.memberRoleId,
@@ -235,24 +218,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isButton()) {
-      if (interaction.customId === "dev_check") {
-        await interaction.reply(
-          eReply(
-            `${i("SUCCESS")} ᴅᴇᴠɪᴄᴇ ᴄʜᴇᴄᴋ`,
-            "ʏᴏᴜ'ʀᴇ ᴀʟʟ sᴇᴛ! ғᴇᴇʟ ғʀᴇᴇ ᴛᴏ ᴇxᴘʟᴏʀᴇ.",
-          ),
-        );
-        return;
-      }
-
-      if (
-        interaction.customId === "verify_moderator" ||
-        interaction.customId === "verify_member"
-      ) {
-        await handleVerificationApply(interaction);
-        return;
-      }
-
       if (interaction.customId.startsWith("selfrole_")) {
         await handleSelfRoleToggle(interaction);
         return;
@@ -273,10 +238,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isModalSubmit()) {
-      if (interaction.customId.startsWith("nickname_modal_")) {
-        await handleNicknameModal(interaction);
-        return;
-      }
       if (interaction.customId.startsWith("ebld_")) {
         await handleEmbedBuilderInteraction(interaction);
         return;
@@ -290,10 +251,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
       if (interaction.customId.startsWith("shantha_")) {
         await handleDashboardSelect(interaction);
-        return;
-      }
-      if (interaction.customId === "roles_nav_dropdown") {
-        await handleRolesInfo(interaction, interaction.values[0]);
         return;
       }
     }

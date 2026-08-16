@@ -2,9 +2,6 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ModalBuilder,
-  TextInputBuilder,
-  TextInputStyle,
   MessageFlags,
   ContainerBuilder,
   TextDisplayBuilder,
@@ -13,29 +10,12 @@ import {
 } from "discord.js";
 import { createClient } from "@supabase/supabase-js";
 import config from "../../config.js";
-import { generateText } from "ai";
 import { eReply, eSend, addFooter } from "./embed.js";
 import { i, icon } from "./icons.js";
-import { getLanguageModel } from "../agents/config.js";
 import { checkModerationPermission } from "./moderation.js";
 import { createLogger } from "./logger.js";
 
 const log = createLogger("verify");
-
-const NICKNAME_STRIP = new RegExp(
-  "[\\u0000-\\u001F\\u007F\\u200B-\\u200F\\u2060\\uFEFF]",
-  "g",
-);
-
-/**
- * Removes control and zero-width characters and collapses whitespace from a
- * user-supplied nickname so it cannot smuggle in invisible or disruptive content.
- * @param {string} raw
- * @returns {string}
- */
-function sanitizeNickname(raw) {
-  return String(raw).replace(NICKNAME_STRIP, "").replace(/\s+/g, " ").trim();
-}
 
 const supabase = createClient(config.supabase.url, config.supabase.serviceKey, {
   auth: { autoRefreshToken: false, persistSession: false },
@@ -48,28 +28,6 @@ const SELF_ROLE_MAP = {
   selfrole_18_plus: { id: "1484879828871286995", label: "18+" },
   selfrole_18_minus: { id: "1484879875947888670", label: "18-" },
 };
-
-export const pendingInterrogations = new Map();
-
-setInterval(
-  () => {
-    const now = Date.now();
-    for (const [userId, data] of pendingInterrogations.entries()) {
-      if (now - data.timestamp > 30 * 60 * 1000) {
-        pendingInterrogations.delete(userId);
-      }
-    }
-  },
-  30 * 60 * 1000,
-);
-
-const VERIFICATION_QUESTIONS = [
-  "What brings you to our community today?",
-  "Are you looking forward to any specific game or event here?",
-  "If you had to describe your vibe with one emoji, what would it be and why?",
-  "What's your favorite thing to do in Discord communities?",
-  "Tell me a quick fun fact about yourself before we let you in!",
-];
 
 const GUILD_ID = config.guildId;
 
@@ -238,200 +196,9 @@ export async function getAllPendingRequests() {
   return data.pendingRequests;
 }
 
-export async function getAutoDmEnabled() {
-  const data = await loadData();
-  return data.autoDmEnabled ?? false;
-}
-
-/**
- * Sets the auto DM enabled status.
- * @param {boolean} value - The new status.
- * @returns {Promise<void>}
- */
-export async function setAutoDmEnabled(value) {
-  await mutate((data) => {
-    data.autoDmEnabled = value;
-  });
-}
-
-/**
- * Gets the auto approve status.
- * @returns {Promise<boolean>} True if auto approve is enabled.
- */
-export async function getAutoApprove() {
-  const data = await loadData();
-  return data.autoApprove ?? false;
-}
-
-export async function setAutoApprove(value) {
-  await mutate((data) => {
-    data.autoApprove = value;
-  });
-}
-
 export async function getApprovalLogs(limit = 50) {
   const data = await loadData();
   return data.approvalLogs.slice(-limit).reverse();
-}
-
-export async function handleVerificationApply(interaction) {
-  try {
-    const userId = interaction.user.id;
-    const username = interaction.user.tag;
-
-    const guild = await interaction.client.guilds.fetch(GUILD_ID);
-    const guildMember = await guild.members.fetch(userId).catch(() => null);
-    if (
-      guildMember &&
-      (guildMember.roles.cache.has(config.memberRoleId) ||
-        guildMember.roles.cache.has(config.moderatorRoleId))
-    ) {
-      return interaction.reply(
-        eReply(
-          `${i("WARNING")} ᴀʟʀᴇᴀᴅʏ ᴠᴇʀɪғɪᴇᴅ`,
-          "ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀɴ ᴀᴄᴛɪᴠᴇ ʀᴏʟᴇ. ᴘʟᴇᴀsᴇ ᴀsᴋ ᴀ ᴍᴏᴅᴇʀᴀᴛᴏʀ ғᴏʀ ᴀɴʏ ᴄʜᴀɴɢᴇs.",
-        ),
-      );
-    }
-
-    const isModerator = interaction.customId === "verify_moderator";
-    const requestedRole = isModerator ? "Moderator" : "Member";
-    const requestedRoleId = isModerator
-      ? config.moderatorRoleId
-      : config.memberRoleId;
-
-    const autoApproveEnabled = await getAutoApprove();
-    if (autoApproveEnabled) {
-      if (pendingInterrogations.has(userId)) {
-        return interaction.reply(
-          eReply(
-            `${i("PENDING")} ᴘᴇɴᴅɪɴɢ ɪɴᴛᴇʀʀᴏɢᴀᴛɪᴏɴ`,
-            "ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀ ᴘᴇɴᴅɪɴɢ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ. ᴘʟᴇᴀsᴇ ᴄʜᴇᴄᴋ ʏᴏᴜʀ ᴅᴍs!",
-          ),
-        );
-      }
-
-      const question =
-        VERIFICATION_QUESTIONS[
-          Math.floor(Math.random() * VERIFICATION_QUESTIONS.length)
-        ];
-      pendingInterrogations.set(userId, {
-        requestedRole,
-        requestedRoleId,
-        question,
-        timestamp: Date.now(),
-      });
-
-      try {
-        await interaction.user.send(
-          eSend(
-            `${i("KEYLOCK")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ`,
-            `ᴛᴏ ᴇɴsᴜʀᴇ ʏᴏᴜ'ʀᴇ ᴀ ʜᴜᴍᴀɴ, ᴘʟᴇᴀsᴇ ʀᴇᴘʟʏ ʜᴇʀᴇ ʙʏ ᴀɴsᴡᴇʀɪɴɢ ᴛʜɪs ǫᴜᴇsᴛɪᴏɴ ᴏʀɢᴀɴɪᴄᴀʟʟʏ:\n> *${question}*`,
-          ),
-        );
-        return interaction.reply(
-          eReply(
-            `${i("SUCCESS")} ᴄʜᴇᴄᴋ ʏᴏᴜʀ ᴅᴍs`,
-            "ɪ'ᴠᴇ sᴇɴᴛ ʏᴏᴜ ᴀ ǫᴜɪᴄᴋ ǫᴜᴇsᴛɪᴏɴ ᴛᴏ ᴠᴇʀɪғʏ ʏᴏᴜ'ʀᴇ ᴀ ʜᴜᴍᴀɴ. ᴀɴsᴡᴇʀ ɪᴛ ᴛʜᴇʀᴇ ᴛᴏ ʀᴇᴄᴇɪᴠᴇ ʏᴏᴜʀ ʀᴏʟᴇ.",
-          ),
-        );
-      } catch {
-        pendingInterrogations.delete(userId);
-        return interaction.reply(
-          eReply(
-            `${i("ERROR")} ᴅᴍs ᴅɪsᴀʙʟᴇᴅ`,
-            "ɪ ᴄᴏᴜʟᴅɴ'ᴛ ᴅᴍ ʏᴏᴜ. ᴘʟᴇᴀsᴇ ᴇɴᴀʙʟᴇ ᴅᴍs ғʀᴏᴍ sᴇʀᴠᴇʀ ᴍᴇᴍʙᴇʀs sᴏ ᴡᴇ ᴄᴀɴ ᴠᴇʀɪғʏ ʏᴏᴜ.",
-          ),
-        );
-      }
-    }
-
-    if (await hasPendingRequest(userId)) {
-      return interaction.reply(
-        eReply(
-          `${i("WARNING")} ᴘᴇɴᴅɪɴɢ ʀᴇǫᴜᴇsᴛ`,
-          "ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀ ᴘᴇɴᴅɪɴɢ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ. ᴘʟᴇᴀsᴇ ᴡᴀɪᴛ ғᴏʀ ᴀᴘᴘʀᴏᴠᴀʟ.",
-        ),
-      );
-    }
-
-    const userAvatar = interaction.user.displayAvatarURL({
-      dynamic: true,
-      size: 256,
-    });
-    const approvalSection = new SectionBuilder()
-      .addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(
-          `## ${isModerator ? icon("MODERATOR") : icon("MEMBER_ROLE")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ\n> <@${userId}> ɪs ʀᴇǫᴜᴇsᴛɪɴɢ ᴀᴄᴄᴇss ᴛᴏ ᴛʜᴇ sᴇʀᴠᴇʀ.\n\n${icon("PROFILE")} **ᴀᴘᴘʟɪᴄᴀɴᴛ : ** <@${userId}>\n\n${icon("MEMO")} **ᴜsᴇʀɴᴀᴍᴇ : ** \`${username}\`\n\n${icon("TYPE")} **ᴛᴀʀɢᴇᴛ ʀᴏʟᴇ : ** \`${requestedRole}\`\n\n${icon("KEYLOCK")} **ɪᴅᴇɴᴛɪғɪᴇʀ : ** \`${userId}\``,
-        ),
-      )
-      .setThumbnailAccessory(new ThumbnailBuilder().setURL(userAvatar));
-
-    const approvalContainer = new ContainerBuilder()
-      .setAccentColor(0x3498db)
-      .addSectionComponents(approvalSection);
-
-    const approvalButtons = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId(`approve_${userId}_${requestedRoleId}`)
-        .setLabel("ᴀᴘᴘʀᴏᴠᴇ")
-        .setStyle(ButtonStyle.Success)
-        .setEmoji(icon("SUCCESS")),
-      new ButtonBuilder()
-        .setCustomId(`reject_${userId}_${requestedRoleId}`)
-        .setLabel("ʀᴇᴊᴇᴄᴛ")
-        .setStyle(ButtonStyle.Danger)
-        .setEmoji(icon("ERROR")),
-    );
-
-    approvalContainer.addActionRowComponents(approvalButtons);
-    addFooter(approvalContainer);
-
-    const approvalsChannel = await guild.channels.fetch(
-      config.approvalsChannelId,
-    );
-    await approvalsChannel
-      .send({
-        content: `<@&${config.ownerRoleId}> <@&${config.administratorRoleId}> <@&${config.moderatorRoleId}>`,
-      })
-      .catch(() => null);
-    const approvalMessage = await approvalsChannel
-      .send({
-        components: [approvalContainer],
-        flags: MessageFlags.IsComponentsV2,
-      })
-      .catch(() => null);
-
-    if (!approvalMessage) {
-      return interaction.reply(
-        eReply(
-          `${i("ERROR")} ᴇʀʀᴏʀ`,
-          "ғᴀɪʟᴇᴅ ᴛᴏ sᴇɴᴅ ᴀᴘᴘʀᴏᴠᴀʟ ʀᴇǫᴜᴇsᴛ ᴛᴏ ᴛʜᴇ ᴀᴘᴘʀᴏᴠᴀʟs ᴄʜᴀɴɴᴇʟ.",
-        ),
-      );
-    }
-
-    await createRequest(
-      userId,
-      username,
-      requestedRole,
-      requestedRoleId,
-      approvalMessage.id,
-    );
-
-    await interaction.reply(
-      eReply(
-        `${i("DONE")} ʀᴇǫᴜᴇsᴛ sᴜʙᴍɪᴛᴛᴇᴅ`,
-        `ʏᴏᴜʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ ғᴏʀ **${requestedRole}** ʜᴀs ʙᴇᴇɴ sᴜʙᴍɪᴛᴛᴇᴅ. ᴘʟᴇᴀsᴇ ᴡᴀɪᴛ ғᴏʀ ᴀᴘᴘʀᴏᴠᴀʟ.`,
-      ),
-    );
-  } catch (error) {
-    log.error("Error handling verification apply:", error);
-    if (!interaction.replied)
-      await interaction.reply(
-        eReply(`${i("ERROR")}ᴇʀʀᴏʀ`, "ғᴀɪʟᴇᴅ ᴛᴏ sᴜʙᴍɪᴛ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ."),
-      );
-  }
 }
 
 export async function handleSelfRoleToggle(interaction) {
@@ -486,98 +253,6 @@ export async function handleSelfRoleToggle(interaction) {
   }
 }
 
-export async function handleVerificationDM(message) {
-  if (message.author.bot) return false;
-  const pending = pendingInterrogations.get(message.author.id);
-  if (!pending) return false;
-
-  if (Date.now() - pending.timestamp > 10 * 60 * 1000) {
-    pendingInterrogations.delete(message.author.id);
-    await message.author
-      .send(
-        eSend(
-          `${i("PENDING")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴛɪᴍᴇᴅ ᴏᴜᴛ`,
-          "ʏᴏᴜʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴛɪᴍᴇᴅ ᴏᴜᴛ. ᴘʟᴇᴀsᴇ ᴄʟɪᴄᴋ ᴛʜᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʙᴜᴛᴛᴏɴ ɪɴ ᴛʜᴇ sᴇʀᴠᴇʀ ᴀɢᴀɪɴ.",
-        ),
-      )
-      .catch(() => null);
-    return true;
-  }
-
-  pendingInterrogations.delete(message.author.id);
-
-  try {
-    const analyzingMsg = await message.author
-      .send(eSend(`${i("BOT")} ᴀɴᴀʟʏᴢɪɴɢ`, "ᴀɴᴀʟʏᴢɪɴɢ ʏᴏᴜʀ ʀᴇsᴘᴏɴsᴇ..."))
-      .catch(() => null);
-
-    const prompt =
-      "You are a server bot verifying if someone is a real human, not a bot or spam account.\n" +
-      'The question asked was: "' +
-      pending.question +
-      '"\n' +
-      'The user replied: "' +
-      message.content +
-      '"\n' +
-      'Your only job is to check if this reply could have been written by a real human. Even if the answer is short, silly, off-topic, or incorrect — if it reads like a human typed it, output "PASS". Only output "FAIL" if the response is completely empty, pure gibberish (random characters), or is an obvious automated/bot reply. Output only "PASS" or "FAIL", nothing else.';
-
-    const result = await generateText({
-      model: getLanguageModel("fast"),
-      prompt: prompt,
-      maxTokens: 100,
-    });
-
-    const decision = result.text.trim().toUpperCase();
-
-    if (decision.includes("PASS")) {
-      const guild = await message.client.guilds.fetch(GUILD_ID);
-      const member = await guild.members.fetch(message.author.id);
-
-      await member.roles.add(pending.requestedRoleId);
-      if (
-        config.unverifiedRoleId &&
-        member.roles.cache.has(config.unverifiedRoleId)
-      ) {
-        await member.roles.remove(config.unverifiedRoleId).catch(() => null);
-      }
-
-      pendingInterrogations.delete(message.author.id);
-      if (analyzingMsg) await analyzingMsg.delete().catch(() => null);
-      await message.author
-        .send(
-          eSend(
-            `${i("SUCCESS")} ᴀᴜᴛʜᴇɴᴛɪᴄᴀᴛɪᴏɴ ᴄᴏᴍᴘʟᴇᴛᴇ`,
-            `ʏᴏᴜ'ᴠᴇ ʙᴇᴇɴ ɢʀᴀɴᴛᴇᴅ ᴛʜᴇ **${pending.requestedRole}** ʀᴏʟᴇ. ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ ᴛʜᴇ sᴇʀᴠᴇʀ!`,
-          ),
-        )
-        .catch(() => null);
-    } else {
-      pendingInterrogations.delete(message.author.id);
-      if (analyzingMsg) await analyzingMsg.delete().catch(() => null);
-      await message.author
-        .send(
-          eSend(
-            `${i("ERROR")} ᴀᴜᴛʜᴇɴᴛɪᴄᴀᴛɪᴏɴ ғᴀɪʟᴇᴅ`,
-            "ʏᴏᴜʀ ʀᴇsᴘᴏɴsᴇ ᴅɪᴅ ɴᴏᴛ ᴘᴀss ᴏᴜʀ ᴄʜᴇᴄᴋs. ɪғ ʏᴏᴜ ᴛʜɪɴᴋ ᴛʜɪs ᴡᴀs ᴀ ᴍɪsᴛᴀᴋᴇ, ʏᴏᴜ ᴄᴀɴ ᴛʀʏ ᴀɢᴀɪɴ ʙʏ ᴄʟɪᴄᴋɪɴɢ ᴛʜᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʙᴜᴛᴛᴏɴ ɪɴ ᴛʜᴇ sᴇʀᴠᴇʀ.",
-          ),
-        )
-        .catch(() => null);
-    }
-  } catch (e) {
-    log.error("Verification AI Error:", e);
-    await message.author
-      .send(
-        eSend(
-          `${i("WARNING")} sʏsᴛᴇᴍ ᴇʀʀᴏʀ`,
-          "ᴏᴜʀ ᴀɪ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ sʏsᴛᴇᴍ ᴇɴᴄᴏᴜɴᴛᴇʀᴇᴅ ᴀɴ ᴇʀʀᴏʀ. ᴘʟᴇᴀsᴇ ᴛʀʏ ᴀɢᴀɪɴ ʟᴀᴛᴇʀ.",
-        ),
-      )
-      .catch(() => null);
-    pendingInterrogations.delete(message.author.id);
-  }
-  return true;
-}
-
 export async function handleApprovalAction(interaction) {
   try {
     const parts = interaction.customId.split("_");
@@ -629,27 +304,79 @@ export async function handleApprovalAction(interaction) {
     }
 
     if (action === "approve") {
-      const modal = new ModalBuilder()
-        .setCustomId(`nickname_modal_${userId}_${roleId}`)
-        .setTitle("sᴇᴛ sᴇʀᴠᴇʀ ɴɪᴄᴋɴᴀᴍᴇ");
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-      const nicknameInput = new TextInputBuilder()
-        .setCustomId("nickname_input")
-        .setLabel('ᴇɴᴛᴇʀ ᴛʜᴇ ɴᴀᴍᴇ ғᴏʀ "ɢᴏᴅ [ɴᴀᴍᴇ]" ғᴏʀᴍᴀᴛ')
-        .setPlaceholder("ᴇxᴀᴍᴘʟᴇ: ᴊᴏʜɴ → ɢᴏᴅ ᴊᴏʜɴ")
-        .setStyle(TextInputStyle.Short)
-        .setRequired(true)
-        .setMaxLength(26);
-      const row = new ActionRowBuilder().addComponents(nicknameInput);
-      modal.addComponents(row);
+      if (member.roles.cache.has(roleId)) {
+        return interaction.editReply(
+          eReply(
+            `${i("ERROR")}ᴀʟʀᴇᴀᴅʏ ᴀssɪɢɴᴇᴅ`,
+            `ᴜ sᴇʀ ᴀʟʀᴇᴀᴅʏ ʜᴀs ᴛʜᴇ **${request.requestedRole}** ʀᴏʟᴇ. ɴᴏ ᴄʜᴀɴɢᴇs ᴍᴀᴅᴇ.`,
+          ),
+        );
+      }
 
-      await interaction.showModal(modal);
+      if (
+        config.unverifiedRoleId &&
+        member.roles.cache.has(config.unverifiedRoleId)
+      ) {
+        await member.roles.remove(config.unverifiedRoleId).catch(() => null);
+      }
+
+      await member.roles.add(roleId);
+
+      const userAvatar = user.displayAvatarURL({ dynamic: true, size: 256 });
+      const approvedSection = new SectionBuilder()
+        .addTextDisplayComponents(
+          new TextDisplayBuilder().setContent(
+            `## ${icon("SUCCESS")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ\n> <@${userId}> ᴡᴀs ɢʀᴀɴᴛᴇᴅ ᴀᴄᴄᴇss.\n\n${icon("PROFILE")} **ᴍᴇᴍʙᴇʀ : ** <@${userId}>\n\n${icon("TYPE")} **ᴀssɪɢɴᴇᴅ ʀᴏʟᴇ : ** \`${request.requestedRole}\``,
+          ),
+        )
+        .setThumbnailAccessory(new ThumbnailBuilder().setURL(userAvatar));
+
+      const approvedContainer = new ContainerBuilder()
+        .setAccentColor(0x2ecc71)
+        .addSectionComponents(approvedSection);
+
+      addFooter(approvedContainer);
+
+      await interaction.message.edit({
+        components: [approvedContainer],
+        flags: MessageFlags.IsComponentsV2,
+      });
+
+      await logApproval(
+        userId,
+        request.username,
+        request.requestedRole,
+        interaction.user.tag,
+        interaction.user.id,
+        null,
+        "approved",
+      );
+
+      await removeRequest(userId);
+
+      await user
+        .send(
+          eSend(
+            `${i("DONE")}sᴀɪʏᴀɴ ɢᴏᴅs — ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ`,
+            `ʏᴏᴜʀ ʀᴇǫᴜᴇsᴛ ʜᴀs ʙᴇᴇɴ ᴀᴘᴘʀᴏᴠᴇᴅ!\n\n**ʀᴏʟᴇ:** ${request.requestedRole}`,
+          ),
+        )
+        .catch(() => log.warn(`Could not DM user ${userId}`));
+
+      await interaction.editReply(
+        eReply(
+          `${i("DONE")}ᴀᴘᴘʀᴏᴠᴇᴅ`,
+          `ᴜ sᴇʀ ʜᴀs ʙᴇᴇɴ ɢɪᴠᴇɴ **${request.requestedRole}** ʀᴏʟᴇ.`,
+        ),
+      );
     } else if (action === "reject") {
       const userAvatar = user.displayAvatarURL({ dynamic: true, size: 256 });
       const rejectedSection = new SectionBuilder()
         .addTextDisplayComponents(
           new TextDisplayBuilder().setContent(
-            `## ${icon("ERROR")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇᴊᴇᴄᴛᴇᴅ\n> <@${userId}> ᴡᴀs ᴅᴇɴɪᴇᴅ ᴀᴄᴄᴇss.\n\n${icon("PROFILE")} **ᴀᴘᴘʟɪᴄᴀɴᴛ : ** <@${userId}>\n\n${icon("TYPE")} **ʀᴇǫᴜᴇsᴛᴇᴅ ʀᴏʟᴇ : ** \`${request.requestedRole}\`\n\n${icon("MODERATOR")} **ʀᴇᴊᴇᴄᴛᴇᴅ ʙʏ : ** <@${interaction.user.id}>`,
+            `## ${icon("ERROR")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇᴊᴇᴄᴛᴇᴅ\n> <@${userId}> ᴡᴀs ᴅᴇɴɪᴇᴅ ᴀᴄᴄᴇss.\n\n${icon("PROFILE")} **ᴀᴘᴘʟɪᴄᴀɴᴛ : ** <@${userId}>\n\n${icon("TYPE")} **ʀᴇǫᴜᴇsᴛᴇᴅ ʀᴏʟᴇ : ** \`${request.requestedRole}\``,
           ),
         )
         .setThumbnailAccessory(new ThumbnailBuilder().setURL(userAvatar));
@@ -697,135 +424,5 @@ export async function handleApprovalAction(interaction) {
         eReply(`${i("ERROR")}ᴇʀʀᴏʀ`, "ғᴀɪʟᴇᴅ ᴛᴏ ᴘʀᴏᴄᴇss ᴀᴘᴘʀᴏᴠᴀʟ ᴀᴄᴛɪᴏɴ."),
       );
     }
-  }
-}
-
-/**
- * Handles the nickname modal submission.
- * @param {import('discord.js').Interaction} interaction - The interaction object.
- * @returns {Promise<void>}
- */
-export async function handleNicknameModal(interaction) {
-  try {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-    const [, , userId, roleId] = interaction.customId.split("_");
-    const rawNickname = interaction.fields.getTextInputValue("nickname_input");
-    const nicknameInput = sanitizeNickname(rawNickname);
-    const finalNickname = `God ${nicknameInput}`.slice(0, 32);
-
-    if (
-      !(await checkModerationPermission(
-        interaction.guild,
-        interaction.user.id,
-        "mod",
-      ))
-    ) {
-      return interaction.editReply(
-        eReply(
-          `${i("ERROR")} ᴀᴄᴄᴇss ᴅᴇɴɪᴇᴅ`,
-          "ᴏɴʟʏ ᴍᴏᴅᴇʀᴀᴛᴏʀs ᴄᴀɴ ᴘʀᴏᴄᴇss ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴs.",
-        ),
-      );
-    }
-
-    const request = await getRequest(userId);
-    if (!request) {
-      return interaction.editReply(
-        eReply(
-          `${i("WARNING")}ɴᴏᴛ ғᴏᴜɴᴅ`,
-          "ᴛʜɪs ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ ɴᴏ ʟᴏɴɢᴇʀ ᴇxɪsᴛs.",
-        ),
-      );
-    }
-
-    const member = await interaction.guild.members
-      .fetch(userId)
-      .catch(() => null);
-    if (!member) {
-      await removeRequest(userId);
-      return interaction.editReply(
-        eReply(`${i("ERROR")}ɴᴏᴛ ғᴏᴜɴᴅ`, "ᴜsᴇʀ ɪs ɴᴏ ʟᴏɴɢᴇʀ ɪɴ ᴛʜᴇ sᴇʀᴠᴇʀ."),
-      );
-    }
-
-    if (member.roles.cache.has(roleId)) {
-      return interaction.editReply(
-        eReply(
-          `${i("ERROR")}ᴀʟʀᴇᴀᴅʏ ᴀssɪɢɴᴇᴅ`,
-          `ᴜsᴇʀ ᴀʟʀᴇᴀᴅʏ ʜᴀs ᴛʜᴇ **${request.requestedRole}** ʀᴏʟᴇ. ɴᴏ ᴄʜᴀɴɢᴇs ᴍᴀᴅᴇ.`,
-        ),
-      );
-    }
-
-    if (member.roles.cache.has(config.unverifiedRoleId)) {
-      await member.roles.remove(config.unverifiedRoleId);
-    }
-
-    await member.roles.add(roleId);
-
-    await member.setNickname(finalNickname).catch((err) => {
-      log.warn(
-        `Could not set nickname for ${userId} (role still granted):`,
-        err?.message ?? err,
-      );
-    });
-
-    const userAvatar = member.user.displayAvatarURL({
-      dynamic: true,
-      size: 256,
-    });
-    const approvedSection = new SectionBuilder()
-      .addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(
-          `## ${icon("SUCCESS")} ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ\n> <@${userId}> ᴡᴀs ɢʀᴀɴᴛᴇᴅ ᴀᴄᴄᴇss.\n\n${icon("PROFILE")} **ᴍᴇᴍʙᴇʀ : ** <@${userId}>\n\n${icon("TYPE")} **ᴀssɪɢɴᴇᴅ ʀᴏʟᴇ : ** \`${request.requestedRole}\`\n\n${icon("EDITOR")} **ɴɪᴄᴋɴᴀᴍᴇ : ** \`${finalNickname}\`\n\n${icon("MODERATOR")} **ᴀᴘᴘʀᴏᴠᴇᴅ ʙʏ : ** <@${interaction.user.id}>`,
-        ),
-      )
-      .setThumbnailAccessory(new ThumbnailBuilder().setURL(userAvatar));
-
-    const approvedContainer = new ContainerBuilder()
-      .setAccentColor(0x2ecc71)
-      .addSectionComponents(approvedSection);
-
-    addFooter(approvedContainer);
-
-    await interaction.message.edit({
-      components: [approvedContainer],
-      flags: MessageFlags.IsComponentsV2,
-    });
-
-    await logApproval(
-      userId,
-      request.username,
-      request.requestedRole,
-      interaction.user.tag,
-      interaction.user.id,
-      finalNickname,
-      "approved",
-    );
-
-    await removeRequest(userId);
-
-    const user = await interaction.client.users.fetch(userId);
-    await user
-      .send(
-        eSend(
-          `${i("DONE")}sᴀɪʏᴀɴ ɢᴏᴅs — ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴇᴅ`,
-          `ʏᴏᴜʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ʀᴇǫᴜᴇsᴛ ʜᴀs ʙᴇᴇɴ ᴀᴘᴘʀᴏᴠᴇᴅ!\n\n**ʀᴏʟᴇ:** ${request.requestedRole}\n**ɴɪᴄᴋɴᴀᴍᴇ:** ${finalNickname}`,
-        ),
-      )
-      .catch(() => log.warn(`Could not DM user ${userId}`));
-
-    await interaction.editReply(
-      eReply(
-        `${i("DONE")}ᴀᴘᴘʀᴏᴠᴇᴅ`,
-        `ᴜsᴇʀ ʜᴀs ʙᴇᴇɴ ɢɪᴠᴇɴ **${request.requestedRole}** ʀᴏʟᴇ ᴡɪᴛʜ ɴɪᴄᴋɴᴀᴍᴇ **${finalNickname}**.`,
-      ),
-    );
-  } catch (error) {
-    log.error("Error handling nickname modal:", error);
-    await interaction.editReply(
-      eReply(`${i("ERROR")}ᴇʀʀᴏʀ`, "ғᴀɪʟᴇᴅ ᴛᴏ ᴄᴏᴍᴘʟᴇᴛᴇ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴀᴘᴘʀᴏᴠᴀʟ."),
-    );
   }
 }
