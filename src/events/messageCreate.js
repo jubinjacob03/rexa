@@ -5,7 +5,7 @@ import {
   checkToxicity,
   checkHackedAccountSpam,
 } from "../utils/automodRunner.js";
-import { eSend } from "../utils/embed.js";
+import { eSend, eReply } from "../utils/embed.js";
 import { i } from "../utils/icons.js";
 import { processMessage } from "../agents/agent.js";
 
@@ -16,6 +16,32 @@ const NO_MENTION_CHANNELS = new Set([
 ]);
 
 const processedMessages = new Set();
+
+const AI_DAILY_LIMIT = 50;
+const aiUsage = new Map();
+
+function getAiUsageKey(userId) {
+  const today = new Date().toISOString().slice(0, 10);
+  return `${userId}_${today}`;
+}
+
+function checkAiRateLimit(userId) {
+  const key = getAiUsageKey(userId);
+  const count = aiUsage.get(key) || 0;
+  if (count >= AI_DAILY_LIMIT) return false;
+  aiUsage.set(key, count + 1);
+  return true;
+}
+
+setInterval(
+  () => {
+    const today = new Date().toISOString().slice(0, 10);
+    for (const key of aiUsage.keys()) {
+      if (!key.endsWith(today)) aiUsage.delete(key);
+    }
+  },
+  60 * 60 * 1000,
+);
 
 /**
  * Per-user queue: prevents concurrent processing for the same user
@@ -110,6 +136,18 @@ export default {
       if (processedMessages.size > 100) {
         const firstId = processedMessages.values().next().value;
         processedMessages.delete(firstId);
+      }
+
+      if (!checkAiRateLimit(message.author.id)) {
+        await message
+          .reply(
+            eSend(
+              `${i("TIMER")} ᴅᴀɪʟʏ ʟɪᴍɪᴛ ʀᴇᴀᴄʜᴇᴅ`,
+              "ʏᴏᴜ'ᴠᴇ ᴜsᴇᴅ ᴀʟʟ **50** ᴀɪ ᴍᴇssᴀɢᴇs ғᴏʀ ᴛᴏᴅᴀʏ. ᴛʀʏ ᴀɢᴀɪɴ ᴛᴏᴍᴏʀʀᴏᴡ!",
+            ),
+          )
+          .catch(() => {});
+        return;
       }
 
       message.channel.sendTyping().catch(() => {});

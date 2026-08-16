@@ -399,7 +399,9 @@ export const musicControlTool = tool({
   }) => {
     let voiceChannelId = null;
     const guild = client?.guilds.cache.get(guildId);
-    const member = guild?.members.cache.get(userId);
+    const member = guild
+      ? await guild.members.fetch(userId).catch(() => null)
+      : null;
     voiceChannelId = member?.voice?.channelId || null;
 
     if (!voiceChannelId && action === "play") {
@@ -416,7 +418,7 @@ export const musicControlTool = tool({
     ].indexOf(voiceChannelId);
 
     const port = channelIndex !== -1 ? 8001 + channelIndex : 8000;
-    
+
     let baseURL = `http://localhost:${port}`;
     if (process.env.REMANI_API_URL) {
       try {
@@ -795,22 +797,30 @@ export const deletePrivateVCTool = tool({
     try {
       const guild = await client.guilds.fetch({ guild: guildId, force: true });
       const channelId = getVCByCreator(userId) || getVCByMember(userId);
-      
+
       if (!channelId) {
-        return { success: false, error: "You are not in any private VC, or you do not have a private VC to delete." };
+        return {
+          success: false,
+          error:
+            "You are not in any private VC, or you do not have a private VC to delete.",
+        };
       }
-      
+
       const member = await guild.members.fetch(userId);
       if (!canManageVC(channelId, member)) {
-        return { success: false, error: "You do not have permission to delete this private VC. Only the creator or an owner can do this." };
+        return {
+          success: false,
+          error:
+            "You do not have permission to delete this private VC. Only the creator or an owner can do this.",
+        };
       }
-      
+
       await forceDeleteVC(channelId, guild);
       return { success: true, message: "Private VC deleted successfully." };
     } catch (error) {
       return { success: false, error: error.message };
     }
-  }
+  },
 });
 
 export default {
