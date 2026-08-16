@@ -7,7 +7,6 @@ installGlobalConsole();
 
 const loadedCommands = await loadCommands(undefined, {
   allowlist: [
-    "setup-verification",
     "setup-ticket",
     "embed-builder",
     "purge",

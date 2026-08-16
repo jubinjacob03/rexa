@@ -23,10 +23,7 @@ import { readdirSync } from "fs";
 import ffmpegPath from "ffmpeg-static";
 import config from "../config.js";
 import { updateStatusMessage } from "./utils/statusUpdater.js";
-import {
-  handleApprovalAction,
-  handleSelfRoleToggle,
-} from "./utils/verificationHandler.js";
+import { handleApprovalAction } from "./utils/verificationHandler.js";
 import { handleTicketInteraction } from "./utils/ticketHandler.js";
 import {
   postDashboard,
@@ -78,7 +75,6 @@ client.commands = new Collection();
 import { loadCommands } from "./utils/commandLoader.js";
 const loadedCommands = await loadCommands(undefined, {
   allowlist: [
-    "setup-verification",
     "setup-ticket",
     "embed-builder",
     "purge",
@@ -163,23 +159,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
 
       if (interaction.customId === "status_whatsapp") {
-        const memberRoles = [
-          config.memberRoleId,
-          config.moderatorRoleId,
-          config.administratorRoleId,
-          config.ownerRoleId,
-        ].filter(Boolean);
-        const hasAccess = interaction.member.roles.cache.some((r) =>
-          memberRoles.includes(r.id),
-        );
-        if (!hasAccess) {
-          return await interaction.reply(
-            eReply(
-              `${i("LOCK")} ᴀᴄᴄᴇss ᴅᴇɴɪᴇᴅ`,
-              "ᴛʜɪs ʟɪɴᴋ ɪs ᴏɴʟʏ ᴀᴠᴀɪʟᴀʙʟᴇ ᴛᴏ **ᴍᴇᴍʙᴇʀs** ᴀɴᴅ ᴀʙᴏᴠᴇ.",
-            ),
-          );
-        }
         if (!config.whatsappUrl) {
           return await interaction.reply(
             eReply(
@@ -218,11 +197,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isButton()) {
-      if (interaction.customId.startsWith("selfrole_")) {
-        await handleSelfRoleToggle(interaction);
-        return;
-      }
-
       if (
         interaction.customId.startsWith("approve_") ||
         interaction.customId.startsWith("reject_")

@@ -21,14 +21,6 @@ const supabase = createClient(config.supabase.url, config.supabase.serviceKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-const SELF_ROLE_MAP = {
-  selfrole_pc: { id: "1484879284265943120", label: "PC" },
-  selfrole_mobile: { id: "1484879494731923496", label: "Mobile" },
-  selfrole_mobile_pc: { id: "1484879567280672778", label: "Mobile-PC" },
-  selfrole_18_plus: { id: "1484879828871286995", label: "18+" },
-  selfrole_18_minus: { id: "1484879875947888670", label: "18-" },
-};
-
 const GUILD_ID = config.guildId;
 
 const defaultData = {
@@ -199,58 +191,6 @@ export async function getAllPendingRequests() {
 export async function getApprovalLogs(limit = 50) {
   const data = await loadData();
   return data.approvalLogs.slice(-limit).reverse();
-}
-
-export async function handleSelfRoleToggle(interaction) {
-  const roleInfo = SELF_ROLE_MAP[interaction.customId];
-  if (!roleInfo) return;
-
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-  const guild =
-    interaction.guild ||
-    (await interaction.client.guilds.fetch(GUILD_ID).catch(() => null));
-  if (!guild) {
-    return interaction.editReply(
-      eReply(`${i("ERROR")} ɴᴏᴛ ғᴏᴜɴᴅ`, "sᴇʀᴠᴇʀ ɴᴏᴛ ғᴏᴜɴᴅ."),
-    );
-  }
-
-  const member = await guild.members
-    .fetch(interaction.user.id)
-    .catch(() => null);
-  if (!member) {
-    return interaction.editReply(
-      eReply(`${i("ERROR")} ɴᴏᴛ ғᴏᴜɴᴅ`, "ᴜsᴇʀ ɴᴏᴛ ғᴏᴜɴᴅ."),
-    );
-  }
-
-  const hasRole = member.roles.cache.has(roleInfo.id);
-
-  try {
-    if (hasRole) {
-      await member.roles.remove(roleInfo.id);
-      return interaction.editReply(
-        eReply(
-          `${i("DONE")} ʀᴏʟᴇ ʀᴇᴍᴏᴠᴇᴅ`,
-          `ʀᴇᴍᴏᴠᴇᴅ **${roleInfo.label}** ғʀᴏᴍ ʏᴏᴜʀ ʀᴏʟᴇs.`,
-        ),
-      );
-    }
-
-    await member.roles.add(roleInfo.id);
-    return interaction.editReply(
-      eReply(
-        `${i("DONE")} ʀᴏʟᴇ ᴀᴅᴅᴇᴅ`,
-        `ᴀssɪɢɴᴇᴅ **${roleInfo.label}** ᴛᴏ ʏᴏᴜʀ ʀᴏʟᴇs.`,
-      ),
-    );
-  } catch (error) {
-    log.error("Failed to toggle self role:", error);
-    return interaction.editReply(
-      eReply(`${i("ERROR")} ᴇʀʀᴏʀ`, "ғᴀɪʟᴇᴅ ᴛᴏ ᴜᴘᴅᴀᴛᴇ ʏᴏᴜʀ ʀᴏʟᴇ."),
-    );
-  }
 }
 
 export async function handleApprovalAction(interaction) {
