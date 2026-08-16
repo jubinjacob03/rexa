@@ -38,7 +38,11 @@ const ticketCreationInProgress = new Set();
 
 async function ensureTicketSetupPermission(interaction) {
   if (
-    await checkModerationPermission(interaction.guild, interaction.user.id, "mod")
+    await checkModerationPermission(
+      interaction.guild,
+      interaction.user.id,
+      "mod",
+    )
   ) {
     return true;
   }
@@ -626,9 +630,10 @@ async function createTicketInstanceImpl(interaction, options = {}) {
   try {
     const ticketName = `ticket-${interaction.user.username.toLowerCase()}`;
 
-    const defaultRoles = [config.ownerRoleId, config.administratorRoleId].filter(
-      Boolean,
-    );
+    const defaultRoles = [
+      config.ownerRoleId,
+      config.administratorRoleId,
+    ].filter(Boolean);
     let modRoles =
       defaultRoles.length > 0
         ? defaultRoles
@@ -886,7 +891,23 @@ async function closeTicketThread(interaction) {
         )
           continue;
         const time = new Date(msg.createdTimestamp).toLocaleString();
-        transcript += `[${time}] ${msg.author.username}:\n${msg.content || "<Embed/Attachments>"}\n\n`;
+        let content = msg.content;
+        if (!content && msg.components?.length > 0) {
+          const texts = [];
+          for (const row of msg.components) {
+            const container = row.data || row;
+            for (const child of container.components || []) {
+              if (child.content) texts.push(child.content);
+              if (child.components) {
+                for (const nested of child.components) {
+                  if (nested.content) texts.push(nested.content);
+                }
+              }
+            }
+          }
+          if (texts.length > 0) content = texts.join("\n");
+        }
+        transcript += `[${time}] ${msg.author.username}:\n${content || "<Embed/Attachments>"}\n\n`;
       }
 
       const attachment = new AttachmentBuilder(
@@ -1005,7 +1026,8 @@ async function escalateTicket(interaction) {
     const pings =
       ticketModIds.length > 0
         ? ticketModIds.map((id) => `<@${id}>`).join(" ")
-        : [config.ownerRoleId, config.administratorRoleId].filter(Boolean).length > 0
+        : [config.ownerRoleId, config.administratorRoleId].filter(Boolean)
+              .length > 0
           ? [config.ownerRoleId, config.administratorRoleId]
               .filter(Boolean)
               .map((r) => `<@&${r}>`)

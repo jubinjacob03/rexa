@@ -411,72 +411,63 @@ export const musicControlTool = tool({
       };
     }
 
-    const channelIndex = [
-      "1496481436377812992",
-      "1496527838226940174",
-      "1496527870598709432",
-    ].indexOf(voiceChannelId);
-
-    const port = channelIndex !== -1 ? 8001 + channelIndex : 8000;
-
-    let baseURL = `http://localhost:${port}`;
-    if (process.env.REMANI_API_URL) {
-      try {
-        const urlObj = new URL(process.env.REMANI_API_URL);
-        urlObj.port = port;
-        baseURL = urlObj.origin;
-      } catch (e) {
-        // fallback to localhost if invalid url
-      }
-    }
-
-    const headers = {
-      "Content-Type": "application/json",
-      ...(process.env.REMANI_API_KEY
-        ? { Authorization: `Bearer ${process.env.REMANI_API_KEY}` }
-        : {}),
-    };
-
     const actionMap = {
-      play: { path: "/play", body: { guildId, query, userId, voiceChannelId } },
-      pause: { path: "/pause", body: { guildId } },
-      resume: { path: "/resume", body: { guildId } },
-      skip: { path: "/skip", body: { guildId } },
-      stop: { path: "/stop", body: { guildId } },
-      queue: {
-        path: "/queue",
-        body: null,
-        method: "GET",
-        params: `?guildId=${guildId}`,
+      play: {
+        method: "POST",
+        path: "/play",
+        body: { guildId, query, userId, voiceChannelId },
       },
-      volume: { path: "/volume", body: { guildId, value: volume } },
-      shuffle: { path: "/shuffle", body: { guildId } },
-      loop: { path: "/loop", body: { guildId, value: loopMode } },
-      remove: { path: "/remove", body: { guildId, value: position } },
-      nowplaying: {
-        path: "/status",
-        body: null,
-        method: "GET",
-        params: `?guildId=${guildId}`,
+      pause: { method: "POST", path: "/pause", body: { guildId } },
+      resume: { method: "POST", path: "/resume", body: { guildId } },
+      skip: { method: "POST", path: "/skip", body: { guildId } },
+      stop: { method: "POST", path: "/stop", body: { guildId } },
+      queue: { method: "GET", path: "/queue", query: { guildId } },
+      volume: {
+        method: "POST",
+        path: "/volume",
+        body: { guildId, value: volume },
       },
+      shuffle: { method: "POST", path: "/shuffle", body: { guildId } },
+      loop: {
+        method: "POST",
+        path: "/loop",
+        body: { guildId, value: loopMode },
+      },
+      remove: {
+        method: "POST",
+        path: "/remove",
+        body: { guildId, value: position },
+      },
+      nowplaying: { method: "GET", path: "/status", query: { guildId } },
     };
 
-    const { path, body, method = "POST", params = "" } = actionMap[action];
+    const { method, path, body: reqBody, query: reqQuery } = actionMap[action];
 
     try {
-      const url = `${baseURL}${path}${params}`;
-      const options = {
-        method,
-        headers,
-        ...(body ? { body: JSON.stringify(body) } : {}),
+      const { isZyraConnected, sendToZyra } =
+        await import("../../api/zyraRelay.js");
+
+      if (isZyraConnected()) {
+        const result = await sendToZyra(
+          method,
+          path,
+          reqBody || null,
+          reqQuery || null,
+          10000,
+        );
+        return { success: true, action, ...(result.data || {}) };
+      }
+
+      return {
+        success: false,
+        error:
+          "Music service (Zyra relay) is not connected. Please try again later.",
       };
-      const res = await fetch(url, options);
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok)
-        return { success: false, error: data?.error || `HTTP ${res.status}` };
-      return { success: true, action, ...data };
     } catch (error) {
-      return { success: false, error: error.message };
+      return {
+        success: false,
+        error: error.message || "Failed to communicate with music service.",
+      };
     }
   },
 });

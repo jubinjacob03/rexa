@@ -114,7 +114,7 @@ export async function updateStatusMessage(client, live = true) {
       new ButtonBuilder()
         .setCustomId("refresh_stats")
         .setLabel("sʏɴᴄ")
-        .setStyle(ButtonStyle.Primary),
+        .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setLabel("ɢᴜɪᴅᴇ")
         .setStyle(ButtonStyle.Link)
