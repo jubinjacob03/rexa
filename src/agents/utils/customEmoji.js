@@ -8,25 +8,24 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const EMOJI_MAP = require("../../utils/icon-map.json");
 
-/** Maps Discord emoji names to internal keys */
 const EMOJI_NAMES = {};
-
-/** Unicode fallbacks when custom emojis aren't available */
 export const UNICODE = {};
+const resolved = {};
 
 for (const [key, value] of Object.entries(EMOJI_MAP)) {
   EMOJI_NAMES[value.serverEmojiName] = key;
   UNICODE[key] = value.fallback;
+  if (value.id) {
+    const a = value.animated ? "a" : "";
+    resolved[key] = {
+      id: value.id,
+      name: value.serverEmojiName,
+      animated: value.animated || false,
+      full: `<${a}:${value.serverEmojiName}:${value.id}>`,
+    };
+  }
 }
 
-/** Resolved custom emojis from Discord server */
-const resolved = {};
-
-/**
- * Initialize custom emojis from Discord client.
- * Call this once after the client is ready.
- * @param {import('discord.js').Client} client
- */
 export async function initEmojis(client) {
   try {
     const appEmojis = await client.application.emojis.fetch();
@@ -42,23 +41,6 @@ export async function initEmojis(client) {
       }
     }
   } catch {}
-
-  for (const guild of client.guilds.cache.values()) {
-    for (const emoji of guild.emojis.cache.values()) {
-      const key = EMOJI_NAMES[emoji.name];
-      if (key && !resolved[key]) {
-        resolved[key] = {
-          id: emoji.id,
-          name: emoji.name,
-          animated: emoji.animated,
-          full: `<${emoji.animated ? "a" : ""}:${emoji.name}:${emoji.id}>`,
-        };
-      }
-    }
-  }
-  const count = Object.keys(resolved).length;
-  if (count === 0)
-    console.log(`[EMOJI] No custom emojis found, using unicode fallbacks`);
 }
 
 /**

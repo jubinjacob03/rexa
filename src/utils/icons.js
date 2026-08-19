@@ -1,53 +1,38 @@
 import iconMap from "./icon-map.json" with { type: "json" };
 
-/**
- * Resolved custom emoji strings, populated by initIcons().
- * Falls back to unicode if the server emoji isn't found.
- * @type {Record<string, string>}
- */
 const resolved = {};
 
-/**
- * Call once in the ready event after the client is logged in.
- * Walks all guilds the bot is in and resolves every icon-map entry
- * to a Discord custom emoji string (e.g. <:si_success:1234567890>).
- * @param {import('discord.js').Client} client
- */
-export async function initIcons(client) {
-  const emojiByName = new Map();
+for (const [key, entry] of Object.entries(iconMap)) {
+  if (key.startsWith("_")) continue;
+  if (entry.id) {
+    const a = entry.animated ? "a" : "";
+    resolved[key] = `<${a}:${entry.serverEmojiName}:${entry.id}>`;
+  } else {
+    resolved[key] = entry.fallback;
+  }
+}
 
+export async function initIcons(client) {
   try {
     const appEmojis = await client.application.emojis.fetch();
-    for (const emoji of appEmojis.values()) {
-      if (emoji.name) emojiByName.set(emoji.name, emoji);
-    }
-  } catch {}
-
-  for (const guild of client.guilds.cache.values()) {
-    for (const emoji of guild.emojis.cache.values()) {
-      if (emoji.name && !emojiByName.has(emoji.name)) {
-        emojiByName.set(emoji.name, emoji);
+    for (const [key, entry] of Object.entries(iconMap)) {
+      if (key.startsWith("_")) continue;
+      const emoji = appEmojis.find((e) => e.name === entry.serverEmojiName);
+      if (emoji) {
+        resolved[key] =
+          `<${emoji.animated ? "a" : ""}:${emoji.name}:${emoji.id}>`;
       }
     }
-  }
-
-  let loaded = 0;
-  for (const [key, entry] of Object.entries(iconMap)) {
-    if (key.startsWith("_")) continue;
-    const emoji = emojiByName.get(entry.serverEmojiName);
-    if (emoji) {
-      resolved[key] =
-        `<${emoji.animated ? "a" : ""}:${emoji.name}:${emoji.id}>`;
-      loaded++;
-    } else {
-      resolved[key] = entry.fallback;
-    }
+    console.log(`[ICONS] Refreshed from ${appEmojis.size} app emojis`);
+  } catch {
+    console.log(`[ICONS] Using hardcoded IDs`);
   }
 
   const total = Object.keys(iconMap).filter((k) => !k.startsWith("_")).length;
-  console.log(
-    `[ICONS] Loaded ${loaded}/${total} custom icons (${total - loaded} using unicode fallback)`,
-  );
+  const loaded = Object.entries(resolved).filter(([, v]) =>
+    v.startsWith("<"),
+  ).length;
+  console.log(`[ICONS] ${loaded}/${total} custom icons ready`);
 }
 
 /**

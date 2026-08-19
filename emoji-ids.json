@@ -1,0 +1,434 @@
+{
+  "r_author": {
+    "id": "1537809719308197990",
+    "animated": false
+  },
+  "r_playlist": {
+    "id": "1537809721443229726",
+    "animated": false
+  },
+  "r_loop": {
+    "id": "1537809723422806038",
+    "animated": false
+  },
+  "r_pause": {
+    "id": "1537809725243002901",
+    "animated": false
+  },
+  "r_play": {
+    "id": "1537809728443261049",
+    "animated": false
+  },
+  "r_previous": {
+    "id": "1537809730574225569",
+    "animated": false
+  },
+  "r_queue": {
+    "id": "1537809732541223003",
+    "animated": false
+  },
+  "r_shuffle": {
+    "id": "1537809734151831554",
+    "animated": false
+  },
+  "r_skip": {
+    "id": "1537809736483733564",
+    "animated": false
+  },
+  "r_spotify": {
+    "id": "1537809738518106273",
+    "animated": false
+  },
+  "r_stop": {
+    "id": "1537809740514594976",
+    "animated": false
+  },
+  "r_voldown": {
+    "id": "1537809741974208585",
+    "animated": false
+  },
+  "r_volup": {
+    "id": "1537809744205713509",
+    "animated": false
+  },
+  "r_youtube": {
+    "id": "1537809746021589203",
+    "animated": false
+  },
+  "FreeFireMax_Logo": {
+    "id": "1537809747888054326",
+    "animated": false
+  },
+  "r_error": {
+    "id": "1537809749997920388",
+    "animated": false
+  },
+  "r_headphones": {
+    "id": "1537809753089245216",
+    "animated": false
+  },
+  "r_music": {
+    "id": "1537809755186405416",
+    "animated": false
+  },
+  "r_loopone": {
+    "id": "1537809757211992224",
+    "animated": false
+  },
+  "r_success": {
+    "id": "1537809759057608806",
+    "animated": false
+  },
+  "r_warning": {
+    "id": "1537809761754554418",
+    "animated": false
+  },
+  "r_info": {
+    "id": "1537809766594781194",
+    "animated": false
+  },
+  "r_refresh": {
+    "id": "1537809768742125630",
+    "animated": false
+  },
+  "r_user": {
+    "id": "1537809770868777192",
+    "animated": false
+  },
+  "r_time": {
+    "id": "1537809773477494815",
+    "animated": false
+  },
+  "BOT": {
+    "id": "1537809776141013033",
+    "animated": true
+  },
+  "Whatsapp_icon": {
+    "id": "1537809778276040844",
+    "animated": false
+  },
+  "Instagram_icon": {
+    "id": "1537809780419076166",
+    "animated": false
+  },
+  "18plus": {
+    "id": "1537809782356971520",
+    "animated": false
+  },
+  "18minus": {
+    "id": "1537809784110063718",
+    "animated": false
+  },
+  "iconPowerGreenOutlined": {
+    "id": "1537809786408534046",
+    "animated": false
+  },
+  "iconPowerRedOutlined": {
+    "id": "1537809788350636082",
+    "animated": false
+  },
+  "iconMicroBlueOutlined": {
+    "id": "1537809790338596974",
+    "animated": false
+  },
+  "iconMicroYellowOutlined": {
+    "id": "1537809792205193286",
+    "animated": false
+  },
+  "iconMicroOrangeOutlined": {
+    "id": "1537809793882919075",
+    "animated": false
+  },
+  "iconServerMagentaOutlined": {
+    "id": "1537809796244181102",
+    "animated": false
+  },
+  "iconScrollUp": {
+    "id": "1537809798265966652",
+    "animated": false
+  },
+  "iconScrollDown": {
+    "id": "1537809800207929385",
+    "animated": false
+  },
+  "iconHelpHeader": {
+    "id": "1537809802254884996",
+    "animated": false
+  },
+  "iconAction": {
+    "id": "1537809805404672031",
+    "animated": false
+  },
+  "iconTrash": {
+    "id": "1537809807484919868",
+    "animated": false
+  },
+  "iconUptime": {
+    "id": "1537809809271824395",
+    "animated": false
+  },
+  "iconChannel": {
+    "id": "1537809811377233940",
+    "animated": false
+  },
+  "iconEditor": {
+    "id": "1537809813353009182",
+    "animated": false
+  },
+  "iconSuccess": {
+    "id": "1537809816544739431",
+    "animated": false
+  },
+  "iconError": {
+    "id": "1537809818562199623",
+    "animated": false
+  },
+  "iconTicket": {
+    "id": "1537809820558692354",
+    "animated": false
+  },
+  "iconBot": {
+    "id": "1537809822865563648",
+    "animated": false
+  },
+  "iconSound": {
+    "id": "1537809824656523276",
+    "animated": false
+  },
+  "iconBell": {
+    "id": "1537809826942550090",
+    "animated": false
+  },
+  "iconMemo": {
+    "id": "1537809829664399360",
+    "animated": false
+  },
+  "iconCard": {
+    "id": "1537809831715672174",
+    "animated": false
+  },
+  "iconKey": {
+    "id": "1537809833695121418",
+    "animated": false
+  },
+  "iconLock": {
+    "id": "1537809835821768714",
+    "animated": false
+  },
+  "iconProtect": {
+    "id": "1537809839126749326",
+    "animated": false
+  },
+  "iconWorld": {
+    "id": "1537809840879964201",
+    "animated": false
+  },
+  "iconGame": {
+    "id": "1537809843212128387",
+    "animated": false
+  },
+  "iconCmd": {
+    "id": "1537809846328492094",
+    "animated": false
+  },
+  "iconWarning": {
+    "id": "1537809848404680725",
+    "animated": false
+  },
+  "iconPending": {
+    "id": "1537809850224873574",
+    "animated": false
+  },
+  "iconMembers": {
+    "id": "1537809852532002817",
+    "animated": false
+  },
+  "iconType": {
+    "id": "1537809854645928106",
+    "animated": false
+  },
+  "iconMailbox": {
+    "id": "1537809856482906203",
+    "animated": false
+  },
+  "iconStar": {
+    "id": "1537809858647162970",
+    "animated": false
+  },
+  "iconTrophy": {
+    "id": "1537809861071347799",
+    "animated": false
+  },
+  "iconSaved": {
+    "id": "1537809863004921938",
+    "animated": false
+  },
+  "iconTimer": {
+    "id": "1537809866507292683",
+    "animated": false
+  },
+  "mc_address": {
+    "id": "1537809868768157767",
+    "animated": false
+  },
+  "iconUser": {
+    "id": "1537809871054045305",
+    "animated": false
+  },
+  "au_detective": {
+    "id": "1537809873327366304",
+    "animated": false
+  },
+  "au_engineer": {
+    "id": "1537809875315204237",
+    "animated": false
+  },
+  "au_guardianangel": {
+    "id": "1537809877290975323",
+    "animated": false
+  },
+  "au_phantom": {
+    "id": "1537809879589322845",
+    "animated": false
+  },
+  "au_scientist": {
+    "id": "1537809881749397514",
+    "animated": false
+  },
+  "au_shapeshifter": {
+    "id": "1537809883813126204",
+    "animated": false
+  },
+  "au_tracker": {
+    "id": "1537809886715322449",
+    "animated": false
+  },
+  "au_viper": {
+    "id": "1537809888837636146",
+    "animated": false
+  },
+  "au_impostor": {
+    "id": "1537809890649571520",
+    "animated": false
+  },
+  "au_map_airship": {
+    "id": "1537809893451628654",
+    "animated": false
+  },
+  "au_map_fungle": {
+    "id": "1537809895619825674",
+    "animated": false
+  },
+  "au_map_mira": {
+    "id": "1537809897247346769",
+    "animated": false
+  },
+  "au_map_polus": {
+    "id": "1537809899554345020",
+    "animated": false
+  },
+  "au_map_skeld": {
+    "id": "1537809901710221394",
+    "animated": false
+  },
+  "au_cat_core": {
+    "id": "1537809905170391120",
+    "animated": false
+  },
+  "au_cat_rules": {
+    "id": "1537809907049435167",
+    "animated": false
+  },
+  "au_cat_vision": {
+    "id": "1537809908991529071",
+    "animated": false
+  },
+  "au_cat_tasks": {
+    "id": "1537809911319101511",
+    "animated": false
+  },
+  "iconPalette": {
+    "id": "1537809914376753295",
+    "animated": false
+  },
+  "iconPublish": {
+    "id": "1537809916297744486",
+    "animated": false
+  },
+  "iconHome": {
+    "id": "1537809918126592140",
+    "animated": false
+  },
+  "iconStaff": {
+    "id": "1537809921230250004",
+    "animated": false
+  },
+  "iconDevice": {
+    "id": "1537809923084263484",
+    "animated": false
+  },
+  "iconLaunchGreen": {
+    "id": "1537809925068034088",
+    "animated": false
+  },
+  "iconLaunchMagenta": {
+    "id": "1537809927106592778",
+    "animated": false
+  },
+  "iconLaunchViolet": {
+    "id": "1537809929430114414",
+    "animated": false
+  },
+  "iconLaunchYellow": {
+    "id": "1537809931476930590",
+    "animated": false
+  },
+  "iconLaunchTeal": {
+    "id": "1537809932936814634",
+    "animated": false
+  },
+  "aki_yes": {
+    "id": "1537809935075774485",
+    "animated": false
+  },
+  "aki_probably": {
+    "id": "1537809937160347759",
+    "animated": false
+  },
+  "aki_idk": {
+    "id": "1537809939412557908",
+    "animated": false
+  },
+  "aki_probably_not": {
+    "id": "1537809942126399559",
+    "animated": false
+  },
+  "aki_no": {
+    "id": "1537809944034934815",
+    "animated": false
+  },
+  "aki_retry": {
+    "id": "1537809945720782862",
+    "animated": false
+  },
+  "aki_correct": {
+    "id": "1537809947654492222",
+    "animated": false
+  },
+  "aki_back": {
+    "id": "1537809950707945605",
+    "animated": false
+  },
+  "aki_stop": {
+    "id": "1537809952939446345",
+    "animated": false
+  },
+  "aki_loading": {
+    "id": "1537809955195977879",
+    "animated": true
+  },
+  "iconWhiteArrowAnimated": {
+    "id": "1537809958823792651",
+    "animated": true
+  }
+}
