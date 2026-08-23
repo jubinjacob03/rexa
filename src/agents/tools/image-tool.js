@@ -1,17 +1,12 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { AttachmentBuilder } from "discord.js";
-import { createClient } from "@supabase/supabase-js";
-import config from "../../../config.js";
+import supabase from "../../utils/supabaseClient.js";
 import { icon } from "../../utils/icons.js";
 
 const GEMINI_IMAGE_MODEL = "gemini-3.1-flash-image";
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 const DAILY_LIMIT = 10;
-
-const supabase = createClient(config.supabase.url, config.supabase.serviceKey, {
-  auth: { autoRefreshToken: false, persistSession: false },
-});
 
 async function checkAndIncrementUsage(userId) {
   const today = new Date().toISOString().split("T")[0];
@@ -62,9 +57,23 @@ Use this when the user asks to create, generate, draw, make, edit, modify, or tr
 If the user provides reference image URLs, include them in referenceImages to edit or use as style/subject reference.`,
 
   parameters: z.object({
-    prompt: z.string().describe("Pass the user's image prompt EXACTLY as they wrote it. Do NOT rewrite, sanitize, or enhance it."),
-    referenceImages: z.array(z.string().url()).optional().describe("URLs of reference images to edit or use as context. From user attachments."),
-    aspectRatio: z.enum(["1:1", "16:9", "9:16", "4:3", "3:4"]).optional().describe("Aspect ratio. Default 1:1. Use 9:16 for portraits, 16:9 for landscapes."),
+    prompt: z
+      .string()
+      .describe(
+        "Pass the user's image prompt EXACTLY as they wrote it. Do NOT rewrite, sanitize, or enhance it.",
+      ),
+    referenceImages: z
+      .array(z.string().url())
+      .optional()
+      .describe(
+        "URLs of reference images to edit or use as context. From user attachments.",
+      ),
+    aspectRatio: z
+      .enum(["1:1", "16:9", "9:16", "4:3", "3:4"])
+      .optional()
+      .describe(
+        "Aspect ratio. Default 1:1. Use 9:16 for portraits, 16:9 for landscapes.",
+      ),
     userId: z.string().optional(),
     guildId: z.string().optional(),
     username: z.string().optional(),
@@ -73,7 +82,10 @@ If the user provides reference image URLs, include them in referenceImages to ed
   execute: async ({ prompt, referenceImages, aspectRatio, userId }) => {
     const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
     if (!apiKey) {
-      return { success: false, error: "Image generation API key not configured." };
+      return {
+        success: false,
+        error: "Image generation API key not configured.",
+      };
     }
 
     if (userId && userId !== "882490956002242581") {
@@ -93,7 +105,9 @@ If the user provides reference image URLs, include them in referenceImages to ed
         for (const url of referenceImages.slice(0, 5)) {
           const imgData = await fetchImageAsBase64(url);
           if (imgData) {
-            parts.push({ inlineData: { mimeType: imgData.mimeType, data: imgData.data } });
+            parts.push({
+              inlineData: { mimeType: imgData.mimeType, data: imgData.data },
+            });
           }
         }
       }
@@ -123,13 +137,19 @@ If the user provides reference image URLs, include them in referenceImages to ed
 
       const data = await response.json();
       const responseParts = data?.candidates?.[0]?.content?.parts || [];
-      const imagePart = responseParts.find((p) => p.inlineData?.mimeType?.startsWith("image/"));
+      const imagePart = responseParts.find((p) =>
+        p.inlineData?.mimeType?.startsWith("image/"),
+      );
 
       if (!imagePart) {
         const textPart = responseParts.find((p) => p.text);
         const blockReason = data?.candidates?.[0]?.finishReason;
-        const safetyRatings = data?.candidates?.[0]?.safetyRatings || data?.promptFeedback?.safetyRatings;
-        const blockedCategory = safetyRatings?.find((r) => r.blocked || r.probability === "HIGH")?.category;
+        const safetyRatings =
+          data?.candidates?.[0]?.safetyRatings ||
+          data?.promptFeedback?.safetyRatings;
+        const blockedCategory = safetyRatings?.find(
+          (r) => r.blocked || r.probability === "HIGH",
+        )?.category;
 
         let errorMsg;
         if (blockReason === "SAFETY" || blockedCategory) {
@@ -140,7 +160,8 @@ If the user provides reference image URLs, include them in referenceImages to ed
             HARM_CATEGORY_DANGEROUS_CONTENT: "dangerous content",
             HARM_CATEGORY_CIVIC_INTEGRITY: "civic integrity violation",
           };
-          const reason = categoryMap[blockedCategory] || "safety policy violation";
+          const reason =
+            categoryMap[blockedCategory] || "safety policy violation";
           errorMsg = `${icon("WARNING")} Image blocked by Google's safety filters: **${reason}**. This includes real public figures, celebrities, and inappropriate content.`;
         } else if (textPart?.text) {
           errorMsg = `${icon("WARNING")} Image generation refused: ${textPart.text}`;
@@ -155,7 +176,9 @@ If the user provides reference image URLs, include them in referenceImages to ed
 
       const buffer = Buffer.from(imagePart.inlineData.data, "base64");
       const ext = imagePart.inlineData.mimeType === "image/png" ? "png" : "jpg";
-      const attachment = new AttachmentBuilder(buffer, { name: `generated.${ext}` });
+      const attachment = new AttachmentBuilder(buffer, {
+        name: `generated.${ext}`,
+      });
 
       return {
         success: true,
@@ -163,7 +186,10 @@ If the user provides reference image URLs, include them in referenceImages to ed
         files: [attachment],
       };
     } catch (error) {
-      return { success: false, error: `Image generation error: ${error.message}` };
+      return {
+        success: false,
+        error: `Image generation error: ${error.message}`,
+      };
     }
   },
 });

@@ -5,18 +5,11 @@
 
 import { tool } from "ai";
 import { z } from "zod";
-import { createClient } from "@supabase/supabase-js";
 import config from "../config.js";
+import supabase from "../../utils/supabaseClient.js";
 import { createLogger } from "../../utils/logger.js";
 
 const log = createLogger("KB");
-
-const supabase = createClient(config.supabase.url, config.supabase.serviceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-});
 
 let initialized = false;
 let initializationPromise = null;
@@ -92,9 +85,7 @@ async function initialize() {
       initialized = true;
       log.info("Supabase initialized successfully");
 
-      log.info(
-        "Custom KB successfully loaded from docs/RAG.txt",
-      );
+      log.info("Custom KB successfully loaded from docs/RAG.txt");
     } catch (error) {
       log.error("Initialization error:", error);
       initializationPromise = null;
@@ -117,10 +108,7 @@ async function ensureVectorTable() {
       .limit(1);
 
     if (error && error.code !== "PGRST116") {
-      log.error(
-        "Vector table check error:",
-        error.message,
-      );
+      log.error("Vector table check error:", error.message);
       log.info("Please run the following SQL in Supabase:");
       log.info(`
 -- Enable pgvector extension
@@ -337,9 +325,7 @@ Server Info:
     }
   }
 
-  log.info(
-    `Loaded ${defaultDocs.length} default documents`,
-  );
+  log.info(`Loaded ${defaultDocs.length} default documents`);
 }
 
 /**

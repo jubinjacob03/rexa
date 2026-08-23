@@ -4,8 +4,6 @@ import {
   TextDisplayBuilder,
   SectionBuilder,
   ThumbnailBuilder,
-  SeparatorBuilder,
-  SeparatorSpacingSize,
   MessageFlags,
 } from "discord.js";
 import { updateStatusMessage } from "../utils/statusUpdater.js";

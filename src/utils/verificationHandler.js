@@ -1,25 +1,18 @@
 import {
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
   MessageFlags,
   ContainerBuilder,
   TextDisplayBuilder,
   SectionBuilder,
   ThumbnailBuilder,
 } from "discord.js";
-import { createClient } from "@supabase/supabase-js";
 import config from "../../config.js";
+import supabase from "./supabaseClient.js";
 import { eReply, eSend, addFooter } from "./embed.js";
 import { i, icon } from "./icons.js";
 import { checkModerationPermission } from "./moderation.js";
 import { createLogger } from "./logger.js";
 
 const log = createLogger("verify");
-
-const supabase = createClient(config.supabase.url, config.supabase.serviceKey, {
-  auth: { autoRefreshToken: false, persistSession: false },
-});
 
 const GUILD_ID = config.guildId;
 

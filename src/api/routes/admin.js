@@ -1,18 +1,7 @@
 import { Router } from "express";
 import { updateStatusMessage } from "../../utils/statusUpdater.js";
-import {
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  ContainerBuilder,
-  TextDisplayBuilder,
-  SeparatorBuilder,
-  SeparatorSpacingSize,
-  MessageFlags,
-} from "discord.js";
-import config from "../../../config.js";
-import { icon } from "../../utils/icons.js";
-import { addFooter } from "../../utils/embed.js";
+
+
 
 const router = Router();
 

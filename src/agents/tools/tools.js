@@ -443,6 +443,13 @@ export const musicControlTool = tool({
 
     const { method, path, body: reqBody, query: reqQuery } = actionMap[action];
 
+    const ACTION_TIMEOUT_MS = {
+      play: 70000,
+      queue: 15000,
+      nowplaying: 15000,
+    };
+    const timeoutMs = ACTION_TIMEOUT_MS[action] ?? 10000;
+
     try {
       const { isZyraConnected, sendToZyra } =
         await import("../../api/zyraRelay.js");
@@ -453,7 +460,7 @@ export const musicControlTool = tool({
           path,
           reqBody || null,
           reqQuery || null,
-          10000,
+          timeoutMs,
         );
         return { success: true, action, ...(result.data || {}) };
       }
@@ -464,9 +471,23 @@ export const musicControlTool = tool({
           "Music service (Zyra relay) is not connected. Please try again later.",
       };
     } catch (error) {
+      const isTimeout = /relay timeout/i.test(error.message || "");
+
+      if (isTimeout && action === "play") {
+        return {
+          success: true,
+          action,
+          acknowledged: true,
+          message:
+            "Playback request was sent and is still being processed — the song should start shortly.",
+        };
+      }
+
       return {
         success: false,
-        error: error.message || "Failed to communicate with music service.",
+        error: isTimeout
+          ? "The music service took too long to respond. It may still be working on it."
+          : error.message || "Failed to communicate with music service.",
       };
     }
   },

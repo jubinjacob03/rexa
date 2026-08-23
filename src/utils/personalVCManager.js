@@ -21,9 +21,57 @@ const LOBBY_VC = "1473075469028167817";
 
 const ROMAN = ["ɪ", "ɪɪ", "ɪɪɪ", "ɪᴠ", "ᴠ", "ᴠɪ", "ᴠɪɪ", "ᴠɪɪɪ", "ɪx", "x"];
 const VC_EMOJIS = [
-  "🍞","🥐","🥖","🫓","🥨","🥯","🥞","🧇","🧀","🍖","🍗","🥩","🥓","🍔","🍟","🍕","🌭","🥪","🌮","🌯",
-  "🫔","🥙","🧆","🥚","🍳","🥘","🍲","🫕","🥣","🥗","🍿","🧈","🧂","🥫","🍝","🍱","🍘","🍙","🍚","🍛",
-  "🍜","🍠","🍢","🍣","🍤","🍥","🥮","🍡","🥟","🥠","🥡",
+  "🍞",
+  "🥐",
+  "🥖",
+  "🫓",
+  "🥨",
+  "🥯",
+  "🥞",
+  "🧇",
+  "🧀",
+  "🍖",
+  "🍗",
+  "🥩",
+  "🥓",
+  "🍔",
+  "🍟",
+  "🍕",
+  "🌭",
+  "🥪",
+  "🌮",
+  "🌯",
+  "🫔",
+  "🥙",
+  "🧆",
+  "🥚",
+  "🍳",
+  "🥘",
+  "🍲",
+  "🫕",
+  "🥣",
+  "🥗",
+  "🍿",
+  "🧈",
+  "🧂",
+  "🥫",
+  "🍝",
+  "🍱",
+  "🍘",
+  "🍙",
+  "🍚",
+  "🍛",
+  "🍜",
+  "🍠",
+  "🍢",
+  "🍣",
+  "🍤",
+  "🍥",
+  "🥮",
+  "🍡",
+  "🥟",
+  "🥠",
+  "🥡",
 ];
 
 const activePersonalVCs = new Map();
@@ -63,37 +111,42 @@ export function isTriggerChannel(channelId) {
 function buildControlEmbed(vc, channel) {
   const memberCount = channel.members?.size || 0;
   const lockStatus = vc.locked ? "Locked" : "Unlocked";
-  const bannedList = vc.banned.size > 0
-    ? [...vc.banned].map((id) => `<@${id}>`).join(", ")
-    : "None";
+  const bannedList =
+    vc.banned.size > 0
+      ? [...vc.banned].map((id) => `<@${id}>`).join(", ")
+      : "None";
 
   const container = new ContainerBuilder().setAccentColor(0x5865f2);
 
   container.addTextDisplayComponents(
     new TextDisplayBuilder().setContent(
-      `### ${icon("VOICE")} Personal VC — <@${vc.ownerId}>`
+      `### ${icon("VOICE")} Personal VC — <@${vc.ownerId}>`,
     ),
   );
 
   container.addSeparatorComponents(
-    new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small),
+    new SeparatorBuilder()
+      .setDivider(true)
+      .setSpacing(SeparatorSpacingSize.Small),
   );
 
   container.addTextDisplayComponents(
     new TextDisplayBuilder().setContent(
       `**Status** · ${lockStatus}\n` +
-      `**Members** · ${memberCount} / ${MAX_MEMBERS}\n` +
-      `**Banned** · ${bannedList}`
+        `**Members** · ${memberCount} / ${MAX_MEMBERS}\n` +
+        `**Banned** · ${bannedList}`,
     ),
   );
 
   container.addSeparatorComponents(
-    new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small),
+    new SeparatorBuilder()
+      .setDivider(true)
+      .setSpacing(SeparatorSpacingSize.Small),
   );
 
   container.addTextDisplayComponents(
     new TextDisplayBuilder().setContent(
-      `-# Only the VC owner can use these controls.`
+      `-# Only the VC owner can use these controls.`,
     ),
   );
 
@@ -146,11 +199,8 @@ async function sendOrUpdatePanel(channel) {
 async function setTriggerStatus() {
   if (!_client) return;
   try {
-    const guild = _client.guilds.cache.first();
-    const emoji = guild?.emojis.cache.find((e) => e.name === "iconWhiteArrowAnimated");
-    const arrow = emoji ? `<a:iconWhiteArrowAnimated:${emoji.id}>` : "»";
     await _client.rest.put(`/channels/${TRIGGER_CHANNEL_ID}/voice-status`, {
-      body: { status: `${arrow} Join to create a personal VC` },
+      body: { status: `${icon("WHITE_ARROW")} Join to create a personal VC` },
     });
   } catch {}
 }
@@ -166,7 +216,9 @@ export async function createPersonalVC(member, guild) {
     (v) => v.ownerId === member.id,
   );
   if (existing) {
-    try { await member.voice.setChannel(null); } catch {}
+    try {
+      await member.voice.setChannel(null);
+    } catch {}
     return null;
   }
 
@@ -203,7 +255,10 @@ export async function createPersonalVC(member, guild) {
 
   activePersonalVCs.set(channel.id, vc);
 
-  vc.maxTimer = setTimeout(() => destroyPersonalVC(channel.id, guild), MAX_LIFETIME);
+  vc.maxTimer = setTimeout(
+    () => destroyPersonalVC(channel.id, guild),
+    MAX_LIFETIME,
+  );
   startIdleTimer(channel.id, guild);
 
   try {
@@ -237,7 +292,9 @@ export async function destroyPersonalVC(channelId, guild) {
     if (channel) {
       const lobby = guild.channels.cache.get(LOBBY_VC);
       for (const [, m] of channel.members) {
-        try { await m.voice.setChannel(lobby); } catch {}
+        try {
+          await m.voice.setChannel(lobby);
+        } catch {}
       }
       await channel.delete();
     }
@@ -317,7 +374,10 @@ async function banFromVC(interaction) {
   );
 
   if (members.size === 0) {
-    return interaction.reply({ content: `${icon("ERROR")} No members to ban.`, flags: 64 });
+    return interaction.reply({
+      content: `${icon("ERROR")} No members to ban.`,
+      flags: 64,
+    });
   }
 
   const menu = new StringSelectMenuBuilder()
@@ -351,7 +411,9 @@ async function handleBanSelect(interaction) {
   const target = interaction.guild.members.cache.get(targetId);
   if (target?.voice?.channelId === channel.id) {
     const lobby = interaction.guild.channels.cache.get(LOBBY_VC);
-    try { await target.voice.setChannel(lobby); } catch {}
+    try {
+      await target.voice.setChannel(lobby);
+    } catch {}
   }
 
   await interaction.update({
@@ -367,7 +429,10 @@ async function unbanFromVC(interaction) {
   if (!vc) return;
 
   if (vc.banned.size === 0) {
-    return interaction.reply({ content: `${icon("ERROR")} No banned members.`, flags: 64 });
+    return interaction.reply({
+      content: `${icon("ERROR")} No banned members.`,
+      flags: 64,
+    });
   }
 
   const options = [];
@@ -412,38 +477,58 @@ async function closeVC(interaction) {
   const vc = getVC(interaction.channelId);
   if (!vc) return;
 
-  await interaction.reply({ content: `${icon("SUCCESS")} Closing VC...`, flags: 64 });
+  await interaction.reply({
+    content: `${icon("SUCCESS")} Closing VC...`,
+    flags: 64,
+  });
   await destroyPersonalVC(interaction.channelId, interaction.guild);
 }
 
 export async function handlePersonalVCButton(interaction) {
   const vc = getVC(interaction.channelId);
   if (!vc) {
-    return interaction.reply({ content: `${icon("ERROR")} This is not an active personal VC.`, flags: 64 });
+    return interaction.reply({
+      content: `${icon("ERROR")} This is not an active personal VC.`,
+      flags: 64,
+    });
   }
 
   if (interaction.user.id !== vc.ownerId) {
-    return interaction.reply({ content: `${icon("ERROR")} Only the VC owner can use these controls.`, flags: 64 });
+    return interaction.reply({
+      content: `${icon("ERROR")} Only the VC owner can use these controls.`,
+      flags: 64,
+    });
   }
 
   switch (interaction.customId) {
-    case "pvc_lock": return toggleLock(interaction);
-    case "pvc_ban": return banFromVC(interaction);
-    case "pvc_unban": return unbanFromVC(interaction);
-    case "pvc_close": return closeVC(interaction);
-    default: return;
+    case "pvc_lock":
+      return toggleLock(interaction);
+    case "pvc_ban":
+      return banFromVC(interaction);
+    case "pvc_unban":
+      return unbanFromVC(interaction);
+    case "pvc_close":
+      return closeVC(interaction);
+    default:
+      return;
   }
 }
 
 export async function handlePersonalVCSelect(interaction) {
   const vc = getVC(interaction.channelId);
   if (!vc || interaction.user.id !== vc.ownerId) {
-    return interaction.reply({ content: `${icon("ERROR")} Only the VC owner can do this.`, flags: 64 });
+    return interaction.reply({
+      content: `${icon("ERROR")} Only the VC owner can do this.`,
+      flags: 64,
+    });
   }
 
   switch (interaction.customId) {
-    case "pvc_ban_select": return handleBanSelect(interaction);
-    case "pvc_unban_select": return handleUnbanSelect(interaction);
-    default: return;
+    case "pvc_ban_select":
+      return handleBanSelect(interaction);
+    case "pvc_unban_select":
+      return handleUnbanSelect(interaction);
+    default:
+      return;
   }
 }

@@ -2,6 +2,15 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { readdirSync } from "fs";
 
+export const REGISTERED_COMMANDS = [
+  "setup-ticket",
+  "embed-builder",
+  "purge",
+  "private-vc",
+  "private-vc-add",
+  "private-vc-remove",
+];
+
 /**
  * Loads command modules from a directory.
  * @param {string} [commandsDir="../commands"] - The directory containing the commands.

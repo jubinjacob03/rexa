@@ -5,17 +5,10 @@
 
 import { embed, embedMany, cosineSimilarity } from "ai";
 import config, { getEmbeddingModel } from "../config.js";
-import { createClient } from "@supabase/supabase-js";
+import supabase from "../../utils/supabaseClient.js";
 import { createLogger } from "../../utils/logger.js";
 
 const log = createLogger("context");
-
-const supabase = createClient(config.supabase.url, config.supabase.serviceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-});
 
 /**
  * Context Manager for maintaining conversation state.
@@ -160,7 +153,9 @@ class ContextManager {
           context_id: contextId,
           guild_id: context.guildId,
           user_id: context.userId,
-          messages: context.messages.map(({ embedding: _embedding, ...msg }) => msg),
+          messages: context.messages.map(
+            ({ embedding: _embedding, ...msg }) => msg,
+          ),
           metadata: context.metadata,
           created_at: context.createdAt,
           last_activity: context.lastActivity,
@@ -180,9 +175,7 @@ class ContextManager {
 
       if (error) throw error;
 
-      log.info(
-        `Batch saved ${updates.length} conversations to Supabase`,
-      );
+      log.info(`Batch saved ${updates.length} conversations to Supabase`);
     } catch (error) {
       log.error("Batch save failed:", error.message);
     }
@@ -603,9 +596,7 @@ class ContextManager {
         });
       });
 
-      log.info(
-        `Imported ${data.conversations.length} conversations`,
-      );
+      log.info(`Imported ${data.conversations.length} conversations`);
       return { success: true, count: data.conversations.length };
     } catch (error) {
       log.error("Import error:", error);

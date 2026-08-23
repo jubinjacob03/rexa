@@ -73,16 +73,9 @@ const client = new Client({
 
 client.commands = new Collection();
 
-import { loadCommands } from "./utils/commandLoader.js";
+import { loadCommands, REGISTERED_COMMANDS } from "./utils/commandLoader.js";
 const loadedCommands = await loadCommands(undefined, {
-  allowlist: [
-    "setup-ticket",
-    "embed-builder",
-    "purge",
-    "private-vc",
-    "private-vc-add",
-    "private-vc-remove",
-  ],
+  allowlist: REGISTERED_COMMANDS,
 });
 
 for (const command of loadedCommands) {

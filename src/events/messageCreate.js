@@ -5,7 +5,7 @@ import {
   checkToxicity,
   checkHackedAccountSpam,
 } from "../utils/automodRunner.js";
-import { eSend, eReply } from "../utils/embed.js";
+import { eSend } from "../utils/embed.js";
 import { i } from "../utils/icons.js";
 import { processMessage } from "../agents/agent.js";
 

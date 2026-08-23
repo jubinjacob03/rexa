@@ -1,19 +1,12 @@
 import { REST, Routes } from "discord.js";
 import config from "../config.js";
-import { loadCommands } from "./utils/commandLoader.js";
+import { loadCommands, REGISTERED_COMMANDS } from "./utils/commandLoader.js";
 import { installGlobalConsole } from "./utils/logger.js";
 
 installGlobalConsole();
 
 const loadedCommands = await loadCommands(undefined, {
-  allowlist: [
-    "setup-ticket",
-    "embed-builder",
-    "purge",
-    "private-vc",
-    "private-vc-add",
-    "private-vc-remove",
-  ],
+  allowlist: REGISTERED_COMMANDS,
 });
 const commands = loadedCommands.map((cmd) => {
   console.log(`[INFO] Processed command for deployment: ${cmd.data.name}`);
