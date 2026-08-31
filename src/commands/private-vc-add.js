@@ -9,10 +9,6 @@ import {
 import { eSend } from "../utils/embed.js";
 import { i } from "../utils/icons.js";
 
-/**
- * Command to add a member to a private voice channel.
- * @module privateVcAddCommand
- */
 export default {
   data: new SlashCommandBuilder()
     .setName("private-vc-add")
@@ -21,11 +17,6 @@ export default {
       o.setName("member").setDescription("Member to add").setRequired(true),
     ),
 
-  /**
-   * Executes the private-vc-add command.
-   * @param {import("discord.js").ChatInputCommandInteraction} interaction - The interaction object.
-   * @returns {Promise<void>}
-   */
   async execute(interaction) {
     if (!interaction.deferred && !interaction.replied) {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });

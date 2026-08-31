@@ -25,7 +25,6 @@ export class AudioPlayerManager {
     this.setupPlayerEvents();
   }
 
-  /** @private */
   setupPlayerEvents() {
     this.player.on(AudioPlayerStatus.Playing, () => {
       console.log(`[INFO] Now playing: ${this.currentSound?.soundName}`);
@@ -62,7 +61,6 @@ export class AudioPlayerManager {
     });
   }
 
-  /** Play a sound over the given voice connection. */
   async play(soundData, connection) {
     try {
       console.log(`[INFO] Playing: ${soundData.soundName}`);
@@ -112,7 +110,6 @@ export class AudioPlayerManager {
     }
   }
 
-  /** Stop current playback. */
   stop() {
     if (this.player.state.status !== AudioPlayerStatus.Idle) {
       this.player.stop();
@@ -122,7 +119,6 @@ export class AudioPlayerManager {
     this.startedAt = null;
   }
 
-  /** Pause playback. Returns true if paused. */
   pause() {
     if (this.player.state.status === AudioPlayerStatus.Playing) {
       this.player.pause();
@@ -131,10 +127,6 @@ export class AudioPlayerManager {
     return false;
   }
 
-  /**
-   * Resumes paused playback.
-   * @returns {boolean} True if resumed, false otherwise.
-   */
   resume() {
     if (this.player.state.status === AudioPlayerStatus.Paused) {
       this.player.unpause();
@@ -143,7 +135,6 @@ export class AudioPlayerManager {
     return false;
   }
 
-  /** @returns {{ status, currentSound, startedAt, progress }} */
   getStatus() {
     return {
       status: this.player.state.status,
@@ -153,7 +144,6 @@ export class AudioPlayerManager {
     };
   }
 
-  /** @returns {number} Elapsed seconds since playback started. */
   getProgress() {
     if (!this.startedAt || !this.currentSound) {
       return 0;
@@ -161,20 +151,14 @@ export class AudioPlayerManager {
     return (Date.now() - this.startedAt.getTime()) / 1000;
   }
 
-  /** @returns {boolean} */
   isPlaying() {
     return this.player.state.status === AudioPlayerStatus.Playing;
   }
 
-  /** Called when the player transitions to Idle. Pass true to signal an inactivity timeout. */
   setOnIdleCallback(callback) {
     this.onIdleCallback = callback;
   }
 
-  /**
-   * Starts the inactivity timer.
-   * @private
-   */
   startInactivityTimer() {
     this.clearInactivityTimer();
 
@@ -188,7 +172,6 @@ export class AudioPlayerManager {
     }, INACTIVITY_TIMEOUT);
   }
 
-  /** @private */
   clearInactivityTimer() {
     if (this.inactivityTimer) {
       clearTimeout(this.inactivityTimer);
@@ -196,7 +179,6 @@ export class AudioPlayerManager {
     }
   }
 
-  /** Stop playback, cancel timers, and destroy the underlying player. */
   destroy() {
     this.clearInactivityTimer();
     this.stop();
@@ -204,10 +186,6 @@ export class AudioPlayerManager {
     console.log(`[INFO] Audio player destroyed for guild ${this.guildId}`);
   }
 
-  /**
-   * Gets the underlying @discordjs/voice player instance.
-   * @returns {import("@discordjs/voice").AudioPlayer} The audio player.
-   */
   getPlayer() {
     return this.player;
   }

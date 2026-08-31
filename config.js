@@ -2,32 +2,27 @@ import dotenv from "dotenv";
 dotenv.config();
 
 export default {
-  // Bot credentials
   token: process.env.DISCORD_TOKEN,
   clientId: process.env.CLIENT_ID,
   guildId: process.env.GUILD_ID,
 
-  // Server monitoring
   statusChannelId: process.env.STATUS_CHANNEL_ID,
   updateInterval: parseInt(process.env.UPDATE_INTERVAL) || 5,
 
-  // Verification system
   verificationChannelId: process.env.VERIFICATION_CHANNEL_ID,
   approvalsChannelId: process.env.APPROVALS_CHANNEL_ID,
 
-  // Roles
   unverifiedRoleId: process.env.UNVERIFIED_ROLE_ID,
   memberRoleId: process.env.MEMBER_ROLE_ID,
   moderatorRoleId: process.env.MODERATOR_ROLE_ID || "1473075468088377349",
-  administratorRoleId: process.env.ADMINISTRATOR_ROLE_ID || "1473075468088377350",
+  administratorRoleId:
+    process.env.ADMINISTRATOR_ROLE_ID || "1473075468088377350",
   ticketModeratorRoles: ["1020316661070438430"],
   ownerRoleId: process.env.OWNER_ROLE_ID || "1473075468088377352",
   botRoleId: process.env.BOT_ROLE_ID,
 
-  // Image-only channels
   imageOnlyChannels: ["1473075469028167811"],
 
-  // External services integration
   supabase: {
     url: process.env.SUPABASE_URL,
     serviceKey: process.env.SUPABASE_SERVICE_KEY,
@@ -51,11 +46,23 @@ export default {
     maxLifetimeMs: 3 * 60 * 60 * 1000,
   },
 
-  // Status embed links
   rulesChannelId: process.env.RULES_CHANNEL_ID || "1473075468805738538",
   instagramUrl: process.env.INSTAGRAM_URL || null,
   whatsappUrl: process.env.WHATSAPP_URL || null,
 
-  // Bot command channel
   botCmdChannelId: process.env.BOT_CMD_CHANNEL_ID,
+
+  modLogChannelId: process.env.MOD_LOG_CHANNEL_ID || null,
+
+  antiNuke: {
+    instant: process.env.ANTINUKE_INSTANT !== "false",
+    whitelistUserIds: (process.env.ANTINUKE_WHITELIST_USERS || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+    whitelistRoleIds: (process.env.ANTINUKE_WHITELIST_ROLES || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+  },
 };

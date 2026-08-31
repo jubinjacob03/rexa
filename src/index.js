@@ -1,7 +1,3 @@
-/**
- * Main entry point for the Shantha bot.
- * Initializes the Discord client, loads commands and events, and handles interactions.
- */
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -58,6 +54,7 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildModeration,
+    GatewayIntentBits.GuildWebhooks,
   ],
   makeCache: Options.cacheWithLimits({
     ...Options.DefaultMakeCacheSettings,
@@ -260,16 +257,21 @@ client.on(Events.InteractionCreate, async (interaction) => {
 });
 
 import contextManager from "./agents/tools/context-manager.js";
+import voiceManager from "./voice/VoiceManager.js";
 
-/**
- * Gracefully shuts down the bot, ensuring all conversation contexts are saved.
- * @param {string} signal - The shutdown signal received.
- */
 async function gracefulShutdown(signal) {
   console.log(
     `\n[${signal}] Received shutdown signal, saving conversations...`,
   );
   try {
+    try {
+      voiceManager.disconnectAll();
+    } catch (voiceErr) {
+      console.error(
+        "[SHUTDOWN] Voice cleanup error:",
+        voiceErr?.message ?? voiceErr,
+      );
+    }
     await contextManager.shutdown();
     console.log("[SHUTDOWN] All conversations saved to Supabase");
     process.exit(0);

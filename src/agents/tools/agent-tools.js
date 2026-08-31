@@ -1,8 +1,3 @@
-/**
- * @file agent-tools.js
- * @description Tools for creating Discord embeds and other agent utilities.
- */
-
 import { tool } from "ai";
 import { z } from "zod";
 import {
@@ -14,11 +9,6 @@ import {
   SeparatorSpacingSize,
 } from "discord.js";
 
-/**
- * Parses a color value into a number.
- * @param {string|number} color - The color value to parse.
- * @returns {number} The parsed color value.
- */
 function parseColorValue(color) {
   if (!color) return 0x7289da;
 
@@ -33,21 +23,6 @@ function parseColorValue(color) {
   return 0x7289da;
 }
 
-/**
- * Creates a Discord embed container based on the provided options.
- * @param {object} options - The options for the embed.
- * @param {string} [options.title] - The title of the embed.
- * @param {string} [options.description] - The description of the embed.
- * @param {string|number} [options.color="#7289da"] - The color of the embed.
- * @param {Array<object>} [options.fields=[]] - The fields of the embed.
- * @param {string} [options.thumbnail=null] - The thumbnail URL.
- * @param {string} [options.image=null] - The image URL.
- * @param {string|object} [options.footer=null] - The footer text or object.
- * @param {string|object} [options.author=null] - The author name or object.
- * @param {string} [options.url=null] - The URL for the title.
- * @param {boolean} [options.timestamp=true] - Whether to include a timestamp.
- * @returns {object} The result of the embed creation.
- */
 export function createDiscordEmbed(options) {
   const {
     title,
@@ -142,9 +117,6 @@ export function createDiscordEmbed(options) {
   }
 }
 
-/**
- * Tool for creating Discord embeds.
- */
 export const embedTool = tool({
   description: `Create beautiful Discord embeds with complete creative freedom.
 

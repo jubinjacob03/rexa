@@ -1,6 +1,3 @@
-/**
- * Global error handler middleware
- */
 export function errorHandler(err, req, res, _next) {
   console.error("[API ERROR]", err);
 
@@ -39,12 +36,6 @@ export function errorHandler(err, req, res, _next) {
   });
 }
 
-/**
- * 404 handler for unknown routes.
- * @param {import('express').Request} req - The Express request object.
- * @param {import('express').Response} res - The Express response object.
- * @returns {import('express').Response} The JSON response indicating the route was not found.
- */
 export function notFoundHandler(req, res) {
   res.status(404).json({
     success: false,

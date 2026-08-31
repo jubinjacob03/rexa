@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync } from "fs";
 import { readFile, writeFile, unlink } from "fs/promises";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { BoundedMap } from "../utils/resilience.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CACHE_DIR = join(__dirname, "../../cache/audio");
@@ -12,30 +13,52 @@ function ensureCacheDir() {
   mkdirSync(CACHE_DIR, { recursive: true });
 }
 
-/**
- * Disk-backed, in-memory audio cache with a JSON manifest.
- * Hot path: memory → disk → network.
- * Manifest shape: { [soundId]: { soundId, soundUrl, soundName, filename, cachedAt } }
- */
+const FETCH_TIMEOUT_MS = 15_000;
+const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
+const SOUND_MEMORY_MAX = 40;
+
+function assertSafeSoundUrl(soundUrl) {
+  let parsed;
+  try {
+    parsed = new URL(soundUrl);
+  } catch {
+    throw new Error("SoundCache: invalid sound URL");
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error(`SoundCache: unsupported URL scheme ${parsed.protocol}`);
+  }
+  const host = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  const isPrivate =
+    host === "localhost" ||
+    host === "0.0.0.0" ||
+    host === "::1" ||
+    host === "::" ||
+    host.endsWith(".local") ||
+    host.endsWith(".internal") ||
+    host.endsWith(".localhost") ||
+    /^(0|10|127)\./.test(host) ||
+    /^169\.254\./.test(host) ||
+    /^192\.168\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+    (host.includes(":") &&
+      (host.startsWith("fe80:") ||
+        host.startsWith("fc") ||
+        host.startsWith("fd")));
+  if (isPrivate && process.env.NODE_ENV !== "development") {
+    throw new Error(`SoundCache: blocked private host ${host}`);
+  }
+}
+
 class SoundCache {
   constructor() {
-    /** @type {Map<string, Buffer>} */
-    this.memory = new Map();
+    this.memory = new BoundedMap({ maxSize: SOUND_MEMORY_MAX });
 
-    /** @type {Map<string, Promise<Buffer>>} */
     this.pending = new Map();
 
     ensureCacheDir();
     this.manifest = this._loadManifest();
   }
 
-  /**
-   * Returns a Buffer for soundId, checking memory → disk → network in order.
-   * @param {string} soundId
-   * @param {string} soundUrl
-   * @param {string} [soundName]
-   * @returns {Promise<Buffer>}
-   */
   async get(soundId, soundUrl, soundName = "") {
     if (this.memory.has(soundId)) return this.memory.get(soundId);
     if (this.pending.has(soundId)) return this.pending.get(soundId);
@@ -54,7 +77,6 @@ class SoundCache {
     return promise;
   }
 
-  /** @private */
   async _resolve(soundId, soundUrl, soundName) {
     const filePath = this._filePath(soundId);
     if (existsSync(filePath)) {
@@ -65,14 +87,42 @@ class SoundCache {
     return this._fetchAndStore(soundId, soundUrl, soundName);
   }
 
-  /** @private */
   async _fetchAndStore(soundId, soundUrl, soundName) {
+    assertSafeSoundUrl(soundUrl);
     console.log(`[INFO] SoundCache: fetching ${soundName || soundId}`);
-    const res = await fetch(soundUrl);
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    let res;
+    try {
+      let currentUrl = soundUrl;
+      for (let hop = 0; ; hop += 1) {
+        assertSafeSoundUrl(currentUrl);
+        res = await fetch(currentUrl, {
+          signal: controller.signal,
+          redirect: "manual",
+        });
+        if (![301, 302, 303, 307, 308].includes(res.status)) break;
+        if (hop >= 5) throw new Error("SoundCache: too many redirects");
+        const location = res.headers.get("location");
+        if (!location) break;
+        currentUrl = new URL(location, currentUrl).toString();
+      }
+    } finally {
+      clearTimeout(timer);
+    }
     if (!res.ok)
       throw new Error(`SoundCache fetch failed: ${res.status} ${soundUrl}`);
 
+    const declaredSize = Number(res.headers.get("content-length") || 0);
+    if (declaredSize && declaredSize > MAX_AUDIO_BYTES) {
+      throw new Error(`SoundCache: response too large (${declaredSize} bytes)`);
+    }
+
     const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length > MAX_AUDIO_BYTES) {
+      throw new Error(`SoundCache: response too large (${buf.length} bytes)`);
+    }
     await writeFile(this._filePath(soundId), buf);
     this.memory.set(soundId, buf);
     this._updateManifest(soundId, {
@@ -89,19 +139,10 @@ class SoundCache {
     return buf;
   }
 
-  /**
-   * Converts a buffer to a readable stream.
-   * @param {Buffer} buffer - The buffer to convert.
-   * @returns {Readable} The readable stream.
-   */
   toReadable(buffer) {
     return Readable.from(buffer);
   }
 
-  /**
-   * Re-downloads manifest entries missing from disk. Prunes entries that 404.
-   * @returns {Promise<void>}
-   */
   async warmup() {
     const entries = Object.values(this.manifest);
     if (entries.length === 0) {
@@ -142,11 +183,6 @@ class SoundCache {
     );
   }
 
-  /**
-   * Invalidates a sound from the cache.
-   * @param {string} soundId - The ID of the sound to invalidate.
-   * @returns {Promise<void>}
-   */
   async invalidate(soundId) {
     this.memory.delete(soundId);
     this._removeManifest(soundId);
@@ -155,10 +191,9 @@ class SoundCache {
     console.log(`[INFO] SoundCache: invalidated ${soundId}`);
   }
 
-  /** @returns {{ memoryCount: number, totalKB: number, manifestEntries: number }} */
   stats() {
     let totalBytes = 0;
-    for (const buf of this.memory.values()) totalBytes += buf.length;
+    for (const [, buf] of this.memory.entries()) totalBytes += buf.length;
     return {
       memoryCount: this.memory.size,
       totalKB: Math.round(totalBytes / 1024),
@@ -166,12 +201,6 @@ class SoundCache {
     };
   }
 
-  /**
-   * Gets the file path for a sound ID.
-   * @param {string} soundId - The ID of the sound.
-   * @returns {string} The file path.
-   * @private
-   */
   _filePath(soundId) {
     return join(CACHE_DIR, `${soundId}.bin`);
   }
@@ -184,31 +213,16 @@ class SoundCache {
     return {};
   }
 
-  /**
-   * Updates a manifest entry.
-   * @param {string} soundId - The ID of the sound.
-   * @param {Object} entry - The manifest entry.
-   * @private
-   */
   _updateManifest(soundId, entry) {
     this.manifest[soundId] = entry;
     this._saveManifest();
   }
 
-  /**
-   * Removes a manifest entry.
-   * @param {string} soundId - The ID of the sound.
-   * @private
-   */
   _removeManifest(soundId) {
     delete this.manifest[soundId];
     this._saveManifest();
   }
 
-  /**
-   * Saves the manifest to disk asynchronously.
-   * @private
-   */
   async _saveManifest() {
     try {
       await writeFile(MANIFEST_PATH, JSON.stringify(this.manifest, null, 2));

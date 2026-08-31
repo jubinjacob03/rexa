@@ -2,11 +2,6 @@ import { ChannelType, PermissionFlagsBits } from "discord.js";
 import config from "../../config.js";
 
 const ROMAN = ["ɪ", "ɪɪ", "ɪɪɪ", "ɪᴠ", "ᴠ"];
-/**
- * Converts a number to a Roman numeral (1-5).
- * @param {number} n - The number to convert.
- * @returns {string} The Roman numeral or string representation.
- */
 function toRoman(n) {
   return ROMAN[n - 1] ?? String(n);
 }
@@ -27,11 +22,6 @@ const {
   maxLifetimeMs: MAX_MS,
 } = config.privateVC;
 
-/**
- * Generates a name for a private VC based on its index.
- * @param {number} index - The index of the VC.
- * @returns {string} The generated name.
- */
 function vcName(index) {
   return `🎟️〢・ᴘʀɪᴠᴀᴛᴇ-ᴠᴄ ${toRoman(index)}`;
 }
@@ -50,15 +40,6 @@ function memberOverwrite(userId) {
   };
 }
 
-/**
- * Tears down a private VC: moves any remaining members to the lobby, deletes the
- * channel, and clears its timers. Idempotent — the registry entry is claimed
- * before any await, so overlapping calls (idle timer, max-lifetime timer, or a
- * manual delete) for the same channel become no-ops rather than deleting twice.
- * @param {string} channelId - The ID of the private VC channel.
- * @param {import('discord.js').Guild} guild - The Discord guild.
- * @returns {Promise<void>}
- */
 async function destroyVC(channelId, guild) {
   const data = activeVCs.get(channelId);
   if (!data) return;
@@ -84,11 +65,6 @@ async function destroyVC(channelId, guild) {
   if (activeVCs.size === 0) highestIndex = 0;
 }
 
-/**
- * Starts the idle timer for a private VC.
- * @param {string} channelId - The ID of the channel.
- * @param {import('discord.js').Guild} guild - The Discord guild.
- */
 function startIdleTimer(channelId, guild) {
   const data = activeVCs.get(channelId);
   if (!data) return;
@@ -131,10 +107,6 @@ export function canManageVC(channelId, member) {
   return isVCCreator(channelId, member) || isOwner(member);
 }
 
-/**
- * Gets the number of active private VCs.
- * @returns {number} The number of active VCs.
- */
 export function activeCount() {
   return activeVCs.size;
 }
@@ -143,20 +115,10 @@ export function isPrivateVC(channelId) {
   return activeVCs.has(channelId);
 }
 
-/**
- * Gets the data for a private VC.
- * @param {string} channelId - The ID of the channel.
- * @returns {Object|undefined} The VC data.
- */
 export function getVCData(channelId) {
   return activeVCs.get(channelId);
 }
 
-/**
- * Gets the private VC channel ID for a member.
- * @param {string} userId - The ID of the user.
- * @returns {string|null} The channel ID or null if not found.
- */
 export function getVCByMember(userId) {
   for (const [channelId, data] of activeVCs) {
     if (data.members.has(userId)) return channelId;
@@ -164,17 +126,6 @@ export function getVCByMember(userId) {
   return null;
 }
 
-/**
- * Creates a new private VC, moving any voice-connected members into it.
- *
- * A synchronous reservation counter (`pendingCreations`) holds a slot across the
- * asynchronous channel creation so concurrent invocations cannot exceed
- * `MAX_VCS`. If moving members fails, the freshly created channel is rolled back.
- *
- * @param {import('discord.js').Guild} guild - The Discord guild.
- * @param {import('discord.js').GuildMember[]} members - Array of members to add (invoker included).
- * @returns {Promise<import('discord.js').VoiceChannel|null>} The created channel, or null if the cap is reached.
- */
 export async function createPrivateVC(guild, members) {
   if (activeVCs.size + pendingCreations >= MAX_VCS) return null;
 
@@ -251,13 +202,6 @@ export async function createPrivateVC(guild, members) {
   }
 }
 
-/**
- * Adds a member to a private VC.
- * @param {string} channelId - The ID of the channel.
- * @param {import('discord.js').GuildMember} member - The member to add.
- * @param {import('discord.js').Guild} guild - The Discord guild.
- * @returns {Promise<boolean>} True if successful.
- */
 export async function addMember(channelId, member, guild) {
   const data = activeVCs.get(channelId);
   if (!data) return false;
@@ -307,7 +251,6 @@ export async function removeMember(channelId, member, guild) {
   return true;
 }
 
-/** Force-delete a VC by channelId — pushes any live members to lobby first. */
 export async function forceDeleteVC(channelId, guild) {
   return destroyVC(channelId, guild);
 }
@@ -325,11 +268,6 @@ export function onMemberJoined(channelId) {
   stopIdleTimer(channelId);
 }
 
-/**
- * Returns a serialisable list of all active private VCs.
- * @param {import('discord.js').Guild} guild - The Discord guild.
- * @returns {Array} The list of active VCs.
- */
 export function listAllVCs(guild) {
   const result = [];
   for (const [channelId, data] of activeVCs) {

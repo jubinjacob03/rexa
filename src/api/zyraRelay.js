@@ -3,8 +3,26 @@ import crypto from "crypto";
 
 let _zyraSocket = null;
 const _pendingRequests = new Map();
-const RELAY_SECRET = process.env.ZYRA_RELAY_SECRET || "zyra-relay-2026";
+const RELAY_SECRET = process.env.ZYRA_RELAY_SECRET || null;
 const REQUEST_TIMEOUT = 30_000;
+
+function isValidRelaySecret(candidate) {
+  if (!RELAY_SECRET || typeof candidate !== "string") return false;
+  const provided = Buffer.from(candidate);
+  const expected = Buffer.from(RELAY_SECRET);
+  return (
+    provided.length === expected.length &&
+    crypto.timingSafeEqual(provided, expected)
+  );
+}
+
+function rejectAllPending(reason) {
+  for (const [id, pending] of _pendingRequests) {
+    clearTimeout(pending.timeout);
+    pending.reject(new Error(reason));
+    _pendingRequests.delete(id);
+  }
+}
 
 export function getZyraSocket() {
   return _zyraSocket;
@@ -41,6 +59,12 @@ export function sendToZyra(
 let _wss = null;
 
 export function attachZyraRelay() {
+  if (!RELAY_SECRET) {
+    console.warn(
+      "[RELAY] ZYRA_RELAY_SECRET is not set — the Zyra relay will reject all connections until it is configured.",
+    );
+  }
+
   _wss = new WebSocketServer({ noServer: true });
 
   _wss.on("connection", (ws) => {
@@ -59,7 +83,7 @@ export function attachZyraRelay() {
       }
 
       if (!ws.authenticated) {
-        if (msg.type === "auth" && msg.secret === RELAY_SECRET) {
+        if (msg.type === "auth" && isValidRelaySecret(msg.secret)) {
           ws.authenticated = true;
           clearTimeout(authTimeout);
 
@@ -90,12 +114,16 @@ export function attachZyraRelay() {
     ws.on("close", () => {
       if (_zyraSocket === ws) {
         _zyraSocket = null;
+        rejectAllPending("Zyra disconnected");
         console.log("[RELAY] Zyra disconnected");
       }
     });
 
     ws.on("error", () => {
-      if (_zyraSocket === ws) _zyraSocket = null;
+      if (_zyraSocket === ws) {
+        _zyraSocket = null;
+        rejectAllPending("Zyra socket error");
+      }
     });
 
     const heartbeat = setInterval(() => {

@@ -1,8 +1,3 @@
-/**
- * @file knowledge-base.js
- * @description Knowledge Base - Full RAG System using Supabase pgvector. Comprehensive document management with FREE Gemini embeddings.
- */
-
 import { tool } from "ai";
 import { z } from "zod";
 import config from "../config.js";
@@ -20,11 +15,6 @@ const embeddingCache = new Map();
 const EMBEDDING_CACHE_TTL = 60 * 60 * 1000;
 const EMBEDDING_CACHE_MAX = 500;
 
-/**
- * Hashes a text string.
- * @param {string} text - The text to hash.
- * @returns {string} The hashed string.
- */
 function hashText(text) {
   let hash = 0;
   for (let i = 0; i < text.length; i++) {
@@ -33,11 +23,6 @@ function hashText(text) {
   return hash.toString(36);
 }
 
-/**
- * Retrieves a cached embedding for a given text.
- * @param {string} text - The text to retrieve the embedding for.
- * @returns {Array<number>|null} The embedding, or null if not found or expired.
- */
 function getCachedEmbedding(text) {
   const key = hashText(text);
   const cached = embeddingCache.get(key);
@@ -48,11 +33,6 @@ function getCachedEmbedding(text) {
   return null;
 }
 
-/**
- * Sets a cached embedding for a given text.
- * @param {string} text - The text to cache the embedding for.
- * @param {Array<number>} embedding - The embedding to cache.
- */
 function setCachedEmbedding(text, embedding) {
   if (embeddingCache.size >= EMBEDDING_CACHE_MAX) {
     const oldest = embeddingCache.keys().next().value;
@@ -61,10 +41,6 @@ function setCachedEmbedding(text, embedding) {
   embeddingCache.set(hashText(text), { embedding, timestamp: Date.now() });
 }
 
-/**
- * Initializes the knowledge base with Supabase pgvector.
- * @returns {Promise<void>}
- */
 async function initialize() {
   if (initialized) {
     log.info("Already initialized");
@@ -96,10 +72,6 @@ async function initialize() {
   return initializationPromise;
 }
 
-/**
- * Ensures the vector table exists in Supabase.
- * @returns {Promise<void>}
- */
 async function ensureVectorTable() {
   try {
     const { error } = await supabase
@@ -154,7 +126,7 @@ BEGIN
     knowledge_embeddings.metadata,
     1 - (knowledge_embeddings.embedding <=> query_embedding) as similarity
   FROM knowledge_embeddings
-  WHERE 
+  WHERE
     (filter_category IS NULL OR knowledge_embeddings.category = filter_category)
     AND (filter_tags IS NULL OR knowledge_embeddings.tags && filter_tags)
     AND 1 - (knowledge_embeddings.embedding <=> query_embedding) > match_threshold
@@ -171,10 +143,6 @@ $$;
   }
 }
 
-/**
- * Loads default knowledge about Shantha and Remani.
- * @returns {Promise<void>}
- */
 async function _loadDefaultKnowledge() {
   log.info("Loading default knowledge...");
 
@@ -182,8 +150,8 @@ async function _loadDefaultKnowledge() {
     {
       id: "shantha-intro",
       content: `# Shantha Bot Overview
-      
-Shantha is a Discord server management bot that handles verification, private voice channels, 
+
+Shantha is a Discord server management bot that handles verification, private voice channels,
 and server administration. It's designed for the Shantha community Discord server.
 
 Key Features:
@@ -199,7 +167,7 @@ Key Features:
     {
       id: "shantha-verification",
       content: `# Verification System
-      
+
 The verification system requires new members to verify before accessing the server.
 
 Commands:
@@ -220,7 +188,7 @@ Features:
     {
       id: "shantha-private-vc",
       content: `# Private Voice Channels
-      
+
 Shantha manages private voice channels that users can create and control.
 
 Commands:
@@ -240,7 +208,7 @@ Features:
     {
       id: "remani-intro",
       content: `# Remani Music Bot
-      
+
 Remani is a music bot that plays music in Discord voice channels using Lavalink.
 
 Key Features:
@@ -257,7 +225,7 @@ Key Features:
     {
       id: "remani-commands",
       content: `# Remani Music Commands
-      
+
 Playback Commands:
 - /play <query> - Play a song or playlist
 - /pause - Pause current track
@@ -288,7 +256,7 @@ Audio Commands:
     {
       id: "server-stats",
       content: `# Server Statistics
-      
+
 Shantha tracks various server metrics:
 
 Member Stats:
@@ -328,11 +296,6 @@ Server Info:
   log.info(`Loaded ${defaultDocs.length} default documents`);
 }
 
-/**
- * Generates an embedding for the given text.
- * @param {string} text - The text to embed.
- * @returns {Promise<Array<number>>} The generated embedding.
- */
 async function generateEmbedding(text) {
   const cached = getCachedEmbedding(text);
   if (cached) return cached;
@@ -358,13 +321,6 @@ async function generateEmbedding(text) {
   }
 }
 
-/**
- * Adds a document to Supabase with its embedding.
- * @param {string} id - The document ID.
- * @param {string} content - The document content.
- * @param {object} [metadata={}] - Additional metadata.
- * @returns {Promise<void>}
- */
 async function addDocumentToSupabase(id, content, metadata = {}) {
   const embedding = await generateEmbedding(content);
 
@@ -391,13 +347,6 @@ async function addDocumentToSupabase(id, content, metadata = {}) {
   });
 }
 
-/**
- * Adds a text document to the knowledge base.
- * @param {string} id - The document ID.
- * @param {string} content - The document content.
- * @param {object} [metadata={}] - Additional metadata.
- * @returns {Promise<object>} The result of the operation.
- */
 export async function addDocument(id, content, metadata = {}) {
   try {
     await initialize();
@@ -411,12 +360,6 @@ export async function addDocument(id, content, metadata = {}) {
   }
 }
 
-/**
- * Adds a web page to the knowledge base.
- * @param {string} url - The URL of the web page.
- * @param {object} [metadata={}] - Additional metadata.
- * @returns {Promise<object>} The result of the operation.
- */
 export async function addWebPage(url, metadata = {}) {
   try {
     await initialize();
@@ -442,16 +385,6 @@ export async function addWebPage(url, metadata = {}) {
   }
 }
 
-/**
- * Queries the knowledge base using Supabase pgvector similarity search.
- * @param {string} question - The query string.
- * @param {object} [options={}] - Query options.
- * @param {number} [options.topK=5] - Number of top results to return.
- * @param {string} [options.category=null] - Category filter.
- * @param {Array<string>} [options.tags=null] - Tags filter.
- * @param {number} [options.threshold=0.5] - Similarity threshold.
- * @returns {Promise<object>} The query results.
- */
 export async function query(question, options = {}) {
   const {
     topK = config.rag.topK || 5,
@@ -512,16 +445,6 @@ export async function query(question, options = {}) {
   }
 }
 
-/**
- * Searches for documents (without generating an answer).
- * @param {string} queryText - The search query.
- * @param {object} [options={}] - Search options.
- * @param {number} [options.topK=5] - Number of top results to return.
- * @param {string} [options.category=null] - Category filter.
- * @param {Array<string>} [options.tags=null] - Tags filter.
- * @param {number} [options.threshold=0.5] - Similarity threshold.
- * @returns {Promise<object>} The search results.
- */
 export async function search(queryText, options = {}) {
   const {
     topK = config.rag.topK || 5,
@@ -569,10 +492,6 @@ export async function search(queryText, options = {}) {
   }
 }
 
-/**
- * Gets all documents from Supabase.
- * @returns {Promise<object>} The documents.
- */
 export async function getDocuments() {
   try {
     const { data, error } = await supabase
@@ -595,11 +514,6 @@ export async function getDocuments() {
   }
 }
 
-/**
- * Deletes a document from Supabase.
- * @param {string} id - The document ID.
- * @returns {Promise<object>} The result of the deletion.
- */
 export async function deleteDocument(id) {
   try {
     const { error } = await supabase
@@ -624,10 +538,6 @@ export async function deleteDocument(id) {
   }
 }
 
-/**
- * Gets statistics from Supabase.
- * @returns {Promise<object>} The statistics.
- */
 export async function getStats() {
   try {
     const { count, error: countError } = await supabase
@@ -671,10 +581,6 @@ export async function getStats() {
   }
 }
 
-/**
- * Resets the knowledge base (clears all embeddings from Supabase).
- * @returns {Promise<object>} The result of the reset operation.
- */
 export async function reset() {
   try {
     const { error } = await supabase
@@ -699,11 +605,8 @@ export async function reset() {
   }
 }
 
-/**
- * RAG Tool for AI agent.
- */
 export const ragTool = tool({
-  description: `Search knowledge base for information about Shantha, Remani, commands, and server features. 
+  description: `Search knowledge base for information about Shantha, Remani, commands, and server features.
 Uses advanced RAG with embedJS for accurate, contextual answers. Returns both answers and source documents.`,
 
   parameters: z.object({

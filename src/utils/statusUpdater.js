@@ -18,13 +18,6 @@ import { icon } from "./icons.js";
 let statusMessage = null;
 let updateInterval = null;
 
-/**
- * Pulls a fresh member + presence snapshot from the gateway, bounded by a short
- * timeout so it can never hang the way an unbounded fetch can. Falls back to the
- * existing cache if the live fetch times out or fails.
- * @param {import('discord.js').Guild} guild - The Discord guild.
- * @returns {Promise<void>}
- */
 async function refreshMemberData(guild) {
   try {
     await guild.members.fetch({ withPresences: true, time: 15_000 });
@@ -39,13 +32,6 @@ async function refreshMemberData(guild) {
   }
 }
 
-/**
- * Builds the server-stats container.
- * @param {import('discord.js').Guild} guild - The Discord guild.
- * @param {boolean} [live=true] - When true, pull a fresh member/presence snapshot
- *   before counting; when false, use the in-memory cache as-is.
- * @returns {Promise<import('discord.js').ContainerBuilder>}
- */
 export async function createStatusContainer(guild, live = true) {
   if (live) {
     await refreshMemberData(guild);
@@ -86,14 +72,6 @@ export async function createStatusContainer(guild, live = true) {
   return container;
 }
 
-/**
- * Updates (or creates) the server-stats dashboard message.
- * @param {import('discord.js').Client} client - The Discord client.
- * @param {boolean} [live=true] - When true, pull a fresh member/presence snapshot
- *   before rendering; when false, render from the in-memory cache (used by the
- *   high-frequency join/leave/update events that already keep the cache current).
- * @returns {Promise<void>}
- */
 export async function updateStatusMessage(client, live = true) {
   try {
     const guild = client.guilds.cache.get(config.guildId);
@@ -257,6 +235,7 @@ export function startStatusUpdater(client) {
     },
     config.updateInterval * 60 * 1000,
   );
+  updateInterval.unref();
 }
 
 export function stopStatusUpdater() {
@@ -267,18 +246,10 @@ export function stopStatusUpdater() {
   }
 }
 
-/**
- * Retrieves the current status message instance.
- * @returns {import('discord.js').Message|null} The status message.
- */
 export function getStatusMessage() {
   return statusMessage;
 }
 
-/**
- * Sets the current status message instance.
- * @param {import('discord.js').Message} message - The status message to set.
- */
 export function setStatusMessage(message) {
   statusMessage = message;
 }

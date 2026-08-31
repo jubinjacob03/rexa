@@ -6,11 +6,6 @@ import { isZyraConnected, sendToZyra } from "../zyraRelay.js";
 
 const router = Router();
 
-/**
- * Creates a persistent keep-alive agent for HTTP/HTTPS requests.
- * @param {string} url - The base URL to determine the protocol.
- * @returns {http.Agent|https.Agent} The configured agent.
- */
 const makeAgent = (url) =>
   url?.startsWith("https")
     ? new https.Agent({ keepAlive: true, maxSockets: 10 })
@@ -122,23 +117,6 @@ const proxyGet = (remaniPath, getParams) => async (req, res) => {
         error: err.message || "Remani API unreachable",
       },
     );
-  }
-};
-
-const _proxyDelete = (remaniPath) => async (req, res) => {
-  try {
-    const botIndex =
-      req.body.botIndex !== undefined ? Number(req.body.botIndex) : 0;
-    const { data } = await getRemaniInstance(botIndex).delete(remaniPath, {
-      data: req.body,
-      timeout: CMD_TIMEOUT,
-    });
-    res.json(data);
-  } catch (err) {
-    const status = err.response?.status || 502;
-    res
-      .status(status)
-      .json(err.response?.data || { error: "Remani API unreachable" });
   }
 };
 

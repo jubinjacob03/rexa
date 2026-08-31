@@ -4,10 +4,6 @@ import { getSoundById } from "../../utils/supabaseClient.js";
 
 const router = Router();
 
-/**
- * POST /api/play
- * Play a sound in a voice channel
- */
 router.post("/", async (req, res) => {
   try {
     const {

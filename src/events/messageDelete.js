@@ -1,12 +1,7 @@
 import { Events, AuditLogEvent } from "discord.js";
 import { checkMessageDelete } from "../utils/automodRunner.js";
+import { loadConfig } from "../utils/automodManager.js";
 
-/**
- * Tracks message IDs that the bot itself deleted (spam purges, etc.) so the
- * delete-audit logic can skip them. Backed by a Map with TTL eviction so that
- * IDs whose MessageDelete event never arrives (bulk deletes, already-gone
- * messages) cannot accumulate unbounded. Exposes a Set-compatible API.
- */
 const IGNORED_TTL_MS = 60 * 1000;
 const _ignored = new Map();
 
@@ -32,17 +27,8 @@ setInterval(() => {
   }
 }, IGNORED_TTL_MS).unref();
 
-/**
- * Handles the MessageDelete event.
- * @module events/messageDelete
- */
 export default {
   name: Events.MessageDelete,
-  /**
-   * Executes the event handler.
-   * @param {import("discord.js").Message} message - The message that was deleted.
-   * @returns {Promise<void>}
-   */
   async execute(message) {
     if (!message.guild || message.author?.bot) return;
 
@@ -50,6 +36,9 @@ export default {
       ignoredDeletes.delete(message.id);
       return;
     }
+
+    const cfg = await loadConfig();
+    if (!cfg.enabled || !cfg.raid) return;
 
     try {
       const fetchedLogs = await message.guild.fetchAuditLogs({

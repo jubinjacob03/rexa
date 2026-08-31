@@ -1,5 +1,6 @@
 import {
   Events,
+  AuditLogEvent,
   ContainerBuilder,
   TextDisplayBuilder,
   SectionBuilder,
@@ -7,6 +8,7 @@ import {
   MessageFlags,
 } from "discord.js";
 import { updateStatusMessage } from "../utils/statusUpdater.js";
+import { checkBotAdd } from "../utils/automodRunner.js";
 import { icon } from "../utils/icons.js";
 import { addFooter } from "../utils/embed.js";
 import config from "../../config.js";
@@ -16,13 +18,35 @@ export default {
   async execute(member) {
     console.log(`[INFO] Member joined: ${member.user.tag}`);
 
-    if (member.user.bot && config.botRoleId) {
+    if (member.user.bot) {
+      if (config.botRoleId) {
+        try {
+          await member.roles.add(config.botRoleId);
+          console.log(`[INFO] Assigned Bot role to ${member.user.tag}`);
+        } catch (error) {
+          console.error(
+            `[ERROR] Failed to assign Bot role to ${member.user.tag}:`,
+            error,
+          );
+        }
+      }
+
       try {
-        await member.roles.add(config.botRoleId);
-        console.log(`[INFO] Assigned Bot role to ${member.user.tag}`);
+        const logs = await member.guild.fetchAuditLogs({
+          limit: 1,
+          type: AuditLogEvent.BotAdd,
+        });
+        const entry = logs.entries.first();
+        const executor =
+          entry &&
+          entry.target?.id === member.id &&
+          Date.now() - entry.createdTimestamp < 10000
+            ? entry.executor
+            : null;
+        await checkBotAdd(member.guild, member, executor);
       } catch (error) {
         console.error(
-          `[ERROR] Failed to assign Bot role to ${member.user.tag}:`,
+          `[ERROR] Bot-add audit check failed for ${member.user.tag}:`,
           error,
         );
       }

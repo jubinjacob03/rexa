@@ -26,16 +26,8 @@ setInterval(
     }
   },
   30 * 60 * 1000,
-);
+).unref();
 
-/**
- * Appends the embed body (title + description) to a container. Shared by the
- * live builder preview and the final published payload so both render
- * identically.
- * @param {import('discord.js').ContainerBuilder} container
- * @param {object} config
- * @param {boolean} withPlaceholder - Show a hint when there is no content yet.
- */
 function appendEmbedBody(container, config, withPlaceholder = false) {
   let bodyText = "";
   if (config.title) bodyText += `### ${config.title}\n`;
@@ -55,11 +47,6 @@ function appendEmbedBody(container, config, withPlaceholder = false) {
   }
 }
 
-/**
- * Builds the final publishable payload — always carries the default Shantha footer.
- * @param {object} config
- * @returns {Promise<object>}
- */
 export async function getPreviewPayload(config) {
   const container = new ContainerBuilder().setAccentColor(config.color);
   appendEmbedBody(container, config);
@@ -167,12 +154,6 @@ export async function renderEmbedDashboard(interaction, isUpdate = false) {
   }
 }
 
-/**
- * Builds a simple ephemeral V2 status card (used for publish / discard results).
- * @param {string} title
- * @param {string} description
- * @returns {object}
- */
 function statusCard(title, description) {
   const container = new ContainerBuilder().setAccentColor(EMBED_COLOR);
   container.addTextDisplayComponents(

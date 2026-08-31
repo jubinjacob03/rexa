@@ -1,8 +1,3 @@
-/**
- * @file config.js
- * @description Configuration settings and model initialization for the agent.
- */
-
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -25,9 +20,6 @@ try {
   console.warn("Could not parse tools.json");
 }
 
-/**
- * Global configuration object.
- */
 const config = {
   apiKeys: {
     google: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
@@ -52,7 +44,8 @@ const config = {
     name: process.env.AI_MODEL_NAME || "stepfun/step-3.5-flash:free",
     preset: process.env.AI_MODEL_PRESET || "fast",
     temperature: parseFloat(process.env.AI_TEMPERATURE) || 0.7,
-    maxTokens: parseInt(process.env.AI_MAX_TOKENS) || 1000000,
+    maxTokens: parseInt(process.env.AI_MAX_TOKENS) || 4000,
+    requestTimeoutMs: parseInt(process.env.AI_REQUEST_TIMEOUT_MS) || 60000,
   },
 
   rag: {
@@ -67,6 +60,13 @@ const config = {
 
   commandExecution: {
     enabled: process.env.COMMAND_EXECUTION_ENABLED !== "false",
+    allowedCommands: (
+      process.env.ALLOWED_COMMANDS ||
+      "private-vc,private-vc-add,private-vc-remove"
+    )
+      .split(",")
+      .map((c) => c.trim())
+      .filter(Boolean),
     blockedCommands: (
       process.env.BLOCKED_COMMANDS ||
       "ban,kick,delete-channel,setup-verification"
@@ -90,12 +90,6 @@ const config = {
   },
 };
 
-/**
- * Retrieves the configured language model instance.
- * @param {string} [preset=config.model.preset] - The model preset to use.
- * @param {string|null} [customModel=null] - A custom model name to override the preset.
- * @returns {object} The initialized language model.
- */
 export function getLanguageModel(
   preset = config.model.preset,
   customModel = null,
@@ -157,38 +151,10 @@ export function getLanguageModel(
   });
 }
 
-/**
- * Retrieves the configured embedding model instance.
- * @returns {object} The initialized embedding model.
- */
 export function getEmbeddingModel() {
   return google.textEmbeddingModel("gemini-embedding-001", {
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
   });
-}
-
-/**
- * Retrieves the configured image generation model settings.
- * @returns {object} The image model configuration.
- * @throws {Error} If the configured image provider is unknown.
- */
-export function getImageModel() {
-  const provider = config.imageGeneration.provider;
-
-  if (provider === "google") {
-    return {
-      provider: "google",
-      model: config.imageGeneration.model,
-      apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-    };
-  } else if (provider === "pollinations") {
-    return {
-      provider: "pollinations",
-      endpoint: "https://image.pollinations.ai/prompt/",
-    };
-  }
-
-  throw new Error(`Unknown image provider: ${provider}`);
 }
 
 export default config;

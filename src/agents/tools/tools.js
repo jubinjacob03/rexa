@@ -1,8 +1,3 @@
-/**
- * @file tools.js
- * @description Unified Tools Implementation. All agent tools in one place using AI SDK.
- */
-
 import { tool } from "ai";
 import { z } from "zod";
 import { icon } from "../../utils/icons.js";
@@ -20,10 +15,6 @@ import * as modTools from "../../utils/moderation.js";
 
 let client = null;
 
-/**
- * Initializes the tools with the Discord client.
- * @param {object} discordClient - The Discord client instance.
- */
 export function initializeTools(discordClient) {
   client = discordClient;
   modTools.setupModerationTools(discordClient);
@@ -32,11 +23,6 @@ export function initializeTools(discordClient) {
 const memberCacheMap = new Map();
 const MEMBER_CACHE_TTL = 60_000;
 
-/**
- * Fetches members of a guild, utilizing a cache to avoid rate limits.
- * @param {object} guild - The Discord guild object.
- * @returns {Promise<object>} The fetched members.
- */
 async function fetchMembersWithCache(guild) {
   const cached = memberCacheMap.get(guild.id);
   if (cached && Date.now() - cached.timestamp < MEMBER_CACHE_TTL) {
@@ -47,20 +33,12 @@ async function fetchMembersWithCache(guild) {
   return members;
 }
 
-/**
- * Fetches members of a guild freshly, bypassing the cache.
- * @param {object} guild - The Discord guild object.
- * @returns {Promise<object>} The fetched members.
- */
 async function fetchMembersFresh(guild) {
   const members = await guild.members.fetch({ force: true });
   memberCacheMap.set(guild.id, { members, timestamp: Date.now() });
   return members;
 }
 
-/**
- * Command Executor Tool - Executes Discord commands autonomously.
- */
 export const commandExecutorTool = tool({
   description: `Execute Discord commands autonomously. Use for actions like playing music, managing channels, or triggering bot functions.`,
   parameters: z.object({
@@ -74,6 +52,12 @@ export const commandExecutorTool = tool({
   execute: async ({ command, parameters, channelId, userId, guildId }) => {
     if (!agentConfig.commandExecution.enabled) {
       return { success: false, error: "Command execution disabled" };
+    }
+    if (!agentConfig.commandExecution.allowedCommands.includes(command)) {
+      return {
+        success: false,
+        error: `The /${command} command cannot be triggered via chat.`,
+      };
     }
     if (agentConfig.commandExecution.blockedCommands.includes(command)) {
       return {
@@ -112,12 +96,9 @@ export const commandExecutorTool = tool({
   },
 });
 
-/**
- * Server Info Tool - Retrieves Discord server or member information.
- */
 export const serverInfoTool = tool({
   description: `Get Discord server or member information. Use this tool to:
-  - Get server stats (infoType="stats")  
+  - Get server stats (infoType="stats")
   - Get specific member info (infoType="member", targetId=user_id)
   - Get channel info (infoType="channel", targetId=channel_id)
   - Search members by username, nickname, or ID (infoType="search", searchQuery="name_or_id")
@@ -125,7 +106,7 @@ export const serverInfoTool = tool({
   - Find people with specific role(s) (infoType="roleMembers", roleName="role_name")
   - List of people who have been kicked (infoType="kickedMembers")
   - List of people who have been banned (infoType="bannedMembers")
-  
+
   REQUIRED: Always provide guildId (server ID) and infoType.
   For lists with many people, the AI agent will respond natively with an Embed table containing the users.`,
   parameters: z.object({
@@ -356,9 +337,6 @@ export const serverInfoTool = tool({
   },
 });
 
-/**
- * Music Control Tool - Controls the Remani music bot.
- */
 export const musicControlTool = tool({
   description: `Control Remani music bot: play, pause, resume, skip, stop, queue, volume, nowplaying.`,
   parameters: z.object({
@@ -493,9 +471,6 @@ export const musicControlTool = tool({
   },
 });
 
-/**
- * Create Private VC Tool - Creates a real private voice channel for specified members.
- */
 export const createPrivateVCTool = tool({
   description: `Create a real private voice channel for specified members. Resolves member names to Discord members and calls the actual private VC system. Use this whenever a user asks to create a private VC for themselves and/or others.`,
   parameters: z.object({
@@ -579,9 +554,6 @@ export const createPrivateVCTool = tool({
   },
 });
 
-/**
- * Escalate Ticket Tool - Escalates a user's support ticket to human staff.
- */
 export const escalateTicketTool = tool({
   description: `Escalates a user's support ticket to human staff. Use this ONLY if the user is in a ticket thread, you cannot solve their problem, or they explicitly demand a human moderator. Provide a summary of the issue.`,
   parameters: z.object({
@@ -618,9 +590,6 @@ export const escalateTicketTool = tool({
   },
 });
 
-/**
- * Discord Action Tool - Performs a real Discord moderation or administration action.
- */
 export const discordActionTool = tool({
   description: `Perform a real Discord moderation or administration action directly via the Discord API.
 Available actions:
@@ -699,7 +668,9 @@ The tool enforces role-based permissions internally. Always pass userId (invoker
 
     try {
       const guild = await client.guilds.fetch({ guild: guildId, force: true });
-      await guild.members.fetch({ force: true });
+      if (action !== "change-bot-nickname") {
+        await guild.members.fetch({ force: true });
+      }
 
       const ownerActions = new Set(["kick", "ban", "add-role", "remove-role"]);
       const modActions = new Set([
@@ -747,6 +718,26 @@ The tool enforces role-based permissions internally. Always pass userId (invoker
       }
 
       const member = modTools.resolveMemberByName(guild, targetName);
+
+      if (member) {
+        const actor =
+          guild.members.cache.get(userId) ||
+          (await guild.members.fetch(userId).catch(() => null));
+        if (actor) {
+          const gate = modTools.checkActorCanModerateTarget(actor, member);
+          if (!gate.ok) {
+            return { success: false, error: `${icon("LOCK")} ${gate.reason}` };
+          }
+          const cd = modTools.checkModeratorCooldown(actor);
+          if (!cd.ok) {
+            return {
+              success: false,
+              error: `Too many moderation actions. Try again in ${Math.ceil(cd.retryMs / 1000)}s.`,
+            };
+          }
+        }
+      }
+
       let message = "";
 
       switch (action) {
@@ -794,9 +785,6 @@ The tool enforces role-based permissions internally. Always pass userId (invoker
   },
 });
 
-/**
- * Delete Private VC Tool - Deletes a private voice channel.
- */
 export const deletePrivateVCTool = tool({
   description: `Delete a real private voice channel. Use this whenever a user asks to delete, remove, close, or destroy their private VC.`,
   parameters: z.object({

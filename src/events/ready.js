@@ -31,18 +31,9 @@ const setRandomPresence = (client) => {
   });
 };
 
-/**
- * Handles the ClientReady event.
- * @module events/ready
- */
 export default {
   name: Events.ClientReady,
   once: true,
-  /**
-   * Executes the event handler.
-   * @param {import("discord.js").Client} client - The Discord client.
-   * @returns {Promise<void>}
-   */
   async execute(client) {
     console.log(`[SUCCESS] Shantha logged in as ${client.user.tag}`);
     console.log(`[INFO] Serving ${client.guilds.cache.size} guild(s)`);
@@ -62,6 +53,6 @@ export default {
     startApiServer(client);
 
     setRandomPresence(client);
-    setInterval(() => setRandomPresence(client), 300000);
+    setInterval(() => setRandomPresence(client), 300000).unref();
   },
 };

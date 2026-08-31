@@ -5,10 +5,6 @@ import { soundCache } from "../voice/SoundCache.js";
 
 let _wss = null;
 
-/**
- * Broadcasts a JSON payload to all authenticated WebSocket clients.
- * @param {Object} payload - The data to broadcast.
- */
 export function broadcastWs(payload) {
   if (!_wss) return;
   const data = JSON.stringify(payload);
@@ -19,7 +15,6 @@ export function broadcastWs(payload) {
   }
 }
 
-/** @param {import('http').Server} httpServer */
 export function attachWsServer(httpServer, discordClient) {
   const wss = new WebSocketServer({ noServer: true });
   _wss = wss;
@@ -143,11 +138,6 @@ export function attachWsServer(httpServer, discordClient) {
   return wss;
 }
 
-/**
- * Sends a JSON payload to a specific WebSocket client.
- * @param {import('ws').WebSocket} ws - The WebSocket client.
- * @param {Object} payload - The data to send.
- */
 function send(ws, payload) {
   if (ws.readyState === ws.OPEN) {
     ws.send(JSON.stringify(payload));

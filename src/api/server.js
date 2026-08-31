@@ -19,11 +19,6 @@ import musicRoute from "./routes/music.js";
 import { attachWsServer } from "./wsServer.js";
 import { attachZyraRelay } from "./zyraRelay.js";
 
-/**
- * Creates and configures the Express API server.
- * @param {import('discord.js').Client} discordClient - The Discord client instance.
- * @returns {import('express').Express} The configured Express application.
- */
 export function createApiServer(discordClient) {
   const app = express();
 

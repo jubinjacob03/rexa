@@ -26,6 +26,9 @@ import {
   voiceUndeafen,
   kick,
   ban,
+  unban,
+  checkActorCanModerateTarget,
+  checkModeratorCooldown,
 } from "../utils/moderation.js";
 import purge from "../commands/purge.js";
 import refresh from "../commands/refresh.js";
@@ -46,11 +49,6 @@ import {
 } from "../utils/privateVCManager.js";
 import { icon } from "../utils/icons.js";
 
-/**
- * Retrieves the bot command channel from the client cache.
- * @param {import("discord.js").Client} client - The Discord client instance.
- * @returns {import("discord.js").Channel|undefined} The bot command channel, or undefined if not found.
- */
 export function getBotCmdChannel(client) {
   const channelId = config.botCmdChannelId;
   return client.channels.cache.get(channelId);
@@ -68,7 +66,7 @@ setInterval(
     }
   },
   15 * 60 * 1000,
-);
+).unref();
 
 function setTempSelection(key, value) {
   tempSelections.set(key, { value, timestamp: Date.now() });
@@ -86,11 +84,6 @@ function formatDashboardError(err, fallback = "Action failed.") {
   return details.length ? details.join(": ") : fallback;
 }
 
-/**
- * Builds the dashboard container component for the control center.
- * @param {import("discord.js").GuildMember} member - The guild member requesting the dashboard.
- * @returns {Promise<import("discord.js").ContainerBuilder>} The constructed container builder.
- */
 export async function buildDashboardContainer(member) {
   const guild = member.guild;
 
@@ -155,7 +148,9 @@ export async function buildDashboardContainer(member) {
   );
 
   container.addTextDisplayComponents(
-    new TextDisplayBuilder().setContent(`### ${icon("BOT")} AutoMOD\n**Master :** ${onOff(automodOn)} • **Spam :** ${onOff(spamOn)} • **Raid :** ${onOff(raidOn)} • **Toxicity :** ${onOff(toxicityOn)}`),
+    new TextDisplayBuilder().setContent(
+      `### ${icon("BOT")} AutoMOD\n**Master :** ${onOff(automodOn)} • **Spam :** ${onOff(spamOn)} • **Raid :** ${onOff(raidOn)} • **Toxicity :** ${onOff(toxicityOn)}`,
+    ),
   );
   container.addActionRowComponents(
     new ActionRowBuilder().addComponents(
@@ -189,7 +184,9 @@ export async function buildDashboardContainer(member) {
   );
 
   container.addTextDisplayComponents(
-    new TextDisplayBuilder().setContent(`### ${icon("PURGE")} Purge\nPurge messages and manage server content.`),
+    new TextDisplayBuilder().setContent(
+      `### ${icon("PURGE")} Purge\nPurge messages and manage server content.`,
+    ),
   );
 
   container.addActionRowComponents(
@@ -220,7 +217,9 @@ export async function buildDashboardContainer(member) {
   );
 
   container.addTextDisplayComponents(
-    new TextDisplayBuilder().setContent(`### ${icon("CHANNELS")} System\nStatus and moderation tools.`),
+    new TextDisplayBuilder().setContent(
+      `### ${icon("CHANNELS")} System\nStatus and moderation tools.`,
+    ),
   );
 
   container.addActionRowComponents(
@@ -262,6 +261,10 @@ export async function buildDashboardContainer(member) {
         .setCustomId("shantha_mod_ban")
         .setLabel("Ban")
         .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId("shantha_mod_unban")
+        .setLabel("Unban")
+        .setStyle(ButtonStyle.Success),
     ),
   );
 
@@ -269,23 +272,11 @@ export async function buildDashboardContainer(member) {
   return container;
 }
 
-/**
- * Parses an ID from a mention string based on a regex pattern.
- * @param {string} value - The mention string.
- * @param {RegExp} pattern - The regex pattern to match.
- * @returns {string|null} The extracted ID, or null if no match.
- */
 function parseIdFromMention(value, pattern) {
   const match = value.match(pattern);
   return match ? match[1] : null;
 }
 
-/**
- * Resolves a guild member from a user input string (mention, ID, or username#discriminator).
- * @param {import("discord.js").Guild} guild - The guild to search in.
- * @param {string} value - The input string to resolve.
- * @returns {Promise<import("discord.js").GuildMember|null>} The resolved member, or null if not found.
- */
 async function resolveMemberFromInput(guild, value) {
   const mentionId = parseIdFromMention(value, /^<@!?([0-9]+)>$/);
   if (mentionId) return guild.members.fetch(mentionId).catch(() => null);
@@ -300,12 +291,6 @@ async function resolveMemberFromInput(guild, value) {
   return null;
 }
 
-/**
- * Resolves a channel from a user input string (mention or ID).
- * @param {import("discord.js").Guild} guild - The guild to search in.
- * @param {string} value - The input string to resolve.
- * @returns {import("discord.js").Channel|null} The resolved channel, or null if not found.
- */
 function resolveChannelFromInput(guild, value) {
   const mentionId = parseIdFromMention(value, /^<#([0-9]+)>$/);
   if (mentionId) return guild.channels.cache.get(mentionId) || null;
@@ -314,23 +299,10 @@ function resolveChannelFromInput(guild, value) {
   return null;
 }
 
-/**
- * Gets the dashboard components for a member.
- * @param {import("discord.js").GuildMember} member - The guild member.
- * @returns {Promise<Array>} An array of components.
- */
 export async function getDashboardComponents(_member) {
   return [];
 }
 
-/**
- * Shows a modal for purging messages.
- * @param {import("discord.js").Interaction} interaction - The interaction that triggered the modal.
- * @param {string} customId - The custom ID for the modal.
- * @param {string} title - The title of the modal.
- * @param {Array<{customId: string, label: string, required?: boolean}>} fields - The fields to add to the modal.
- * @returns {Promise<void>}
- */
 export async function showPurgeModal(interaction, customId, title, fields) {
   const modal = new ModalBuilder().setCustomId(customId).setTitle(title);
   fields.forEach((f) => {
@@ -347,17 +319,6 @@ export async function showPurgeModal(interaction, customId, title, fields) {
   return interaction.showModal(modal);
 }
 
-/**
- * Shows a select menu with a confirmation button.
- * @param {import("discord.js").Interaction} interaction - The interaction that triggered this.
- * @param {string} title - The title of the container.
- * @param {string} description - The description of the container.
- * @param {string} selectId - The custom ID for the select menu.
- * @param {string} confirmId - The custom ID for the confirm button.
- * @param {string} confirmLabel - The label for the confirm button.
- * @param {number} [maxValues=1] - The maximum number of values that can be selected.
- * @returns {Promise<void>}
- */
 export async function showSelectWithConfirm(
   interaction,
   title,
@@ -396,6 +357,108 @@ export async function showSelectWithConfirm(
   });
 }
 
+const FILTERED_MOD_ACTIONS = new Set([
+  "shantha_mod_remtimeout",
+  "shantha_mod_unmute",
+  "shantha_mod_undeafen",
+  "shantha_mod_mute",
+  "shantha_mod_deafen",
+  "shantha_mod_unban",
+]);
+
+const MOD_EMPTY_STATE = {
+  shantha_mod_remtimeout: "No members currently have an active timeout.",
+  shantha_mod_unmute: "No members are currently server-muted in voice.",
+  shantha_mod_undeafen: "No members are currently server-deafened in voice.",
+  shantha_mod_mute: "No unmuted members are currently in a voice channel.",
+  shantha_mod_deafen: "No undeafened members are currently in a voice channel.",
+  shantha_mod_unban: "There are no banned users to unban.",
+};
+
+async function getModerationTargets(guild, action) {
+  if (action === "shantha_mod_unban") {
+    const bans = await guild.bans.fetch().catch(() => null);
+    if (!bans) return [];
+    return [...bans.values()].slice(0, 25).map((b) => ({
+      label: (b.user?.tag ?? b.user?.id ?? "Unknown").slice(0, 100),
+      value: b.user.id,
+      description: (b.reason
+        ? `Reason: ${b.reason}`
+        : "No reason recorded"
+      ).slice(0, 100),
+    }));
+  }
+
+  const predicates = {
+    shantha_mod_remtimeout: (m) => m.isCommunicationDisabled(),
+    shantha_mod_unmute: (m) => !!m.voice?.channelId && m.voice.serverMute,
+    shantha_mod_undeafen: (m) => !!m.voice?.channelId && m.voice.serverDeaf,
+    shantha_mod_mute: (m) =>
+      !!m.voice?.channelId && !m.voice.serverMute && !m.user.bot,
+    shantha_mod_deafen: (m) =>
+      !!m.voice?.channelId && !m.voice.serverDeaf && !m.user.bot,
+  };
+  const predicate = predicates[action];
+  if (!predicate) return [];
+  return guild.members.cache
+    .filter(predicate)
+    .map((m) => ({
+      label: m.displayName.slice(0, 100),
+      value: m.id,
+      description: m.user.username.slice(0, 100),
+    }))
+    .slice(0, 25);
+}
+
+async function showFilteredMemberSelect(
+  interaction,
+  action,
+  title,
+  description,
+) {
+  const options = await getModerationTargets(interaction.guild, action);
+  if (!options.length) {
+    return interaction.reply(
+      eReply(
+        "Nothing to do",
+        MOD_EMPTY_STATE[action] || "No applicable members.",
+      ),
+    );
+  }
+
+  const select = new StringSelectMenuBuilder()
+    .setCustomId(`${action}_select`)
+    .setPlaceholder("Select a member...")
+    .setMinValues(1)
+    .setMaxValues(1)
+    .addOptions(options);
+
+  const container = new ContainerBuilder().setAccentColor(0x00ced1);
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(`**${title}**\n${description}`),
+  );
+  container.addActionRowComponents(
+    new ActionRowBuilder().addComponents(select),
+  );
+  container.addActionRowComponents(
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`${action}_confirm`)
+        .setLabel("Confirm")
+        .setStyle(
+          action === "shantha_mod_unban"
+            ? ButtonStyle.Danger
+            : ButtonStyle.Primary,
+        ),
+    ),
+  );
+  addFooter(container);
+  return interaction.reply({
+    components: [container],
+    flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+  });
+}
+
 async function showVCMemberSelectWithConfirm(
   interaction,
   channelId,
@@ -407,12 +470,16 @@ async function showVCMemberSelectWithConfirm(
 ) {
   const vcData = getVCData(channelId);
   if (!vcData) {
-    return interaction.reply(eReply("Not found", "Private VC no longer exists."));
+    return interaction.reply(
+      eReply("Not found", "Private VC no longer exists."),
+    );
   }
 
   const options = [];
   for (const userId of vcData.members) {
-    const member = await interaction.guild.members.fetch(userId).catch(() => null);
+    const member = await interaction.guild.members
+      .fetch(userId)
+      .catch(() => null);
     if (!member) continue;
     options.push({
       label: member.displayName.slice(0, 100),
@@ -422,7 +489,9 @@ async function showVCMemberSelectWithConfirm(
   }
 
   if (!options.length) {
-    return interaction.reply(eReply("Not found", "This private VC has no removable members."));
+    return interaction.reply(
+      eReply("Not found", "This private VC has no removable members."),
+    );
   }
 
   const select = new StringSelectMenuBuilder()
@@ -458,7 +527,9 @@ async function showVCMemberSelectWithConfirm(
 async function showVCDeleteConfirm(interaction, channelId, title, description) {
   const vcData = getVCData(channelId);
   if (!vcData) {
-    return interaction.reply(eReply("Not found", "Private VC no longer exists."));
+    return interaction.reply(
+      eReply("Not found", "Private VC no longer exists."),
+    );
   }
 
   const channel = interaction.guild.channels.cache.get(channelId);
@@ -494,7 +565,9 @@ async function showOwnerVCSelect(
 ) {
   const vcs = listAllVCs(interaction.guild);
   if (!vcs.length) {
-    return interaction.reply(eReply("Not found", "There are no active private VCs."));
+    return interaction.reply(
+      eReply("Not found", "There are no active private VCs."),
+    );
   }
 
   const select = new StringSelectMenuBuilder()
@@ -524,7 +597,9 @@ async function showOwnerVCSelect(
       `**${title}**\n${description}\n\n${vcList}`,
     ),
   );
-  container.addActionRowComponents(new ActionRowBuilder().addComponents(select));
+  container.addActionRowComponents(
+    new ActionRowBuilder().addComponents(select),
+  );
   container.addActionRowComponents(
     new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -541,13 +616,9 @@ async function showOwnerVCSelect(
   });
 }
 
-/**
- * Handles select menu interactions for the dashboard.
- * @param {import("discord.js").Interaction} interaction - The interaction to handle.
- * @returns {Promise<void>}
- */
 export async function handleDashboardSelect(interaction) {
-  if (!interaction.isUserSelectMenu() && !interaction.isStringSelectMenu()) return;
+  if (!interaction.isUserSelectMenu() && !interaction.isStringSelectMenu())
+    return;
   if (
     [
       "shantha_private_vc_select",
@@ -565,6 +636,7 @@ export async function handleDashboardSelect(interaction) {
       "shantha_mod_undeafen_select",
       "shantha_mod_kick_select",
       "shantha_mod_ban_select",
+      "shantha_mod_unban_select",
     ].includes(interaction.customId)
   ) {
     setTempSelection(
@@ -582,11 +654,6 @@ export async function handleDashboardSelect(interaction) {
   );
 }
 
-/**
- * Builds the payload for the dashboard message.
- * @param {import("discord.js").GuildMember} member - The guild member.
- * @returns {Promise<import("discord.js").MessageCreateOptions>} The message payload.
- */
 async function buildDashboardPayload(member) {
   const container = await buildDashboardContainer(member);
   return {
@@ -595,11 +662,6 @@ async function buildDashboardPayload(member) {
   };
 }
 
-/**
- * Posts or updates the dashboard message in the bot command channel.
- * @param {import("discord.js").Client} client - The Discord client instance.
- * @returns {Promise<void>}
- */
 export async function postDashboard(client) {
   const channel = getBotCmdChannel(client);
   if (!channel) return;
@@ -641,17 +703,15 @@ export async function postDashboard(client) {
   }
 }
 
-/**
- * Handles button interactions for the dashboard.
- * @param {import("discord.js").Interaction} interaction - The interaction to handle.
- * @returns {Promise<void>}
- */
 export async function handleDashboardInteraction(interaction) {
   if (!interaction.isButton()) return;
   const { member } = interaction;
   switch (interaction.customId) {
     case "shantha_vc_create": {
-      if (getVCByMember(interaction.user.id) || getVCByCreator(interaction.user.id))
+      if (
+        getVCByMember(interaction.user.id) ||
+        getVCByCreator(interaction.user.id)
+      )
         return interaction.reply(
           eReply(
             "Already active",
@@ -747,7 +807,11 @@ export async function handleDashboardInteraction(interaction) {
         );
       }
       try {
-        await removeMember(leaveChannelId, interaction.member, interaction.guild);
+        await removeMember(
+          leaveChannelId,
+          interaction.member,
+          interaction.guild,
+        );
         return interaction.reply(
           eReply("Left VC", "You have left your private VC."),
         );
@@ -763,8 +827,7 @@ export async function handleDashboardInteraction(interaction) {
     case "shantha_automod_spam":
     case "shantha_automod_raid":
     case "shantha_automod_toxicity": {
-      const isLimitsAction =
-        interaction.customId === "shantha_automod_limits";
+      const isLimitsAction = interaction.customId === "shantha_automod_limits";
       const requiredLevel = isLimitsAction ? "mod" : "owner";
       if (
         !(await checkModerationPermission(
@@ -842,7 +905,10 @@ export async function handleDashboardInteraction(interaction) {
       if (!values.length)
         return interaction.reply(eReply("Notice", "Please select a VC first."));
       tempSelections.delete(cacheKey);
-      setTempSelection(`${interaction.user.id}_owner_remove_channel`, values[0]);
+      setTempSelection(
+        `${interaction.user.id}_owner_remove_channel`,
+        values[0],
+      );
       return showVCMemberSelectWithConfirm(
         interaction,
         values[0],
@@ -870,19 +936,28 @@ export async function handleDashboardInteraction(interaction) {
       );
     }
     case "shantha_vc_delete_confirm": {
-      const channelId = getTempSelection(`${interaction.user.id}_delete_channel`);
+      const channelId = getTempSelection(
+        `${interaction.user.id}_delete_channel`,
+      );
       tempSelections.delete(`${interaction.user.id}_delete_channel`);
       if (!channelId)
         return interaction.reply(eReply("Notice", "Please select a VC first."));
       if (!getVCData(channelId))
-        return interaction.reply(eReply("Not found", "Private VC no longer exists."));
+        return interaction.reply(
+          eReply("Not found", "Private VC no longer exists."),
+        );
       if (!canManageVC(channelId, interaction.member))
         return interaction.reply(
-          eReply("Access denied", "Only the VC creator or owner can delete this VC."),
+          eReply(
+            "Access denied",
+            "Only the VC creator or owner can delete this VC.",
+          ),
         );
       try {
         await forceDeleteVC(channelId, interaction.guild);
-        return interaction.reply(eReply("VC deleted", "The selected private VC has been deleted."));
+        return interaction.reply(
+          eReply("VC deleted", "The selected private VC has been deleted."),
+        );
       } catch (err) {
         console.error("[VC Delete Confirm]", err);
         return interaction.reply(
@@ -897,7 +972,10 @@ export async function handleDashboardInteraction(interaction) {
 
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-      if (getVCByMember(interaction.user.id) || getVCByCreator(interaction.user.id))
+      if (
+        getVCByMember(interaction.user.id) ||
+        getVCByCreator(interaction.user.id)
+      )
         return interaction.editReply(
           eReply(
             "Already active",
@@ -906,7 +984,10 @@ export async function handleDashboardInteraction(interaction) {
         );
       if (!canCreate())
         return interaction.editReply(
-          eReply("Limit reached", "Maximum private VCs are already active. Wait for one to end."),
+          eReply(
+            "Limit reached",
+            "Maximum private VCs are already active. Wait for one to end.",
+          ),
         );
 
       const invitedIds = createValues.filter(
@@ -978,7 +1059,10 @@ export async function handleDashboardInteraction(interaction) {
       const addVcData = getVCData(addChannelId);
       if (!addVcData || !isVCCreator(addChannelId, interaction.member)) {
         return interaction.editReply(
-          eReply("Access denied", "You can only add members to a VC you created."),
+          eReply(
+            "Access denied",
+            "You can only add members to a VC you created.",
+          ),
         );
       }
       if (addVcData.members.has(addTarget.id))
@@ -987,7 +1071,10 @@ export async function handleDashboardInteraction(interaction) {
         );
       if (getVCByMember(addTarget.id))
         return interaction.editReply(
-          eReply("Unavailable", `<@${addTarget.id}> is already in another private VC.`),
+          eReply(
+            "Unavailable",
+            `<@${addTarget.id}> is already in another private VC.`,
+          ),
         );
 
       try {
@@ -1033,7 +1120,10 @@ export async function handleDashboardInteraction(interaction) {
       const rmVcData = getVCData(rmChannelId);
       if (!rmVcData || !canManageVC(rmChannelId, interaction.member))
         return interaction.editReply(
-          eReply("Access denied", "Only the VC creator or owner can remove members."),
+          eReply(
+            "Access denied",
+            "Only the VC creator or owner can remove members.",
+          ),
         );
 
       const rmTarget = await interaction.guild.members
@@ -1053,12 +1143,18 @@ export async function handleDashboardInteraction(interaction) {
       try {
         await removeMember(rmChannelId, rmTarget, interaction.guild);
         return interaction.editReply(
-          eReply("Member removed", `<@${rmTarget.id}> has been removed from the private VC.`),
+          eReply(
+            "Member removed",
+            `<@${rmTarget.id}> has been removed from the private VC.`,
+          ),
         );
       } catch (err) {
         console.error("[VC Remove]", err);
         return interaction.editReply(
-          eReply("Error", formatDashboardError(err, "Failed to remove member.")),
+          eReply(
+            "Error",
+            formatDashboardError(err, "Failed to remove member."),
+          ),
         );
       }
     }
@@ -1133,10 +1229,12 @@ export async function handleDashboardInteraction(interaction) {
     case "shantha_mod_deafen":
     case "shantha_mod_undeafen":
     case "shantha_mod_kick":
+    case "shantha_mod_unban":
     case "shantha_mod_ban": {
       const isOwnerReq =
         interaction.customId === "shantha_mod_kick" ||
-        interaction.customId === "shantha_mod_ban";
+        interaction.customId === "shantha_mod_ban" ||
+        interaction.customId === "shantha_mod_unban";
       const isModReq = !isOwnerReq;
       const isOwner = await checkModerationPermission(
         interaction.guild,
@@ -1164,17 +1262,32 @@ export async function handleDashboardInteraction(interaction) {
         shantha_mod_undeafen: "Voice Undeafen",
         shantha_mod_kick: "Kick User",
         shantha_mod_ban: "Ban User",
+        shantha_mod_unban: "Unban User",
       };
       const descMap = {
         shantha_mod_timeout: "Select user to timeout.",
-        shantha_mod_remtimeout: "Select user to remove timeout from.",
-        shantha_mod_mute: "Select user to server mute.",
-        shantha_mod_unmute: "Select user to server unmute.",
-        shantha_mod_deafen: "Select user to server deafen.",
-        shantha_mod_undeafen: "Select user to server undeafen.",
+        shantha_mod_remtimeout:
+          "Only members who are currently timed out are listed.",
+        shantha_mod_mute:
+          "Only members currently in a voice channel are listed.",
+        shantha_mod_unmute: "Only members currently muted in voice are listed.",
+        shantha_mod_deafen:
+          "Only members currently in a voice channel are listed.",
+        shantha_mod_undeafen:
+          "Only members currently deafened in voice are listed.",
         shantha_mod_kick: "Select user to kick.",
         shantha_mod_ban: "Select user to ban.",
+        shantha_mod_unban: "Only currently banned users are listed.",
       };
+
+      if (FILTERED_MOD_ACTIONS.has(interaction.customId)) {
+        return showFilteredMemberSelect(
+          interaction,
+          interaction.customId,
+          titleMap[interaction.customId],
+          descMap[interaction.customId],
+        );
+      }
 
       return showSelectWithConfirm(
         interaction,
@@ -1194,6 +1307,7 @@ export async function handleDashboardInteraction(interaction) {
     case "shantha_mod_deafen_confirm":
     case "shantha_mod_undeafen_confirm":
     case "shantha_mod_kick_confirm":
+    case "shantha_mod_unban_confirm":
     case "shantha_mod_ban_confirm": {
       const action = interaction.customId.replace("_confirm", "");
       const selectId = `${action}_select`;
@@ -1205,16 +1319,69 @@ export async function handleDashboardInteraction(interaction) {
         );
       tempSelections.delete(cacheKey);
 
+      if (action === "shantha_mod_unban") {
+        if (
+          !(await checkModerationPermission(
+            interaction.guild,
+            interaction.member.id,
+            "owner",
+          ))
+        )
+          return interaction.reply(
+            eReply("Notice", `${icon("LOCK")} Owners only.`),
+          );
+        const cd = checkModeratorCooldown(interaction.member);
+        if (!cd.ok)
+          return interaction.reply(
+            eReply(
+              "Slow down",
+              `Too many moderation actions. Try again in ${Math.ceil(cd.retryMs / 1000)}s.`,
+            ),
+          );
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        try {
+          const msg = await unban(
+            interaction.guild,
+            values[0],
+            `[Dashboard] Unbanned by ${interaction.user.tag}`,
+          );
+          return interaction.editReply(eReply("Success", msg));
+        } catch (err) {
+          console.error("[Dashboard Moderation] Unban failed:", err);
+          return interaction.editReply(
+            eReply("Error", formatDashboardError(err, "Failed to unban.")),
+          );
+        }
+      }
+
       const member = await interaction.guild.members
         .fetch(values[0])
         .catch(() => null);
       if (!member)
         return interaction.reply(eReply("Notice", "Member not found."));
 
+      const gate = checkActorCanModerateTarget(interaction.member, member);
+      if (!gate.ok)
+        return interaction.reply(
+          eReply("Notice", `${icon("LOCK")} ${gate.reason}`),
+        );
+
       setTempSelection(`${interaction.user.id}_mod_target`, member.id);
 
       if (action === "shantha_mod_remtimeout") {
         tempSelections.delete(`${interaction.user.id}_mod_target`);
+        if (!member.isCommunicationDisabled())
+          return interaction.reply(
+            eReply("Notice", `${member.user.tag} is not currently timed out.`),
+          );
+        const cd = checkModeratorCooldown(interaction.member);
+        if (!cd.ok)
+          return interaction.reply(
+            eReply(
+              "Slow down",
+              `Too many moderation actions. Try again in ${Math.ceil(cd.retryMs / 1000)}s.`,
+            ),
+          );
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         try {
           await removeTimeout(
@@ -1237,6 +1404,18 @@ export async function handleDashboardInteraction(interaction) {
 
       if (action === "shantha_mod_unmute") {
         tempSelections.delete(`${interaction.user.id}_mod_target`);
+        if (!member.voice?.serverMute)
+          return interaction.reply(
+            eReply("Notice", `${member.user.tag} is not server-muted.`),
+          );
+        const cd = checkModeratorCooldown(interaction.member);
+        if (!cd.ok)
+          return interaction.reply(
+            eReply(
+              "Slow down",
+              `Too many moderation actions. Try again in ${Math.ceil(cd.retryMs / 1000)}s.`,
+            ),
+          );
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         try {
           await voiceUnmute(
@@ -1256,6 +1435,18 @@ export async function handleDashboardInteraction(interaction) {
 
       if (action === "shantha_mod_undeafen") {
         tempSelections.delete(`${interaction.user.id}_mod_target`);
+        if (!member.voice?.serverDeaf)
+          return interaction.reply(
+            eReply("Notice", `${member.user.tag} is not server-deafened.`),
+          );
+        const cd = checkModeratorCooldown(interaction.member);
+        if (!cd.ok)
+          return interaction.reply(
+            eReply(
+              "Slow down",
+              `Too many moderation actions. Try again in ${Math.ceil(cd.retryMs / 1000)}s.`,
+            ),
+          );
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         try {
           await voiceUndeafen(
@@ -1412,11 +1603,6 @@ export async function handleDashboardInteraction(interaction) {
   }
 }
 
-/**
- * Handles modal submit interactions for the dashboard.
- * @param {import("discord.js").Interaction} interaction - The interaction to handle.
- * @returns {Promise<void>}
- */
 export async function handleDashboardModal(interaction) {
   if (!interaction.isModalSubmit()) return;
   if (interaction.customId === "shantha_automod_limits_modal") {
@@ -1478,6 +1664,20 @@ export async function handleDashboardModal(interaction) {
         eReply("Error", "Target member no longer found."),
       );
 
+    const gate = checkActorCanModerateTarget(interaction.member, targetMember);
+    if (!gate.ok)
+      return interaction.editReply(
+        eReply("Notice", `${icon("LOCK")} ${gate.reason}`),
+      );
+    const cd = checkModeratorCooldown(interaction.member);
+    if (!cd.ok)
+      return interaction.editReply(
+        eReply(
+          "Slow down",
+          `Too many moderation actions. Try again in ${Math.ceil(cd.retryMs / 1000)}s.`,
+        ),
+      );
+
     let reason = "No reason provided.";
     try {
       const inputReason = interaction.fields.getTextInputValue("mod_reason");
@@ -1529,9 +1729,7 @@ export async function handleDashboardModal(interaction) {
         `[Dashboard Moderation] ${action} failed for ${targetMember.id}:`,
         err,
       );
-      return interaction.editReply(
-        eReply("Error", formatDashboardError(err)),
-      );
+      return interaction.editReply(eReply("Error", formatDashboardError(err)));
     }
   }
 

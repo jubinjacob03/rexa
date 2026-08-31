@@ -1,8 +1,3 @@
-/**
- * @file index.js
- * @description Agent utilities index - re-exports all utilities for convenient imports.
- */
-
 export {
   extractToolCall,
   RE_JSON_TOOL_CALL,

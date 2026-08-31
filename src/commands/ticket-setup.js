@@ -29,12 +29,8 @@ setInterval(
     }
   },
   30 * 60 * 1000,
-);
+).unref();
 
-/**
- * Command to launch the Advanced Ticket Setup Dashboard.
- * @module setupTicketCommand
- */
 export default {
   data: new SlashCommandBuilder()
     .setName("setup-ticket")
@@ -53,11 +49,6 @@ export default {
         .setRequired(false),
     ),
 
-  /**
-   * Executes the setup-ticket command.
-   * @param {import("discord.js").ChatInputCommandInteraction} interaction - The interaction object.
-   * @returns {Promise<void>}
-   */
   async execute(interaction) {
     if (
       !(await checkModerationPermission(
@@ -108,12 +99,6 @@ export default {
   },
 };
 
-/**
- * Publishes a simple ticket panel to the target channel.
- * @param {import("discord.js").ChatInputCommandInteraction} interaction - The interaction object.
- * @param {import("discord.js").TextBasedChannel} targetChannel - The channel to publish the panel to.
- * @returns {Promise<void>}
- */
 async function publishSimpleTicketPanel(interaction, targetChannel) {
   const serverIcon = interaction.guild.iconURL({ size: 128 });
   const panelContainer = new ContainerBuilder().setAccentColor(EMBED_COLOR);
@@ -167,12 +152,6 @@ async function publishSimpleTicketPanel(interaction, targetChannel) {
     .catch(() => {});
 }
 
-/**
- * Renders the advanced ticket setup dashboard.
- * @param {import("discord.js").ChatInputCommandInteraction|import("discord.js").ButtonInteraction} interaction - The interaction object.
- * @param {boolean} [isUpdate=false] - Whether this is an update to an existing message.
- * @returns {Promise<void>}
- */
 export async function renderTicketDashboard(interaction, isUpdate = false) {
   const config = setupSessions.get(interaction.user.id);
   if (!config) return;

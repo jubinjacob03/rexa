@@ -11,12 +11,6 @@ import {
 export const EMBED_COLOR = 0x00ddff;
 export const EPHEMERAL_COLOR = 0x2b2d31;
 
-/**
- * Returns a configured V2 Container.
- * @param {string} title - Embed title
- * @param {string|null} description - Embed description (optional)
- * @param {{ fields?, footer?, thumbnail?, image?, timestamp? }} opts
- */
 function buildV2Container(
   title,
   description = null,
@@ -81,12 +75,6 @@ function buildV2Container(
   return container;
 }
 
-/**
- * Returns an ephemeral reply payload — use with interaction.reply() / followUp()
- * @param {string} title
- * @param {string|null} description
- * @param {object} opts
- */
 export function eReply(title, description = null, opts = {}) {
   return {
     components: [buildV2Container(title, description, opts, EPHEMERAL_COLOR)],
@@ -94,12 +82,6 @@ export function eReply(title, description = null, opts = {}) {
   };
 }
 
-/**
- * Returns a public embed payload — use with channel.send() / editReply() / update()
- * @param {string} title
- * @param {string|null} description
- * @param {object} opts
- */
 export function eSend(title, description = null, opts = {}) {
   return {
     components: [buildV2Container(title, description, opts, EMBED_COLOR)],
@@ -107,11 +89,6 @@ export function eSend(title, description = null, opts = {}) {
   };
 }
 
-/**
- * Adds a standard footer to a container builder.
- * @param {import('discord.js').ContainerBuilder} container - The container builder.
- * @returns {import('discord.js').ContainerBuilder} The modified container builder.
- */
 export function addFooter(container) {
   const ts = Math.floor(Date.now() / 1000);
   container.addSeparatorComponents(

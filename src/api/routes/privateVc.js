@@ -149,11 +149,6 @@ router.post("/add", async (req, res) => {
   }
 });
 
-/**
- * POST /api/private-vc/remove
- * Removes a member from a private voice channel.
- * Expects { requesterId, targetUserId, channelId? } in the request body.
- */
 router.post("/remove", async (req, res) => {
   try {
     const client = req.app.get("discordClient");
@@ -213,11 +208,6 @@ router.post("/remove", async (req, res) => {
   }
 });
 
-/**
- * DELETE /api/private-vc/:channelId
- * Deletes a private voice channel (creator or owner only).
- * Expects { requesterId } in the request body.
- */
 router.delete("/:channelId", async (req, res) => {
   try {
     const client = req.app.get("discordClient");

@@ -1,8 +1,3 @@
-/**
- * @file context-manager.js
- * @description Context Manager for AI Agent Conversations. Manages conversation history and context using AI SDK patterns, enhanced with Supabase persistence for AI memory across restarts.
- */
-
 import { embed, embedMany, cosineSimilarity } from "ai";
 import config, { getEmbeddingModel } from "../config.js";
 import supabase from "../../utils/supabaseClient.js";
@@ -10,13 +5,7 @@ import { createLogger } from "../../utils/logger.js";
 
 const log = createLogger("context");
 
-/**
- * Context Manager for maintaining conversation state.
- */
 class ContextManager {
-  /**
-   * Creates an instance of ContextManager.
-   */
   constructor() {
     this.conversations = new Map();
     this.embeddingModel = null;
@@ -29,12 +18,6 @@ class ContextManager {
     this.maxContextLength = config.rag?.maxContextLength || 30;
   }
 
-  /**
-   * Safety net on top of the time-based cleanup: if the in-memory conversation
-   * count exceeds the cap, evict the least-recently-active contexts (persisting
-   * them first) down to 90% of the cap. Evicted history remains in Supabase.
-   * @returns {void}
-   */
   enforceMemoryLimit() {
     if (this.conversations.size <= this.maxConversations) return;
     const target = Math.floor(this.maxConversations * 0.9);
@@ -51,10 +34,6 @@ class ContextManager {
     }
   }
 
-  /**
-   * Initializes the context manager and loads data from Supabase.
-   * @returns {Promise<void>}
-   */
   async initialize() {
     if (this.initialized) return;
 
@@ -65,10 +44,6 @@ class ContextManager {
     this.initialized = true;
   }
 
-  /**
-   * Loads all conversations from Supabase on startup.
-   * @returns {Promise<void>}
-   */
   async loadFromSupabase() {
     try {
       const { data, error } = await supabase
@@ -102,11 +77,6 @@ class ContextManager {
       log.error("Failed to load from Supabase:", error.message);
     }
   }
-  /**
-   * Saves a single conversation to Supabase (upsert).
-   * @param {string} contextId - The ID of the context to save.
-   * @returns {Promise<void>}
-   */
   async saveToSupabase(contextId) {
     const context = this.conversations.get(contextId);
     if (!context) return;
@@ -134,10 +104,6 @@ class ContextManager {
     }
   }
 
-  /**
-   * Batch saves all queued conversations to Supabase.
-   * @returns {Promise<void>}
-   */
   async batchSave() {
     if (this.saveQueue.size === 0) return;
 
@@ -181,24 +147,18 @@ class ContextManager {
     }
   }
 
-  /**
-   * Queues a conversation for saving (batched).
-   * @param {string} contextId - The ID of the context to queue.
-   */
   queueSave(contextId) {
     if (!this.autoSaveEnabled) return;
     this.saveQueue.set(contextId, Date.now());
   }
 
-  /**
-   * Starts the auto-save interval.
-   */
   startAutoSave() {
     if (this.saveInterval) return;
 
     this.saveInterval = setInterval(async () => {
       await this.batchSave();
     }, this.batchSaveDelay);
+    this.saveInterval.unref();
 
     this.cleanupInterval = setInterval(
       async () => {
@@ -206,11 +166,9 @@ class ContextManager {
       },
       60 * 60 * 1000,
     );
+    this.cleanupInterval.unref();
   }
 
-  /**
-   * Stops the auto-save interval.
-   */
   stopAutoSave() {
     if (this.saveInterval) {
       clearInterval(this.saveInterval);
@@ -222,22 +180,12 @@ class ContextManager {
     }
   }
 
-  /**
-   * Forces an immediate save of all conversations.
-   * @returns {Promise<void>}
-   */
   async forceSaveAll() {
     const contextIds = Array.from(this.conversations.keys());
     contextIds.forEach((id) => this.queueSave(id));
     await this.batchSave();
   }
 
-  /**
-   * Gets or creates a conversation context for a user.
-   * @param {string} userId - The user ID.
-   * @param {string} guildId - The guild ID.
-   * @returns {object} The conversation context.
-   */
   getContext(userId, guildId) {
     const contextId = `${guildId}-${userId}`;
 
@@ -256,15 +204,6 @@ class ContextManager {
     return this.conversations.get(contextId);
   }
 
-  /**
-   * Adds a message to the conversation history.
-   * @param {string} userId - The user ID.
-   * @param {string} guildId - The guild ID.
-   * @param {string} role - The role of the message sender ('user', 'assistant', 'system').
-   * @param {string} content - The content of the message.
-   * @param {object} [metadata={}] - Additional metadata for the message.
-   * @returns {Promise<object>} The added message object.
-   */
   async addMessage(userId, guildId, role, content, metadata = {}) {
     await this.initialize();
 
@@ -302,12 +241,6 @@ class ContextManager {
     return message;
   }
 
-  /**
-   * Pre-computes the embedding for a message (background task).
-   * @param {object} message - The message object.
-   * @returns {Promise<void>}
-   * @private
-   */
   async _precomputeEmbedding(message) {
     if (message.embedding) return;
     try {
@@ -321,13 +254,6 @@ class ContextManager {
     }
   }
 
-  /**
-   * Gets the conversation history for a user.
-   * @param {string} userId - The user ID.
-   * @param {string} guildId - The guild ID.
-   * @param {number|null} [limit=null] - The maximum number of messages to return.
-   * @returns {Array<object>} The conversation history.
-   */
   getHistory(userId, guildId, limit = null) {
     const context = this.getContext(userId, guildId);
 
@@ -338,13 +264,6 @@ class ContextManager {
     return context.messages;
   }
 
-  /**
-   * Gets the conversation history formatted for the AI SDK.
-   * @param {string} userId - The user ID.
-   * @param {string} guildId - The guild ID.
-   * @param {number|null} [limit=null] - The maximum number of messages to return.
-   * @returns {Array<object>} The formatted conversation history.
-   */
   getFormattedHistory(userId, guildId, limit = null) {
     const messages = this.getHistory(userId, guildId, limit);
 
@@ -354,15 +273,6 @@ class ContextManager {
     }));
   }
 
-  /**
-   * Searches the conversation history using semantic similarity.
-   * Uses pre-computed embeddings when available for instant search.
-   * @param {string} userId - The user ID.
-   * @param {string} guildId - The guild ID.
-   * @param {string} query - The search query.
-   * @param {number} [topK=3] - The number of top results to return.
-   * @returns {Promise<object>} The search results.
-   */
   async searchHistory(userId, guildId, query, topK = 3) {
     await this.initialize();
 
@@ -416,12 +326,6 @@ class ContextManager {
     }
   }
 
-  /**
-   * Updates the conversation metadata.
-   * @param {string} userId - The user ID.
-   * @param {string} guildId - The guild ID.
-   * @param {object} metadata - The metadata to merge.
-   */
   updateMetadata(userId, guildId, metadata) {
     const context = this.getContext(userId, guildId);
     context.metadata = {
@@ -430,23 +334,11 @@ class ContextManager {
     };
   }
 
-  /**
-   * Gets the conversation metadata.
-   * @param {string} userId - The user ID.
-   * @param {string} guildId - The guild ID.
-   * @returns {object} The conversation metadata.
-   */
   getMetadata(userId, guildId) {
     const context = this.getContext(userId, guildId);
     return context.metadata;
   }
 
-  /**
-   * Clears the conversation history for a user (memory and Supabase).
-   * @param {string} userId - The user ID.
-   * @param {string} guildId - The guild ID.
-   * @returns {Promise<object>} The result of the clear operation.
-   */
   async clearHistory(userId, guildId) {
     const contextId = `${guildId}-${userId}`;
     this.conversations.delete(contextId);
@@ -465,11 +357,6 @@ class ContextManager {
     return { success: true };
   }
 
-  /**
-   * Gets active conversations.
-   * @param {number} [maxAge=3600000] - The maximum age of a conversation to be considered active (in milliseconds).
-   * @returns {Array<object>} The active conversations.
-   */
   getActiveConversations(maxAge = 3600000) {
     const now = Date.now();
     const active = [];
@@ -493,11 +380,6 @@ class ContextManager {
     return active;
   }
 
-  /**
-   * Cleans up old conversations (in memory and Supabase).
-   * @param {number} [maxAge=86400000] - The maximum age of a conversation to be kept (in milliseconds).
-   * @returns {Promise<object>} The result of the cleanup operation.
-   */
   async cleanup(maxAge = 86400000) {
     const now = Date.now();
     let cleaned = 0;
@@ -533,19 +415,11 @@ class ContextManager {
     return { success: true, cleaned };
   }
 
-  /**
-   * Graceful shutdown - saves all pending changes.
-   * @returns {Promise<void>}
-   */
   async shutdown() {
     this.stopAutoSave();
     await this.forceSaveAll();
   }
 
-  /**
-   * Gets statistics about the context manager.
-   * @returns {object} The statistics.
-   */
   getStats() {
     const totalMessages = Array.from(this.conversations.values()).reduce(
       (sum, ctx) => sum + ctx.messages.length,
@@ -559,10 +433,6 @@ class ContextManager {
     };
   }
 
-  /**
-   * Exports conversations (for persistence).
-   * @returns {object} The exported data.
-   */
   export() {
     return {
       conversations: Array.from(this.conversations.entries()).map(
@@ -575,11 +445,6 @@ class ContextManager {
     };
   }
 
-  /**
-   * Imports conversations (from persistence).
-   * @param {object} data - The data to import.
-   * @returns {object} The result of the import operation.
-   */
   import(data) {
     try {
       this.conversations.clear();
@@ -609,14 +474,6 @@ const contextManager = new ContextManager();
 
 export default contextManager;
 
-/**
- * Adds a user message to the conversation history.
- * @param {string} userId - The user ID.
- * @param {string} guildId - The guild ID.
- * @param {string} content - The content of the message.
- * @param {object} [metadata={}] - Additional metadata.
- * @returns {Promise<object>} The added message.
- */
 export async function addUserMessage(userId, guildId, content, metadata = {}) {
   return await contextManager.addMessage(
     userId,
@@ -627,14 +484,6 @@ export async function addUserMessage(userId, guildId, content, metadata = {}) {
   );
 }
 
-/**
- * Adds an assistant message to the conversation history.
- * @param {string} userId - The user ID.
- * @param {string} guildId - The guild ID.
- * @param {string} content - The content of the message.
- * @param {object} [metadata={}] - Additional metadata.
- * @returns {Promise<object>} The added message.
- */
 export async function addAssistantMessage(
   userId,
   guildId,
@@ -650,14 +499,6 @@ export async function addAssistantMessage(
   );
 }
 
-/**
- * Adds a system message to the conversation history.
- * @param {string} userId - The user ID.
- * @param {string} guildId - The guild ID.
- * @param {string} content - The content of the message.
- * @param {object} [metadata={}] - Additional metadata.
- * @returns {Promise<object>} The added message.
- */
 export async function addSystemMessage(
   userId,
   guildId,
@@ -673,13 +514,6 @@ export async function addSystemMessage(
   );
 }
 
-/**
- * Gets the formatted conversation history for a user.
- * @param {string} userId - The user ID.
- * @param {string} guildId - The guild ID.
- * @param {number|null} [limit=null] - The maximum number of messages to return.
- * @returns {Array<object>} The formatted conversation history.
- */
 export function getUserHistory(userId, guildId, limit = null) {
   return contextManager.getFormattedHistory(userId, guildId, limit);
 }

@@ -1,8 +1,5 @@
 import { AUDIO_CONFIG } from "./constants.js";
 
-/**
- * Queue system for managing audio playback requests per guild
- */
 export class Queue {
   constructor(guildId) {
     this.guildId = guildId;
@@ -10,11 +7,6 @@ export class Queue {
     this.currentItem = null;
   }
 
-  /**
-   * Adds an item to the queue.
-   * @param {Object} soundData - The sound data to add.
-   * @returns {Object} The added queue item.
-   */
   add(soundData) {
     if (this.items.length >= AUDIO_CONFIG.MAX_QUEUE_SIZE) {
       throw new Error("Queue is full");
@@ -37,10 +29,6 @@ export class Queue {
     return queueItem;
   }
 
-  /**
-   * Gets the next item from the queue.
-   * @returns {Object|null} The next queue item, or null if empty.
-   */
   next() {
     if (this.items.length === 0) {
       return null;
@@ -50,11 +38,6 @@ export class Queue {
     return this.currentItem;
   }
 
-  /**
-   * Removes a specific item from the queue by ID.
-   * @param {string} queueId - The ID of the queue item to remove.
-   * @returns {Object|null} The removed item, or null if not found.
-   */
   remove(queueId) {
     const index = this.items.findIndex((item) => item.id === queueId);
     if (index !== -1) {
@@ -65,9 +48,6 @@ export class Queue {
     return null;
   }
 
-  /**
-   * Clear entire queue
-   */
   clear() {
     const count = this.items.length;
     this.items = [];
@@ -78,9 +58,6 @@ export class Queue {
     return count;
   }
 
-  /**
-   * Get current queue status
-   */
   getStatus() {
     return {
       current: this.currentItem,
@@ -93,18 +70,10 @@ export class Queue {
     };
   }
 
-  /**
-   * Checks if the queue is empty.
-   * @returns {boolean} True if empty, false otherwise.
-   */
   isEmpty() {
     return this.items.length === 0;
   }
 
-  /**
-   * Gets the queue length.
-   * @returns {number} The number of items in the queue.
-   */
   size() {
     return this.items.length;
   }

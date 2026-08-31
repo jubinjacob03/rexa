@@ -12,11 +12,6 @@ const supabase = createClient(config.supabase.url, config.supabase.serviceKey, {
   },
 });
 
-/**
- * Fetches sound metadata from the database, retrying transient failures.
- * @param {string} soundId
- * @returns {Promise<object|null>} The sound row, or null if not found/unavailable.
- */
 export async function getSoundById(soundId) {
   try {
     return await withRetry(async () => {
@@ -34,16 +29,6 @@ export async function getSoundById(soundId) {
   }
 }
 
-/**
- * Logs a playback event to the database.
- * @param {string} soundId - The ID of the sound.
- * @param {string} guildId - The ID of the guild.
- * @param {string} channelId - The ID of the channel.
- * @param {string|null} channelName - The name of the channel.
- * @param {string} userId - The ID of the user.
- * @param {string} username - The username of the user.
- * @returns {Promise<void>}
- */
 export async function logPlayback(
   soundId,
   guildId,
@@ -68,30 +53,6 @@ export async function logPlayback(
     log.info(`Logged playback for sound ${soundId}`);
   } catch (error) {
     log.error("Failed to log playback:", error);
-  }
-}
-
-/**
- * Gets all public sounds from the database.
- * @param {number} [limit=100] - The maximum number of sounds to fetch.
- * @param {number} [offset=0] - The offset for pagination.
- * @returns {Promise<Array>} An array of sound objects.
- */
-export async function getAllSounds(limit = 100, offset = 0) {
-  try {
-    return await withRetry(async () => {
-      const { data, error } = await supabase
-        .from("sounds")
-        .select("*")
-        .eq("is_public", true)
-        .order("play_count", { ascending: false })
-        .range(offset, offset + limit - 1);
-      if (error) throw error;
-      return data || [];
-    });
-  } catch (error) {
-    log.error("Failed to fetch sounds:", error);
-    return [];
   }
 }
 

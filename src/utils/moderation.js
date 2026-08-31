@@ -1,23 +1,13 @@
 import config from "../../config.js";
 import { PermissionFlagsBits } from "discord.js";
+import { BoundedMap } from "./resilience.js";
 
 let client = null;
 
-/**
- * Sets up the moderation tools with the Discord client.
- * @param {import('discord.js').Client} discordClient - The Discord client instance.
- */
 export function setupModerationTools(discordClient) {
   client = discordClient;
 }
 
-/**
- * Checks if a user has a specific moderation permission level.
- * @param {import('discord.js').Guild} guild - The Discord guild.
- * @param {string} userId - The ID of the user to check.
- * @param {string} level - The required permission level ('owner' or 'mod').
- * @returns {Promise<boolean>} True if the user has the required permission, false otherwise.
- */
 export async function checkModerationPermission(guild, userId, level) {
   if (!userId) return false;
   const member = await guild.members
@@ -34,7 +24,10 @@ export async function checkModerationPermission(guild, userId, level) {
   if (level === "mod") {
     if (isOwner) return true;
     if (member.permissions.has(PermissionFlagsBits.Administrator)) return true;
-    if (config.administratorRoleId && member.roles.cache.has(config.administratorRoleId))
+    if (
+      config.administratorRoleId &&
+      member.roles.cache.has(config.administratorRoleId)
+    )
       return true;
     if (
       config.moderatorRoleId &&
@@ -45,12 +38,6 @@ export async function checkModerationPermission(guild, userId, level) {
   return false;
 }
 
-/**
- * Resolves a guild member by their name, nickname, or display name.
- * @param {import('discord.js').Guild} guild - The Discord guild.
- * @param {string} targetName - The name to search for.
- * @returns {import('discord.js').GuildMember|undefined} The resolved member, or undefined if not found.
- */
 export function resolveMemberByName(guild, targetName) {
   const q = (targetName || "").toLowerCase();
   if (!q) return null;
@@ -63,23 +50,12 @@ export function resolveMemberByName(guild, targetName) {
   );
 }
 
-/**
- * Resolves a role by its name.
- * @param {import('discord.js').Guild} guild - The Discord guild.
- * @param {string} roleName - The name of the role to search for.
- * @returns {import('discord.js').Role|undefined} The resolved role, or undefined if not found.
- */
 export function resolveRoleByName(guild, roleName) {
   const rq = (roleName || "").toLowerCase();
   if (!rq) return null;
   return guild.roles.cache.find((r) => r.name.toLowerCase().includes(rq));
 }
 
-/**
- * Validates that the target member is valid and not the bot itself.
- * @param {import('discord.js').GuildMember} member - The target member.
- * @throws {Error} If the member is invalid or is the bot.
- */
 function validateTarget(member) {
   if (!member) throw new Error("Target member not found in this server.");
   if (client && member.id === client.user.id) {
@@ -119,12 +95,6 @@ async function validateBotCanManageRole(guild, role) {
   }
 }
 
-/**
- * Server-mutes a member in voice channels.
- * @param {import('discord.js').GuildMember} member - The member to mute.
- * @param {string} [reason="Requested via Shantha"] - The reason for muting.
- * @returns {Promise<string>} A success message.
- */
 export async function voiceMute(member, reason = "Requested via Shantha") {
   validateTarget(member);
   await validateBotCanManageMember(member, PermissionFlagsBits.MuteMembers);
@@ -135,12 +105,6 @@ export async function voiceMute(member, reason = "Requested via Shantha") {
   return `${member.displayName} has been server-muted in voice.`;
 }
 
-/**
- * Server-unmutes a member in voice channels.
- * @param {import('discord.js').GuildMember} member - The member to unmute.
- * @param {string} [reason="Requested via Shantha"] - The reason for unmuting.
- * @returns {Promise<string>} A success message.
- */
 export async function voiceUnmute(member, reason = "Requested via Shantha") {
   validateTarget(member);
   await validateBotCanManageMember(member, PermissionFlagsBits.MuteMembers);
@@ -151,12 +115,6 @@ export async function voiceUnmute(member, reason = "Requested via Shantha") {
   return `${member.displayName} has been server-unmuted.`;
 }
 
-/**
- * Server-deafens a member in voice channels.
- * @param {import('discord.js').GuildMember} member - The member to deafen.
- * @param {string} [reason="Requested via Shantha"] - The reason for deafening.
- * @returns {Promise<string>} A success message.
- */
 export async function voiceDeafen(member, reason = "Requested via Shantha") {
   validateTarget(member);
   await validateBotCanManageMember(member, PermissionFlagsBits.DeafenMembers);
@@ -167,12 +125,6 @@ export async function voiceDeafen(member, reason = "Requested via Shantha") {
   return `${member.displayName} has been server-deafened.`;
 }
 
-/**
- * Server-undeafens a member in voice channels.
- * @param {import('discord.js').GuildMember} member - The member to undeafen.
- * @param {string} [reason="Requested via Shantha"] - The reason for undeafening.
- * @returns {Promise<string>} A success message.
- */
 export async function voiceUndeafen(member, reason = "Requested via Shantha") {
   validateTarget(member);
   await validateBotCanManageMember(member, PermissionFlagsBits.DeafenMembers);
@@ -183,13 +135,6 @@ export async function voiceUndeafen(member, reason = "Requested via Shantha") {
   return `${member.displayName} has been server-undeafened.`;
 }
 
-/**
- * Times out a member.
- * @param {import('discord.js').GuildMember} member - The member to timeout.
- * @param {number} [durationMinutes=5] - The duration of the timeout in minutes.
- * @param {string} [reason="Requested via Shantha"] - The reason for the timeout.
- * @returns {Promise<string>} A success message.
- */
 export async function timeout(
   member,
   durationMinutes = 5,
@@ -202,12 +147,6 @@ export async function timeout(
   return `${member.displayName} has been timed out for ${Math.round(ms / 60000)} minute(s).`;
 }
 
-/**
- * Removes a timeout from a member.
- * @param {import('discord.js').GuildMember} member - The member to remove the timeout from.
- * @param {string} [reason="Requested via Shantha"] - The reason for removing the timeout.
- * @returns {Promise<string>} A success message.
- */
 export async function removeTimeout(member, reason = "Requested via Shantha") {
   validateTarget(member);
   await validateBotCanManageMember(member, PermissionFlagsBits.ModerateMembers);
@@ -215,12 +154,6 @@ export async function removeTimeout(member, reason = "Requested via Shantha") {
   return `${member.displayName}'s timeout has been removed.`;
 }
 
-/**
- * Kicks a member from the server.
- * @param {import('discord.js').GuildMember} member - The member to kick.
- * @param {string} [reason="Requested via Shantha"] - The reason for kicking.
- * @returns {Promise<string>} A success message.
- */
 export async function kick(member, reason = "Requested via Shantha") {
   validateTarget(member);
   await validateBotCanManageMember(member, PermissionFlagsBits.KickMembers);
@@ -228,13 +161,6 @@ export async function kick(member, reason = "Requested via Shantha") {
   return `${member.displayName} has been kicked from the server.`;
 }
 
-/**
- * Bans a member from the server.
- * @param {import('discord.js').GuildMember} member - The member to ban.
- * @param {number} [deleteDays=0] - The number of days of messages to delete.
- * @param {string} [reason="Requested via Shantha"] - The reason for banning.
- * @returns {Promise<string>} A success message.
- */
 export async function ban(
   member,
   deleteDays = 0,
@@ -249,13 +175,6 @@ export async function ban(
   return `${member.displayName} has been banned from the server.`;
 }
 
-/**
- * Changes a member's nickname.
- * @param {import('discord.js').GuildMember} member - The member whose nickname to change.
- * @param {string|null} nickname - The new nickname, or null to reset.
- * @param {string} [reason="Requested via Shantha"] - The reason for changing the nickname.
- * @returns {Promise<string>} A success message.
- */
 export async function changeNickname(
   member,
   nickname,
@@ -269,13 +188,6 @@ export async function changeNickname(
     : `${member.displayName}'s nickname has been reset.`;
 }
 
-/**
- * Changes the bot's nickname in the server.
- * @param {import('discord.js').Guild} guild - The Discord guild.
- * @param {string|null} nickname - The new nickname, or null to reset.
- * @param {string} [reason="Requested via Shantha"] - The reason for changing the nickname.
- * @returns {Promise<string>} A success message.
- */
 export async function changeBotNickname(
   guild,
   nickname,
@@ -291,14 +203,6 @@ export async function changeBotNickname(
     : "My nickname has been reset.";
 }
 
-/**
- * Adds a role to a member.
- * @param {import('discord.js').Guild} guild - The Discord guild.
- * @param {import('discord.js').GuildMember} member - The member to add the role to.
- * @param {string} roleName - The name of the role to add.
- * @param {string} [reason="Requested via Shantha"] - The reason for adding the role.
- * @returns {Promise<string>} A success message.
- */
 export async function addRole(
   guild,
   member,
@@ -323,14 +227,6 @@ export async function addRole(
   return `The "${role.name}" role has been added to ${member.displayName}.`;
 }
 
-/**
- * Removes a role from a member.
- * @param {import('discord.js').Guild} guild - The Discord guild.
- * @param {import('discord.js').GuildMember} member - The member to remove the role from.
- * @param {string} roleName - The name of the role to remove.
- * @param {string} [reason="Requested via Shantha"] - The reason for removing the role.
- * @returns {Promise<string>} A success message.
- */
 export async function removeRole(
   guild,
   member,
@@ -353,4 +249,67 @@ export async function removeRole(
 
   await member.roles.remove(role, reason);
   return `The "${role.name}" role has been removed from ${member.displayName}.`;
+}
+
+export async function unban(guild, userId, reason = "Requested via Shantha") {
+  const me = guild.members.me ?? (await guild.members.fetchMe());
+  if (!me.permissions.has(PermissionFlagsBits.BanMembers)) {
+    throw new Error("I don't have the Ban Members permission.");
+  }
+  const existingBan = await guild.bans.fetch(userId).catch(() => null);
+  if (!existingBan) {
+    throw new Error("That user is not banned.");
+  }
+  await guild.bans.remove(userId, reason);
+  return `${existingBan.user?.tag ?? userId} has been unbanned.`;
+}
+
+export function isOwnerActor(actor) {
+  if (!actor) return false;
+  return (
+    actor.id === actor.guild.ownerId ||
+    (config.ownerRoleId && actor.roles.cache.has(config.ownerRoleId))
+  );
+}
+
+export function checkActorCanModerateTarget(actor, target) {
+  if (!actor || !target) {
+    return { ok: false, reason: "Invalid moderator or target." };
+  }
+  if (actor.id === target.id) {
+    return { ok: false, reason: "You can't moderate yourself." };
+  }
+  if (target.id === target.guild.ownerId) {
+    return { ok: false, reason: "The server owner can't be moderated." };
+  }
+  if (isOwnerActor(actor)) return { ok: true };
+  if (target.roles.highest.comparePositionTo(actor.roles.highest) >= 0) {
+    return {
+      ok: false,
+      reason:
+        "You can't moderate a member whose top role is equal to or higher than yours.",
+    };
+  }
+  return { ok: true };
+}
+
+const MOD_ACTION_LIMIT = 8;
+const MOD_ACTION_WINDOW_MS = 60 * 1000;
+const _actorActionLog = new BoundedMap({
+  maxSize: 2000,
+  ttlMs: 5 * 60 * 1000,
+});
+
+export function checkModeratorCooldown(actor) {
+  if (isOwnerActor(actor)) return { ok: true };
+  const now = Date.now();
+  const recent = (_actorActionLog.get(actor.id) || []).filter(
+    (t) => now - t < MOD_ACTION_WINDOW_MS,
+  );
+  if (recent.length >= MOD_ACTION_LIMIT) {
+    return { ok: false, retryMs: MOD_ACTION_WINDOW_MS - (now - recent[0]) };
+  }
+  recent.push(now);
+  _actorActionLog.set(actor.id, recent);
+  return { ok: true };
 }

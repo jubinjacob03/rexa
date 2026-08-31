@@ -33,6 +33,12 @@ function checkAiRateLimit(userId) {
   return true;
 }
 
+function refundAiRateLimit(userId) {
+  const key = getAiUsageKey(userId);
+  const count = aiUsage.get(key) || 0;
+  if (count > 0) aiUsage.set(key, count - 1);
+}
+
 setInterval(
   () => {
     const today = new Date().toISOString().slice(0, 10);
@@ -41,20 +47,10 @@ setInterval(
     }
   },
   60 * 60 * 1000,
-);
+).unref();
 
-/**
- * Per-user queue: prevents concurrent processing for the same user
- * @type {Map<string, Promise<void>>}
- */
 const userQueues = new Map();
 
-/**
- * Enqueues a function for a specific user.
- * @param {string} userId - The ID of the user.
- * @param {Function} fn - The function to enqueue.
- * @returns {Promise<void>}
- */
 function enqueueForUser(userId, fn) {
   const prev = userQueues.get(userId) || Promise.resolve();
   const next = prev.then(fn, fn);
@@ -65,17 +61,24 @@ function enqueueForUser(userId, fn) {
   return next;
 }
 
-/**
- * Handles the MessageCreate event.
- * @module events/messageCreate
- */
+const MAX_CHUNK_LENGTH = 3800;
+
+function chunkResponse(text, size = MAX_CHUNK_LENGTH) {
+  const chunks = [];
+  let remaining = text;
+  while (remaining.length > size) {
+    let cut = remaining.lastIndexOf("\n", size);
+    if (cut < size * 0.6) cut = remaining.lastIndexOf(" ", size);
+    if (cut < size * 0.6) cut = size;
+    chunks.push(remaining.slice(0, cut));
+    remaining = remaining.slice(cut).replace(/^\s+/, "");
+  }
+  if (remaining) chunks.push(remaining);
+  return chunks;
+}
+
 export default {
   name: Events.MessageCreate,
-  /**
-   * Executes the event handler.
-   * @param {import("discord.js").Message} message - The created message.
-   * @returns {Promise<void>}
-   */
   async execute(message) {
     if (message.channel.id === ANNOUNCEMENTS_CHANNEL) {
       const isOwner = message.guild?.ownerId === message.author.id;
@@ -203,15 +206,18 @@ export default {
           );
 
           const safeReply = async (payload) => {
+            const guarded =
+              typeof payload === "string"
+                ? { content: payload, allowedMentions: { parse: ["users"] } }
+                : { allowedMentions: { parse: ["users"] }, ...payload };
             try {
-              return await message.reply(payload);
+              return await message.reply(guarded);
             } catch (err) {
-              if (err.code === 50035) {
-                return await message.channel.send(
-                  typeof payload === "string" ? payload : payload,
-                );
+              try {
+                return await message.channel.send(guarded);
+              } catch {
+                throw err;
               }
-              throw err;
             }
           };
 
@@ -242,17 +248,17 @@ export default {
                 ),
               );
               return;
-            } else if (response.length <= 4000) {
+            } else if (response.length <= MAX_CHUNK_LENGTH) {
               await safeReply(eSend(null, response));
             } else {
-              const chunks = response.match(/[\s\S]{1,4000}/g) || [];
-              for (const chunk of chunks) {
+              for (const chunk of chunkResponse(response)) {
                 await safeReply(eSend(null, chunk));
               }
             }
 
             console.log(`[AI] Responded to ${message.author.tag}`);
           } else {
+            refundAiRateLimit(message.author.id);
             await safeReply(
               eSend(
                 `${i("ERROR")} ᴇʀʀᴏʀ`,
@@ -262,6 +268,7 @@ export default {
             console.error("[AI] Error:", result.error);
           }
         } catch (error) {
+          refundAiRateLimit(message.author.id);
           console.error("[AI] Failed to process message:", error);
           await message
             .reply(

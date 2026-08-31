@@ -15,12 +15,6 @@ export class VoiceManager {
     this.lastActivity = new Map();
   }
 
-  /**
-   * Joins a voice channel, waits for Ready + DAVE epoch, then returns the connection.
-   * @param {import("discord.js").Guild} guild - The guild to join.
-   * @param {import("discord.js").VoiceBasedChannel} channel - The voice channel to join.
-   * @returns {Promise<import("@discordjs/voice").VoiceConnection>} The voice connection.
-   */
   async joinChannel(guild, channel) {
     try {
       const guildId = guild.id;
@@ -114,12 +108,6 @@ export class VoiceManager {
     }
   }
 
-  /**
-   * Sets up event listeners for a voice connection.
-   * @param {import("@discordjs/voice").VoiceConnection} connection - The voice connection.
-   * @param {string} guildId - The ID of the guild.
-   * @private
-   */
   setupConnectionEvents(connection, guildId) {
     connection.on(VoiceConnectionStatus.Disconnected, async () => {
       try {
@@ -146,6 +134,9 @@ export class VoiceManager {
           `[ERROR] Reconnection failed for guild ${guildId}:`,
           error,
         );
+        try {
+          connection.destroy();
+        } catch {}
         this.cleanup(guildId);
       }
     });
@@ -163,10 +154,6 @@ export class VoiceManager {
     });
   }
 
-  /**
-   * Destroys the connection and cleans up all resources for a guild.
-   * @param {string} guildId - The ID of the guild.
-   */
   leaveChannel(guildId) {
     const connection = this.connections.get(guildId);
 
@@ -182,12 +169,6 @@ export class VoiceManager {
     console.log(`[INFO] Left voice channel for guild ${guildId}`);
   }
 
-  /**
-   * Stops any current playback and immediately plays the requested sound.
-   * @param {string} guildId - The ID of the guild.
-   * @param {Object} soundData - The sound data to play.
-   * @returns {Promise<{queued: boolean, playing: boolean}>} The playback status.
-   */
   async playSound(guildId, soundData) {
     const connection = this.connections.get(guildId);
     const player = this.players.get(guildId);
@@ -217,7 +198,6 @@ export class VoiceManager {
     }
   }
 
-  /** @private Called when the player goes idle — advances queue or disconnects on timeout. */
   async handlePlayerIdle(guildId, isTimeout = false) {
     const queue = this.queues.get(guildId);
     const player = this.players.get(guildId);
@@ -249,7 +229,6 @@ export class VoiceManager {
     }
   }
 
-  /** Stop playback and clear the queue. @returns {number} Items cleared. */
   stop(guildId) {
     const player = this.players.get(guildId);
     const queue = this.queues.get(guildId);
@@ -266,26 +245,18 @@ export class VoiceManager {
     return 0;
   }
 
-  /** @returns {Queue} */
   getQueue(guildId) {
     return this.queues.get(guildId);
   }
 
-  /**
-   * Gets the audio player for a guild.
-   * @param {string} guildId - The ID of the guild.
-   * @returns {AudioPlayerManager|undefined} The audio player manager.
-   */
   getPlayer(guildId) {
     return this.players.get(guildId);
   }
 
-  /** @returns {VoiceConnection} */
   getConnection(guildId) {
     return this.connections.get(guildId);
   }
 
-  /** Full playback + queue status snapshot for a guild. */
   getStatus(guildId) {
     const connection = this.connections.get(guildId);
     const player = this.players.get(guildId);
@@ -314,12 +285,10 @@ export class VoiceManager {
     };
   }
 
-  /** @private */
   updateActivity(guildId) {
     this.lastActivity.set(guildId, new Date().toISOString());
   }
 
-  /** @private Destroy player, clear queue, remove connection entry. */
   cleanup(guildId) {
     const player = this.players.get(guildId);
     if (player) {
@@ -338,14 +307,10 @@ export class VoiceManager {
     console.log(`[INFO] Cleaned up resources for guild ${guildId}`);
   }
 
-  /** @returns {string[]} Guild IDs with active connections. */
   getActiveGuilds() {
     return Array.from(this.connections.keys());
   }
 
-  /**
-   * Disconnects from every voice channel (e.g., on shutdown).
-   */
   disconnectAll() {
     console.log("[INFO] Disconnecting from all voice channels");
     const guildIds = Array.from(this.connections.keys());

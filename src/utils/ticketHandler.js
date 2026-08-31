@@ -32,8 +32,6 @@ const log = createLogger("tickets");
 
 const activeTickets = new Set();
 
-/** User IDs with a ticket creation currently in flight, used as a synchronous
- * single-flight lock so a double-click cannot create two tickets. */
 const ticketCreationInProgress = new Set();
 
 async function ensureTicketSetupPermission(interaction) {
@@ -59,11 +57,6 @@ async function ensureTicketSetupPermission(interaction) {
   return false;
 }
 
-/**
- * Handles ticket-related interactions (buttons, modals).
- * @param {import('discord.js').Interaction} interaction - The interaction object.
- * @returns {Promise<void>}
- */
 export async function handleTicketInteraction(interaction) {
   if (
     interaction.isModalSubmit() &&
@@ -515,15 +508,6 @@ export async function handleTicketInteraction(interaction) {
   }
 }
 
-/**
- * Creates a new ticket instance (channel or thread) for a user.
- * @param {import('discord.js').Interaction} interaction - The interaction object.
- * @param {Object} [options={}] - Additional options for the ticket.
- * @param {string} [options.ticketType] - The type of ticket ('text' or 'vc').
- * @param {boolean} [options.aiEnabled] - Whether AI assistance is enabled for this ticket.
- * @param {string} [options.reason] - The reason for opening the ticket.
- * @returns {Promise<void>}
- */
 async function createTicketInstance(interaction, options = {}) {
   const userId = interaction.user.id;
   if (ticketCreationInProgress.has(userId)) {
@@ -544,13 +528,6 @@ async function createTicketInstance(interaction, options = {}) {
   }
 }
 
-/**
- * Creates the ticket channel and welcome message. Always invoked through
- * {@link createTicketInstance}, which serializes concurrent requests per user.
- * @param {import('discord.js').Interaction} interaction
- * @param {Object} [options={}]
- * @returns {Promise<void>}
- */
 async function createTicketInstanceImpl(interaction, options = {}) {
   if (!interaction.deferred && !interaction.replied) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -833,11 +810,6 @@ async function createTicketInstanceImpl(interaction, options = {}) {
   }
 }
 
-/**
- * Closes an active ticket thread or channel.
- * @param {import('discord.js').Interaction} interaction - The interaction object.
- * @returns {Promise<void>}
- */
 async function closeTicketThread(interaction) {
   if (!interaction.deferred && !interaction.replied) {
     await interaction.deferReply();
@@ -981,11 +953,6 @@ async function closeTicketThread(interaction) {
   }
 }
 
-/**
- * Escalates a ticket to human staff.
- * @param {import('discord.js').Interaction} interaction - The interaction object.
- * @returns {Promise<void>}
- */
 async function escalateTicket(interaction) {
   try {
     const thread = interaction.channel;

@@ -1,10 +1,14 @@
 import { Events, AuditLogEvent } from "discord.js";
 import { checkMassBan } from "../utils/automodRunner.js";
+import { loadConfig } from "../utils/automodManager.js";
 
 export default {
   name: Events.GuildBanAdd,
   async execute(ban) {
     if (!ban.guild) return;
+
+    const cfg = await loadConfig();
+    if (!cfg.enabled || !cfg.raid) return;
 
     try {
       const fetchedLogs = await ban.guild.fetchAuditLogs({

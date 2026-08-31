@@ -1,19 +1,14 @@
 import { Events, AuditLogEvent } from "discord.js";
 import { checkChannelDelete } from "../utils/automodRunner.js";
+import { loadConfig } from "../utils/automodManager.js";
 
-/**
- * Handles the ChannelDelete event.
- * @module events/channelDelete
- */
 export default {
   name: Events.ChannelDelete,
-  /**
-   * Executes the event handler.
-   * @param {import("discord.js").GuildChannel} channel - The channel that was deleted.
-   * @returns {Promise<void>}
-   */
   async execute(channel) {
     if (!channel.guild) return;
+
+    const cfg = await loadConfig();
+    if (!cfg.enabled || !cfg.raid) return;
 
     try {
       const fetchedLogs = await channel.guild.fetchAuditLogs({

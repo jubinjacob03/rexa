@@ -1,8 +1,3 @@
-/**
- * @file agent.js
- * @description Core agent logic for processing messages, executing tools, and managing prompts.
- */
-
 import { generateText } from "ai";
 import fs from "fs/promises";
 import path from "path";
@@ -47,12 +42,14 @@ let _cachedPass1Base = null;
 let _cachedPass2Base = null;
 let _model = null;
 
-/**
- * Loads a prompt from the file system, utilizing a cache to avoid repeated reads.
- * @param {string} promptName - The name of the prompt file (without extension).
- * @param {boolean} [useCache=true] - Whether to use the cached prompt if available.
- * @returns {Promise<string>} The content of the prompt.
- */
+function llmCallOptions() {
+  return {
+    temperature: config.model.temperature,
+    maxOutputTokens: config.model.maxTokens,
+    abortSignal: AbortSignal.timeout(config.model.requestTimeoutMs),
+  };
+}
+
 async function loadPrompt(promptName, useCache = true) {
   if (useCache && promptCache.has(promptName)) {
     return promptCache.get(promptName);
@@ -69,20 +66,8 @@ async function loadPrompt(promptName, useCache = true) {
   return content;
 }
 
-/**
- * Filters out disabled tools from the prompt context based on tools.json configuration.
- * @param {string} content - The raw prompt content.
- * @returns {Promise<string>} The filtered prompt content.
- */
 async function filterToolsContext(content) {
-  let toolsConfig;
-  try {
-    const configPath = path.join(__dirname, "tools.json");
-    const fileContent = await fs.readFile(configPath, "utf-8");
-    toolsConfig = JSON.parse(fileContent);
-  } catch {
-    return content;
-  }
+  const toolsConfig = config.agentTools || {};
 
   let filteredContent = content;
 
@@ -105,10 +90,6 @@ async function filterToolsContext(content) {
   return filteredContent;
 }
 
-/**
- * Retrieves the base system prompt without tool definitions.
- * @returns {Promise<string>} The base system prompt.
- */
 async function getSystemPromptWithoutTools() {
   if (_cachedBasePrompt) return _cachedBasePrompt;
   const [personality, master] = await Promise.all([
@@ -120,10 +101,6 @@ async function getSystemPromptWithoutTools() {
   return _cachedBasePrompt;
 }
 
-/**
- * Retrieves the full system prompt including tool definitions.
- * @returns {Promise<string>} The full system prompt.
- */
 async function getSystemPrompt() {
   if (_cachedFullPrompt) return _cachedFullPrompt;
   const [base, toolsCtx] = await Promise.all([
@@ -134,10 +111,6 @@ async function getSystemPrompt() {
   return _cachedFullPrompt;
 }
 
-/**
- * Retrieves the base prompt for the first pass (tool extraction).
- * @returns {Promise<string>} The pass 1 base prompt.
- */
 async function getPass1BasePrompt() {
   if (_cachedPass1Base) return _cachedPass1Base;
   const toolsCtx = await loadPrompt("tools");
@@ -145,10 +118,6 @@ async function getPass1BasePrompt() {
   return _cachedPass1Base;
 }
 
-/**
- * Retrieves the base prompt for the second pass (natural language synthesis).
- * @returns {Promise<string>} The pass 2 base prompt.
- */
 async function getPass2BasePrompt() {
   if (_cachedPass2Base) return _cachedPass2Base;
   const master = await loadPrompt("personality");
@@ -159,11 +128,6 @@ async function getPass2BasePrompt() {
 
 let agentInitialized = false;
 
-/**
- * Initializes the agent, tools, and prompts.
- * @param {object} client - The Discord client instance.
- * @returns {Promise<object>} The initialized agent methods.
- */
 export async function initializeAgent(client) {
   if (agentInitialized) {
     log.info("Already initialized, skipping");
@@ -185,22 +149,9 @@ export async function initializeAgent(client) {
   return { processMessage, executeCommand, getStats };
 }
 
-/**
- * Executes a tool by its name with the provided parameters.
- * @param {string} toolName - The name of the tool to execute.
- * @param {object} params - The parameters for the tool.
- * @returns {Promise<object>} The result of the tool execution.
- */
 async function executeToolByName(toolName, params) {
   try {
-    let toolsConfig = {};
-    try {
-      const configPath = path.join(__dirname, "tools.json");
-      const fileContent = await fs.readFile(configPath, "utf-8");
-      toolsConfig = JSON.parse(fileContent);
-    } catch {}
-
-    if (toolsConfig[toolName] === false) {
+    if (config.agentTools?.[toolName] === false) {
       return {
         success: false,
         error: `Tool ${toolName} is currently disabled by configuration.`,
@@ -232,14 +183,6 @@ async function executeToolByName(toolName, params) {
   }
 }
 
-/**
- * Processes a user message, potentially executing tools and generating a response.
- * @param {string} userId - The ID of the user sending the message.
- * @param {string} guildId - The ID of the guild where the message was sent.
- * @param {string} message - The content of the user's message.
- * @param {string} [username="Unknown"] - The username of the user.
- * @returns {Promise<object>} The result of processing the message, including the response.
- */
 export async function processMessage(
   userId,
   guildId,
@@ -304,7 +247,7 @@ export async function processMessage(
       model,
       system: pass1System,
       messages: pass1Messages,
-      maxTokens: config.model.maxTokens || 1000000,
+      ...llmCallOptions(),
     });
 
     const rawOutput = (pass1.text || "").trim();
@@ -515,7 +458,7 @@ export async function processMessage(
           model,
           system: `${pass2Base}\n\n${userContext}\n\n${ctx}`,
           messages: [...historyMessages, { role: "user", content: message }],
-          maxTokens: config.model.maxTokens || 1000000,
+          ...llmCallOptions(),
         });
       } catch (err) {
         const failedGen = err?.data?.error?.failed_generation;
@@ -546,7 +489,7 @@ export async function processMessage(
                   ...historyMessages,
                   { role: "user", content: message },
                 ],
-                maxTokens: config.model.maxTokens || 1000000,
+                ...llmCallOptions(),
               });
             }
           }
@@ -620,14 +563,6 @@ export async function processMessage(
   }
 }
 
-/**
- * Executes a command using the executeCommand tool.
- * @param {string} command - The command to execute.
- * @param {object} params - The parameters for the command.
- * @param {string} userId - The ID of the user executing the command.
- * @param {string} guildId - The ID of the guild where the command is executed.
- * @returns {Promise<object>} The result of the command execution.
- */
 export async function executeCommand(command, params, userId, guildId) {
   return await tools.executeCommand.execute({
     command,
@@ -637,10 +572,6 @@ export async function executeCommand(command, params, userId, guildId) {
   });
 }
 
-/**
- * Retrieves statistics for the agent's components.
- * @returns {object} The statistics object.
- */
 export function getStats() {
   return {
     knowledgeBase: knowledgeBase.getStats(),
@@ -653,11 +584,6 @@ export function getStats() {
   };
 }
 
-/**
- * Initializes the entire agent system.
- * @param {object} discordClient - The Discord client instance.
- * @returns {Promise<object>} The initialized agent.
- */
 export async function initializeAgentSystem(discordClient) {
   log.info("Initializing...");
 

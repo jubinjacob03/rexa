@@ -8,10 +8,6 @@ import {
 import { eSend } from "../utils/embed.js";
 import { i } from "../utils/icons.js";
 
-/**
- * Command to remove a member from a private voice channel.
- * @module privateVcRemoveCommand
- */
 export default {
   data: new SlashCommandBuilder()
     .setName("private-vc-remove")
@@ -20,11 +16,6 @@ export default {
       o.setName("member").setDescription("Member to remove").setRequired(true),
     ),
 
-  /**
-   * Executes the private-vc-remove command.
-   * @param {import("discord.js").ChatInputCommandInteraction} interaction - The interaction object.
-   * @returns {Promise<void>}
-   */
   async execute(interaction) {
     if (!interaction.deferred && !interaction.replied) {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });

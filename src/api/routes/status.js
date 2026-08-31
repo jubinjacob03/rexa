@@ -3,10 +3,6 @@ import voiceManager from "../../voice/VoiceManager.js";
 
 const router = Router();
 
-/**
- * GET /api/status
- * Returns the overall status of the bot, including voice connections and guild stats.
- */
 router.get("/", async (req, res) => {
   try {
     const client = req.app.get("discordClient");

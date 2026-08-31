@@ -15,12 +15,6 @@ import { ignoredDeletes } from "../events/messageDelete.js";
 const BULK_DELETE_MAX_AGE_MS = 13 * 24 * 60 * 60 * 1000;
 const BATCH_SIZE = 100;
 
-/**
- * Fetches all messages in a channel, optionally after a specific message ID.
- * @param {import("discord.js").TextBasedChannel} channel - The channel to fetch messages from.
- * @param {string|null} afterId - The message ID to fetch messages after.
- * @returns {Promise<import("discord.js").Message[]>}
- */
 async function fetchAllMessages(channel, afterId = null) {
   const all = [];
   let lastId = null;
@@ -47,12 +41,6 @@ async function fetchAllMessages(channel, afterId = null) {
   return all;
 }
 
-/**
- * Deletes a list of messages from a channel.
- * @param {import("discord.js").TextBasedChannel} channel - The channel to delete messages from.
- * @param {import("discord.js").Message[]} messages - The messages to delete.
- * @returns {Promise<{deleted: number, failed: number}>}
- */
 async function deleteMessages(channel, messages) {
   let deleted = 0;
   let failed = 0;
@@ -102,10 +90,6 @@ async function deleteMessages(channel, messages) {
   return { deleted, failed };
 }
 
-/**
- * Command to purge messages in a channel.
- * @module purgeCommand
- */
 export default {
   data: new SlashCommandBuilder()
     .setName("purge")
@@ -152,11 +136,6 @@ export default {
         .setRequired(false),
     ),
 
-  /**
-   * Executes the purge command.
-   * @param {import("discord.js").ChatInputCommandInteraction} interaction - The interaction object.
-   * @returns {Promise<void>}
-   */
   async execute(interaction) {
     const replyFn =
       interaction.deferred || interaction.replied

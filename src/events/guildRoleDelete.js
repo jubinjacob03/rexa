@@ -1,10 +1,14 @@
 import { Events, AuditLogEvent } from "discord.js";
 import { checkRoleDelete } from "../utils/automodRunner.js";
+import { loadConfig } from "../utils/automodManager.js";
 
 export default {
   name: Events.GuildRoleDelete,
   async execute(role) {
     if (!role.guild) return;
+
+    const cfg = await loadConfig();
+    if (!cfg.enabled || !cfg.raid) return;
 
     try {
       const fetchedLogs = await role.guild.fetchAuditLogs({

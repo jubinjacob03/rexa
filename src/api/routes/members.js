@@ -3,12 +3,6 @@ import config from "../../../config.js";
 
 const router = Router();
 
-/**
- * GET /api/members
- * Retrieves a list of members or a specific member's roles.
- * If `userId` is provided, returns the member's roles.
- * Otherwise, returns a lightweight list of members.
- */
 router.get("/", async (req, res) => {
   try {
     const client = req.app.get("discordClient");

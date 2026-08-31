@@ -81,13 +81,6 @@ async function saveData(data) {
   _cacheTTL = Date.now() + CACHE_MS;
 }
 
-/**
- * Serializes read-modify-write operations on the verification record so concurrent
- * callers cannot clobber each other (last-write-wins). Each mutation loads the
- * latest data, applies the mutator, then persists it, strictly one at a time.
- * @param {(data: typeof defaultData) => void | Promise<void>} mutator
- * @returns {Promise<void>}
- */
 function mutate(mutator) {
   const next = _writeChain.then(async () => {
     const data = await loadData();
@@ -103,15 +96,6 @@ export async function hasPendingRequest(userId) {
   return userId in data.pendingRequests;
 }
 
-/**
- * Creates a new verification request.
- * @param {string} userId - The ID of the user.
- * @param {string} username - The username of the user.
- * @param {string} requestedRole - The name of the requested role.
- * @param {string} requestedRoleId - The ID of the requested role.
- * @param {string} approvalMessageId - The ID of the approval message.
- * @returns {Promise<void>}
- */
 export async function createRequest(
   userId,
   username,
@@ -142,17 +126,6 @@ export async function removeRequest(userId) {
   });
 }
 
-/**
- * Logs an approval or rejection action.
- * @param {string} userId - The ID of the user.
- * @param {string} username - The username of the user.
- * @param {string} requestedRole - The requested role.
- * @param {string} approvedBy - The username of the approver.
- * @param {string} approvedById - The ID of the approver.
- * @param {string|null} nickname - The assigned nickname, if any.
- * @param {string} status - The status (approved/rejected).
- * @returns {Promise<void>}
- */
 export async function logApproval(
   userId,
   username,

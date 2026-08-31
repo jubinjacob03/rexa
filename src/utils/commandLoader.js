@@ -11,13 +11,6 @@ export const REGISTERED_COMMANDS = [
   "private-vc-remove",
 ];
 
-/**
- * Loads command modules from a directory.
- * @param {string} [commandsDir="../commands"] - The directory containing the commands.
- * @param {Object} [options={}] - Options for loading commands.
- * @param {string[]} [options.allowlist] - A list of command names to allow.
- * @returns {Promise<Array>} An array of loaded command modules.
- */
 export async function loadCommands(commandsDir = "../commands", options = {}) {
   const currentDir = dirname(fileURLToPath(import.meta.url));
   const commandsPath = join(currentDir, commandsDir);

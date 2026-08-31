@@ -1,10 +1,6 @@
-/**
- * @file executor-tools.js
- * @description Executor Tools - Predefined Flows, HTTP Calls, Web Fetch & Search. Handles external interactions and automated workflows.
- */
-
 import { tool } from "ai";
 import { z } from "zod";
+import { BoundedMap } from "../../utils/resilience.js";
 
 const HTTP_CONFIG = {
   timeout: 10000,
@@ -16,21 +12,17 @@ const HTTP_CONFIG = {
   rateLimit: 60,
 };
 
-const rateLimitTracker = new Map();
+const rateLimitTracker = new BoundedMap({
+  maxSize: 500,
+  ttlMs: 5 * 60 * 1000,
+});
 
 let _discordClient = null;
 
-/**
- * Initializes the executor with the Discord client.
- * @param {object} client - The Discord client instance.
- */
 export function initializeExecutor(client) {
   _discordClient = client;
 }
 
-/**
- * Predefined workflow definitions.
- */
 const WORKFLOWS = {
   "welcome-new-member": {
     description: "Welcome a new member with verification prompt",
@@ -86,48 +78,72 @@ const WORKFLOWS = {
   },
 };
 
-/**
- * Checks if a domain is allowed based on configuration.
- * @param {string} url - The URL to check.
- * @returns {boolean} True if the domain is allowed, false otherwise.
- */
+function isPrivateHost(hostname) {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+
+  if (
+    host === "localhost" ||
+    host === "0.0.0.0" ||
+    host.endsWith(".localhost") ||
+    host.endsWith(".local") ||
+    host.endsWith(".internal")
+  ) {
+    return true;
+  }
+
+  if (host.includes(":")) {
+    return (
+      host === "::1" ||
+      host === "::" ||
+      host.startsWith("fe80:") ||
+      host.startsWith("fc") ||
+      host.startsWith("fd") ||
+      host.startsWith("::ffff:")
+    );
+  }
+
+  const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (ipv4) {
+    const a = Number(ipv4[1]);
+    const b = Number(ipv4[2]);
+    if (a === 0 || a === 10 || a === 127) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 100 && b >= 64 && b <= 127) return true;
+  }
+
+  return false;
+}
+
 function isAllowedDomain(url) {
+  let urlObj;
   try {
-    const urlObj = new URL(url);
-    const hostname = urlObj.hostname.toLowerCase();
-
-    if (
-      hostname === "localhost" ||
-      hostname === "127.0.0.1" ||
-      hostname === "0.0.0.0"
-    ) {
-      return process.env.NODE_ENV === "development";
-    }
-    if (
-      hostname.startsWith("192.168.") ||
-      hostname.startsWith("10.") ||
-      hostname.startsWith("172.")
-    ) {
-      return process.env.NODE_ENV === "development";
-    }
-
-    if (HTTP_CONFIG.blockedDomains.length > 0) {
-      const isBlocked = HTTP_CONFIG.blockedDomains.some(
-        (domain) => hostname === domain || hostname.endsWith(`.${domain}`),
-      );
-      if (isBlocked) return false;
-    }
-    return HTTP_CONFIG.allowAllDomains;
+    urlObj = new URL(url);
   } catch {
     return false;
   }
+
+  if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
+    return false;
+  }
+
+  const hostname = urlObj.hostname.toLowerCase();
+
+  if (isPrivateHost(hostname)) {
+    return process.env.NODE_ENV === "development";
+  }
+
+  if (HTTP_CONFIG.blockedDomains.length > 0) {
+    const isBlocked = HTTP_CONFIG.blockedDomains.some(
+      (domain) => hostname === domain || hostname.endsWith(`.${domain}`),
+    );
+    if (isBlocked) return false;
+  }
+
+  return HTTP_CONFIG.allowAllDomains;
 }
 
-/**
- * Checks the rate limit for a given URL.
- * @param {string} url - The URL to check.
- * @returns {object} An object indicating if the request is allowed and the reset time if not.
- */
 function checkRateLimit(url) {
   try {
     const urlObj = new URL(url);
@@ -135,15 +151,11 @@ function checkRateLimit(url) {
     const now = Date.now();
     const minute = 60000;
 
-    if (!rateLimitTracker.has(domain)) {
-      rateLimitTracker.set(domain, []);
-    }
-
-    const requests = rateLimitTracker.get(domain);
+    const requests = rateLimitTracker.get(domain) || [];
     const recentRequests = requests.filter((time) => now - time < minute);
-    rateLimitTracker.set(domain, recentRequests);
 
     if (recentRequests.length >= HTTP_CONFIG.rateLimit) {
+      rateLimitTracker.set(domain, recentRequests);
       return {
         allowed: false,
         resetIn: minute - (now - recentRequests[0]),
@@ -151,19 +163,13 @@ function checkRateLimit(url) {
     }
 
     recentRequests.push(now);
+    rateLimitTracker.set(domain, recentRequests);
     return { allowed: true };
   } catch {
     return { allowed: true };
   }
 }
 
-/**
- * Fetches a URL with a timeout.
- * @param {string} url - The URL to fetch.
- * @param {object} options - Fetch options.
- * @param {number} timeout - The timeout in milliseconds.
- * @returns {Promise<Response>} The fetch response.
- */
 async function fetchWithTimeout(url, options, timeout) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -172,6 +178,7 @@ async function fetchWithTimeout(url, options, timeout) {
     const response = await fetch(url, {
       ...options,
       signal: controller.signal,
+      redirect: "manual",
     });
     clearTimeout(timeoutId);
     return response;
@@ -184,12 +191,27 @@ async function fetchWithTimeout(url, options, timeout) {
   }
 }
 
-/**
- * Executes an HTTP request.
- * @param {object} options - The request options.
- * @param {number} [retryCount=0] - The current retry count.
- * @returns {Promise<object>} The result of the HTTP request.
- */
+const REDIRECT_STATUS = new Set([301, 302, 303, 307, 308]);
+
+async function safeFetch(url, options, timeout, maxRedirects = 5) {
+  let currentUrl = url;
+  for (let hop = 0; ; hop += 1) {
+    if (!isAllowedDomain(currentUrl)) {
+      throw new Error(
+        `Domain blocked or not allowed: ${new URL(currentUrl).hostname}`,
+      );
+    }
+    const response = await fetchWithTimeout(currentUrl, options, timeout);
+    if (!REDIRECT_STATUS.has(response.status)) return response;
+    if (hop >= maxRedirects) {
+      throw new Error("Too many redirects");
+    }
+    const location = response.headers.get("location");
+    if (!location) return response;
+    currentUrl = new URL(location, currentUrl).toString();
+  }
+}
+
 export async function executeHttpRequest(options, retryCount = 0) {
   const {
     url,
@@ -252,7 +274,7 @@ export async function executeHttpRequest(options, retryCount = 0) {
       `[EXECUTOR] ${method.toUpperCase()} ${url} (attempt ${retryCount + 1})`,
     );
 
-    const response = await fetchWithTimeout(url, requestOptions, timeout);
+    const response = await safeFetch(url, requestOptions, timeout);
 
     const contentLength = response.headers.get("content-length");
     if (
@@ -306,11 +328,6 @@ export async function executeHttpRequest(options, retryCount = 0) {
   }
 }
 
-/**
- * Fetches and parses a web page.
- * @param {string} url - The URL of the web page to fetch.
- * @returns {Promise<object>} The parsed web page content.
- */
 export async function fetchWebPage(url) {
   try {
     const result = await executeHttpRequest({
@@ -380,13 +397,6 @@ export async function fetchWebPage(url) {
   }
 }
 
-/**
- * Performs a web search using Tavily or DuckDuckGo.
- * @param {string} query - The search query.
- * @param {object} [options={}] - Search options.
- * @param {number} [options.maxResults=5] - Maximum number of results.
- * @returns {Promise<object>} The search results.
- */
 export async function webSearch(query, options = {}) {
   const { maxResults = 5 } = options;
   const tavilyKey = process.env.TAVILY_API_KEY;
@@ -474,12 +484,6 @@ export async function webSearch(query, options = {}) {
   }
 }
 
-/**
- * Executes a predefined workflow.
- * @param {string} workflowName - The name of the workflow to execute.
- * @param {object} [context={}] - Context data for the workflow.
- * @returns {Promise<object>} The result of the workflow execution.
- */
 export async function executeWorkflow(workflowName, context = {}) {
   const workflow = WORKFLOWS[workflowName];
 
@@ -546,9 +550,6 @@ export async function executeWorkflow(workflowName, context = {}) {
   }
 }
 
-/**
- * HTTP Request Tool for AI agent.
- */
 export const httpRequestTool = tool({
   description: `Make HTTP API requests to any external service or website. Supports GET, POST, PUT, DELETE, PATCH.
 Works with any public URL including APIs, websites, and web services.
@@ -579,9 +580,6 @@ Use for: fetching data, accessing APIs, retrieving web content, and more.`,
   },
 });
 
-/**
- * Web Fetch Tool for AI agent.
- */
 export const webFetchTool = tool({
   description: `Fetch and extract text content from any web page or API endpoint. Returns cleaned text without HTML tags.
 Works with any public URL - websites, articles, documentation, APIs, and more.
@@ -599,9 +597,6 @@ Automatically handles both HTML pages and JSON responses.`,
   },
 });
 
-/**
- * Web Search Tool for AI agent.
- */
 export const webSearchTool = tool({
   description: `Search the web for live, real-time, or factually grounded information.
 ALWAYS use this when you are not 100% certain your answer is current and accurate. Never guess — search first.`,
@@ -619,9 +614,6 @@ ALWAYS use this when you are not 100% certain your answer is current and accurat
   },
 });
 
-/**
- * Workflow Executor Tool for AI agent.
- */
 export const workflowTool = tool({
   description: `Execute predefined workflows for common tasks.
 Available workflows: ${Object.keys(WORKFLOWS).join(", ")}.
@@ -642,35 +634,12 @@ Each workflow runs a sequence of automated steps.`,
   },
 });
 
-/**
- * Gets available workflows.
- * @returns {Array<object>} The available workflows.
- */
 export function getWorkflows() {
   return Object.entries(WORKFLOWS).map(([name, workflow]) => ({
     name,
     description: workflow.description,
     steps: workflow.steps.length,
   }));
-}
-
-/**
- * Gets allowed domains.
- * @returns {Array<string>} The allowed domains.
- */
-export function getAllowedDomains() {
-  return HTTP_CONFIG.allowedDomains;
-}
-
-/**
- * Adds an allowed domain.
- * @param {string} domain - The domain to add.
- */
-export function addAllowedDomain(domain) {
-  if (!HTTP_CONFIG.allowedDomains.includes(domain)) {
-    HTTP_CONFIG.allowedDomains.push(domain);
-    console.log(`[EXECUTOR] Added allowed domain: ${domain}`);
-  }
 }
 
 export default {
@@ -684,6 +653,4 @@ export default {
   webSearchTool,
   workflowTool,
   getWorkflows,
-  getAllowedDomains,
-  addAllowedDomain,
 };

@@ -35,21 +35,9 @@ export async function initIcons(client) {
   console.log(`[ICONS] ${loaded}/${total} custom icons ready`);
 }
 
-/**
- * Get an icon string by key.
- * Returns the resolved custom emoji if loaded, otherwise the unicode fallback.
- * @param {string} key - Icon key e.g. "SUCCESS", "ERROR", "TICKET"
- * @returns {string}
- */
 export function icon(key) {
   if (resolved[key] !== undefined) return resolved[key];
   return iconMap[key]?.fallback ?? "";
 }
 
-/**
- * Convenience: icon(key) + " " — handy for embed titles.
- * e.g.  `${i("SUCCESS")}Done` → "✅ Done"
- * @param {string} key
- * @returns {string}
- */
 export const i = (key) => `${icon(key)} `;

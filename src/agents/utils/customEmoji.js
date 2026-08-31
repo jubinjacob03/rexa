@@ -1,8 +1,3 @@
-/**
- * @file customEmoji.js
- * @description Custom emoji utilities for Shantha Discord bot. Loads custom emojis from Discord server and provides fallback to unicode. Based on the Zyra/Remani implementation.
- */
-
 import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
@@ -43,21 +38,11 @@ export async function initEmojis(client) {
   } catch {}
 }
 
-/**
- * Get emoji string by key. Returns custom emoji if available, unicode fallback otherwise.
- * @param {string} key - Emoji key (e.g., "PLAY", "PAUSE", "SUCCESS")
- * @returns {string} Emoji string
- */
 export function e(key) {
   if (resolved[key]) return resolved[key].full;
   return UNICODE[key] || "";
 }
 
-/**
- * Get emoji object for button components.
- * @param {string} key - Emoji key
- * @returns {{ id: string, name: string, animated: boolean } | string}
- */
 export function btn(key) {
   if (resolved[key]) {
     return {
@@ -69,10 +54,6 @@ export function btn(key) {
   return UNICODE[key] || "❓";
 }
 
-/**
- * Check if custom emojis are loaded.
- * @returns {boolean}
- */
 export function hasCustomEmojis() {
   return Object.keys(resolved).length > 0;
 }

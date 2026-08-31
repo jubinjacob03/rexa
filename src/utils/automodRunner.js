@@ -1,8 +1,9 @@
 import { generateObject } from "ai";
 import { z } from "zod";
 import config, { getLanguageModel } from "../agents/config.js";
+import rootConfig from "../../config.js";
 import * as modTools from "./moderation.js";
-import { loadConfig } from "./automodManager.js";
+import { loadConfig, getConfigSync } from "./automodManager.js";
 import { EMBED_COLOR, addFooter } from "./embed.js";
 import { i, icon } from "./icons.js";
 import {
@@ -13,17 +14,9 @@ import {
   SeparatorBuilder,
   SeparatorSpacingSize,
   MessageFlags,
+  PermissionFlagsBits,
 } from "discord.js";
 import { ignoredDeletes } from "../events/messageDelete.js";
-/**
- * Sends an action embed to the specified channel.
- * @param {import('discord.js').TextChannel} channel - The channel to send the embed to.
- * @param {string} userId - The ID of the user the action was taken against.
- * @param {string} action - The action taken (e.g., 'timeout', 'kick', 'ban').
- * @param {string} reason - The reason for the action.
- * @param {number} [durationMinutes] - The duration of the timeout in minutes, if applicable.
- * @returns {Promise<void>}
- */
 async function sendActionEmbed(
   channel,
   userId,
@@ -68,11 +61,16 @@ function getTracker(userId) {
   if (!userTrackers.has(userId)) {
     userTrackers.set(userId, {
       channelDeleteCount: 0,
+      channelCreateCount: 0,
+      channelUpdateCount: 0,
       nicknameChangeCount: 0,
       messageDeleteCount: 0,
       banCount: 0,
       kickCount: 0,
       roleDeleteCount: 0,
+      roleCreateCount: 0,
+      banRemoveCount: 0,
+      webhookCreateCount: 0,
       lastCheck: Date.now(),
       recentMessageIds: [],
     });
@@ -94,13 +92,8 @@ function cleanupTrackers() {
     }
   }
 }
-setInterval(cleanupTrackers, 10000);
+setInterval(cleanupTrackers, 10000).unref();
 
-/**
- * Checks if a message is considered spam and takes appropriate action.
- * @param {import('discord.js').Message} message - The message to check.
- * @returns {Promise<void>}
- */
 export async function checkSpam(message) {
   const cfg = await loadConfig();
   if (!cfg.enabled || !cfg.spam) return;
@@ -154,15 +147,6 @@ export async function checkSpam(message) {
   }
 }
 
-/**
- * Triggers a warning or an action if the user has already been warned recently.
- * @param {import('discord.js').Guild} guild - The guild where the action is taking place.
- * @param {string} userId - The ID of the user to warn or take action against.
- * @param {import('discord.js').Message|null} message - The message that triggered the warning, if any.
- * @param {string} warningText - The text to include in the warning.
- * @param {Function} actionCallback - The callback to execute if the user has already been warned.
- * @returns {Promise<void>}
- */
 async function triggerWarningOrAction(
   guild,
   userId,
@@ -218,15 +202,95 @@ async function triggerWarningOrAction(
   }
 }
 
-/**
- * Instantly executes an anti-nuke lockdown action against a user.
- * @param {import('discord.js').Guild} guild - The guild where the action is taking place.
- * @param {string} userId - The ID of the user to lock down.
- * @param {string} reason - The reason for the lockdown.
- * @param {string} [actionType="ban"] - The type of action to take ('ban', 'ban-wipe', 'timeout').
- * @param {import('discord.js').TextChannel|null} [channel=null] - The channel to send the action embed to.
- * @returns {Promise<void>}
- */
+const antiNukeLocks = new Set();
+
+async function isWhitelisted(guild, userId) {
+  if (userId === guild.ownerId) return true;
+  const anti = rootConfig.antiNuke;
+  if (anti.whitelistUserIds.includes(userId)) return true;
+
+  const trustedRoles = [
+    rootConfig.ownerRoleId,
+    ...anti.whitelistRoleIds,
+  ].filter(Boolean);
+  if (!trustedRoles.length) return false;
+
+  const member =
+    guild.members.cache.get(userId) ||
+    (await guild.members.fetch(userId).catch(() => null));
+  if (!member) return false;
+  return member.roles.cache.hasAny(...trustedRoles);
+}
+
+async function sendAntiNukeAlert(guild, content) {
+  const channel = getModLogChannel(guild);
+  if (!channel) return;
+  const container = new ContainerBuilder().setAccentColor(EMBED_COLOR);
+  container.addSectionComponents(
+    new SectionBuilder().addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(content),
+    ),
+  );
+  addFooter(container);
+  await channel
+    .send({ components: [container], flags: MessageFlags.IsComponentsV2 })
+    .catch(() => {});
+}
+
+async function runNukeCheck(guild, executor, opts) {
+  const {
+    counterKey,
+    limitKey,
+    defaultLimit,
+    reason,
+    actionType = "ban",
+  } = opts;
+  if (!executor || executor.bot) return;
+  if (executor.id === guild.ownerId) return;
+  if (antiNukeLocks.has(executor.id)) return;
+
+  const cfg = getConfigSync();
+  if (!cfg.enabled || !cfg.raid) return;
+
+  const channel = getModLogChannel(guild);
+  const trusted = await isWhitelisted(guild, executor.id);
+
+  if (rootConfig.antiNuke.instant && !trusted) {
+    await instantAntiNuke(
+      guild,
+      executor.id,
+      `${reason} by an untrusted account`,
+      actionType,
+      channel,
+    );
+    return;
+  }
+
+  const tracker = getTracker(executor.id);
+  tracker[counterKey] = (tracker[counterKey] || 0) + 1;
+  tracker.lastCheck = Date.now();
+  const limit = cfg.limits?.[limitKey] || defaultLimit;
+  if (tracker[counterKey] < limit) return;
+
+  const count = tracker[counterKey];
+  userTrackers.delete(executor.id);
+
+  if (trusted) {
+    await sendAntiNukeAlert(
+      guild,
+      `-*ᴀɴᴛɪ-ɴᴜᴋᴇ ᴀʟᴇʀᴛ*-\n## ${i("WARNING")} sᴜsᴘɪᴄɪᴏᴜs ᴀᴄᴛɪᴠɪᴛʏ\n**ʙʏ:** <@${executor.id}> (${executor.tag})\n**ᴀᴄᴛɪᴏɴ:** ${reason} ×${count} in rapid succession.\n\n> No auto-action taken — this is a trusted account. Please review immediately.`,
+    );
+  } else {
+    await instantAntiNuke(
+      guild,
+      executor.id,
+      `Mass ${reason} (${count} in rapid succession)`,
+      actionType,
+      channel,
+    );
+  }
+}
+
 async function instantAntiNuke(
   guild,
   userId,
@@ -234,13 +298,19 @@ async function instantAntiNuke(
   actionType = "ban",
   channel = null,
 ) {
+  if (antiNukeLocks.has(userId)) return;
+  antiNukeLocks.add(userId);
+  setTimeout(() => antiNukeLocks.delete(userId), 60_000).unref();
+
   try {
-    const member = await guild.members.fetch(userId).catch(() => null);
+    const member =
+      guild.members.cache.get(userId) ||
+      (await guild.members.fetch(userId).catch(() => null));
     if (!member) return;
     if (member.id === guild.ownerId || member.user.bot) return;
 
     console.log(
-      `[ANTI-NUKE] EXECUTING INSTANT LOCKDOWN (${actionType}) ON ${member.user.tag}: ${reason}`,
+      `[ANTI-NUKE] INSTANT LOCKDOWN (${actionType}) ON ${member.user.tag}: ${reason}`,
     );
 
     if (actionType.startsWith("ban")) {
@@ -249,59 +319,28 @@ async function instantAntiNuke(
         actionType === "ban-wipe" ? 1 : 0,
         `[ANTI-NUKE] ${reason}`,
       );
-      await sendActionEmbed(channel, member.id, actionType, reason);
+      sendActionEmbed(channel, member.id, actionType, reason).catch(() => {});
     } else if (actionType === "timeout") {
       await modTools.timeout(member, 60, `[ANTI-NUKE] ${reason}`);
-      await sendActionEmbed(channel, member.id, "timeout", reason, 60);
+      sendActionEmbed(channel, member.id, "timeout", reason, 60).catch(
+        () => {},
+      );
     }
   } catch (err) {
     console.error(`[ANTI-NUKE] Failed to execute lockdown:`, err.message);
   }
 }
 
-/**
- * Checks if a channel deletion is part of a raid and takes appropriate action.
- * @param {import('discord.js').Channel} channel - The deleted channel.
- * @param {import('discord.js').User} executor - The user who deleted the channel.
- * @returns {Promise<void>}
- */
 export async function checkChannelDelete(channel, executor) {
-  const cfg = await loadConfig();
-  if (!cfg.enabled || !cfg.raid) return;
-  if (!executor) return;
-
-  const tracker = getTracker(executor.id);
-  tracker.channelDeleteCount++;
-  tracker.lastCheck = Date.now();
-
-  const channelDeleteLimit = cfg.limits?.channelDelete || 2;
-
-  if (tracker.channelDeleteCount >= channelDeleteLimit) {
-    await triggerWarningOrAction(
-      channel.guild,
-      executor.id,
-      null,
-      "You are deleting channels too rapidly! Stop immediately.",
-      async () => {
-        await instantAntiNuke(
-          channel.guild,
-          executor.id,
-          `Rapid Channel Deletion detected.`,
-          "ban",
-          channel.guild.systemChannel,
-        );
-      },
-    );
-    userTrackers.delete(executor.id);
-  }
+  await runNukeCheck(channel.guild, executor, {
+    counterKey: "channelDeleteCount",
+    limitKey: "channelDelete",
+    defaultLimit: 2,
+    reason: "Channel Deletion",
+    actionType: "ban",
+  });
 }
 
-/**
- * Checks if a member update (like nickname change) is part of a raid and takes appropriate action.
- * @param {import('discord.js').GuildMember} oldMember - The member before the update.
- * @param {import('discord.js').GuildMember} newMember - The member after the update.
- * @returns {Promise<void>}
- */
 export async function checkMemberUpdate(oldMember, newMember) {
   const cfg = await loadConfig();
   if (!cfg.enabled || !cfg.raid) return;
@@ -334,12 +373,6 @@ export async function checkMemberUpdate(oldMember, newMember) {
   }
 }
 
-/**
- * Checks if a message deletion is part of a raid and takes appropriate action.
- * @param {import('discord.js').Message} message - The deleted message.
- * @param {import('discord.js').User} executor - The user who deleted the message.
- * @returns {Promise<void>}
- */
 export async function checkMessageDelete(message, executor) {
   const cfg = await loadConfig();
   if (!cfg.enabled || !cfg.raid) return;
@@ -372,75 +405,33 @@ export async function checkMessageDelete(message, executor) {
 }
 
 export async function checkMassBan(guild, executor) {
-  const cfg = await loadConfig();
-  if (!cfg.enabled || !cfg.raid) return;
-  if (!executor || executor.bot) return;
-  if (executor.id === guild.ownerId) return;
-
-  const tracker = getTracker(executor.id);
-  tracker.banCount++;
-  tracker.lastCheck = Date.now();
-
-  const banLimit = cfg.limits?.massBan || 3;
-
-  if (tracker.banCount >= banLimit) {
-    await instantAntiNuke(
-      guild,
-      executor.id,
-      `Mass Ban detected (${tracker.banCount} bans in rapid succession).`,
-      "ban",
-      guild.systemChannel,
-    );
-    userTrackers.delete(executor.id);
-  }
+  await runNukeCheck(guild, executor, {
+    counterKey: "banCount",
+    limitKey: "massBan",
+    defaultLimit: 3,
+    reason: "Ban",
+    actionType: "ban",
+  });
 }
 
 export async function checkMassKick(guild, executor) {
-  const cfg = await loadConfig();
-  if (!cfg.enabled || !cfg.raid) return;
-  if (!executor || executor.bot) return;
-  if (executor.id === guild.ownerId) return;
-
-  const tracker = getTracker(executor.id);
-  tracker.kickCount++;
-  tracker.lastCheck = Date.now();
-
-  const kickLimit = cfg.limits?.massKick || 3;
-
-  if (tracker.kickCount >= kickLimit) {
-    await instantAntiNuke(
-      guild,
-      executor.id,
-      `Mass Kick detected (${tracker.kickCount} kicks in rapid succession).`,
-      "ban",
-      guild.systemChannel,
-    );
-    userTrackers.delete(executor.id);
-  }
+  await runNukeCheck(guild, executor, {
+    counterKey: "kickCount",
+    limitKey: "massKick",
+    defaultLimit: 3,
+    reason: "Kick",
+    actionType: "ban",
+  });
 }
 
 export async function checkRoleDelete(guild, executor) {
-  const cfg = await loadConfig();
-  if (!cfg.enabled || !cfg.raid) return;
-  if (!executor || executor.bot) return;
-  if (executor.id === guild.ownerId) return;
-
-  const tracker = getTracker(executor.id);
-  tracker.roleDeleteCount++;
-  tracker.lastCheck = Date.now();
-
-  const roleDeleteLimit = cfg.limits?.roleDelete || 2;
-
-  if (tracker.roleDeleteCount >= roleDeleteLimit) {
-    await instantAntiNuke(
-      guild,
-      executor.id,
-      `Mass Role Deletion detected (${tracker.roleDeleteCount} roles deleted rapidly).`,
-      "ban",
-      guild.systemChannel,
-    );
-    userTrackers.delete(executor.id);
-  }
+  await runNukeCheck(guild, executor, {
+    counterKey: "roleDeleteCount",
+    limitKey: "roleDelete",
+    defaultLimit: 2,
+    reason: "Role Deletion",
+    actionType: "ban",
+  });
 }
 
 export async function checkToxicity(message) {
@@ -483,15 +474,6 @@ export async function checkToxicity(message) {
 
 const activeModerationLocks = new Set();
 
-/**
- * Triggers AI-based moderation to determine the appropriate action for an anomaly.
- * @param {import('discord.js').Guild} guild - The guild where the anomaly occurred.
- * @param {string} userId - The ID of the user who caused the anomaly.
- * @param {string} anomalyType - The type of anomaly detected.
- * @param {string} contextData - Additional context data for the AI to analyze.
- * @param {import('discord.js').TextChannel|null} [channel=null] - The channel to send the action embed to.
- * @returns {Promise<void>}
- */
 async function triggerAIModeration(
   guild,
   userId,
@@ -523,7 +505,7 @@ async function triggerAIModeration(
       A fast spammer might just need a timeout. A malicious raider deleting channels should be banned.
       Take a measured but strict approach to protect the server.
 
-      Respond ONLY with the JSON object. 
+      Respond ONLY with the JSON object.
       For action use: 'timeout', 'kick', 'ban', 'ban-wipe' (bans and deletes 1 day of messages; use if it's a pure spam raid), or 'none'.
     `;
 
@@ -532,7 +514,8 @@ async function triggerAIModeration(
     const result = await generateObject({
       model: modelObj,
       prompt,
-      maxTokens: 500,
+      maxOutputTokens: 500,
+      abortSignal: AbortSignal.timeout(30_000),
       schema: z.object({
         action: z.enum(["timeout", "kick", "ban", "ban-wipe", "none"]),
         durationMinutes: z.number().optional().describe("For timeout only"),
@@ -582,12 +565,6 @@ async function triggerAIModeration(
   }
 }
 
-/**
- * Proactively checks if a message and its attachments are part of a hacked account scam.
- * @param {import('discord.js').Message} message - The message to check.
- * @param {string[]} [imageUrls] - Array of image URLs attached to the message.
- * @returns {Promise<void>}
- */
 export async function checkHackedAccountSpam(message, imageUrls) {
   const cfg = await loadConfig();
   if (!cfg.enabled) return;
@@ -639,7 +616,8 @@ export async function checkHackedAccountSpam(message, imageUrls) {
           content: contentArray,
         },
       ],
-      maxTokens: 500,
+      maxOutputTokens: 500,
+      abortSignal: AbortSignal.timeout(30_000),
       schema: z.object({
         isHackedPromo: z
           .boolean()
@@ -757,4 +735,168 @@ export async function checkHackedAccountSpam(message, imageUrls) {
   } finally {
     activeModerationLocks.delete(member.id);
   }
+}
+
+function getModLogChannel(guild) {
+  const id = rootConfig.modLogChannelId;
+  if (id) {
+    const channel = guild.channels.cache.get(id);
+    if (channel) return channel;
+  }
+  return guild.systemChannel;
+}
+
+const DANGEROUS_PERMISSIONS = [
+  PermissionFlagsBits.Administrator,
+  PermissionFlagsBits.ManageGuild,
+  PermissionFlagsBits.ManageRoles,
+  PermissionFlagsBits.ManageChannels,
+  PermissionFlagsBits.ManageWebhooks,
+  PermissionFlagsBits.BanMembers,
+  PermissionFlagsBits.KickMembers,
+  PermissionFlagsBits.ManageNicknames,
+  PermissionFlagsBits.MentionEveryone,
+];
+
+export async function checkChannelCreate(channel, executor) {
+  await runNukeCheck(channel.guild, executor, {
+    counterKey: "channelCreateCount",
+    limitKey: "channelCreate",
+    defaultLimit: 3,
+    reason: "Channel Creation",
+    actionType: "ban",
+  });
+}
+
+export async function checkChannelUpdate(oldChannel, newChannel, executor) {
+  await runNukeCheck(newChannel.guild, executor, {
+    counterKey: "channelUpdateCount",
+    limitKey: "channelUpdate",
+    defaultLimit: 5,
+    reason: `Channel Rename ("${oldChannel.name}" → "${newChannel.name}")`,
+    actionType: "ban",
+  });
+}
+
+export async function checkRoleCreate(role, executor) {
+  await runNukeCheck(role.guild, executor, {
+    counterKey: "roleCreateCount",
+    limitKey: "roleCreate",
+    defaultLimit: 3,
+    reason: "Role Creation",
+    actionType: "ban",
+  });
+}
+
+export async function checkRoleUpdate(oldRole, newRole, executor) {
+  const cfg = getConfigSync();
+  if (!cfg.enabled || !cfg.raid) return;
+  if (!executor || executor.bot) return;
+  const guild = newRole.guild;
+  if (executor.id === guild.ownerId) return;
+
+  const addedDangerous = DANGEROUS_PERMISSIONS.filter(
+    (perm) => !oldRole.permissions.has(perm) && newRole.permissions.has(perm),
+  );
+  if (addedDangerous.length === 0) return;
+
+  if (await isWhitelisted(guild, executor.id)) {
+    await sendAntiNukeAlert(
+      guild,
+      `-*ᴀɴᴛɪ-ɴᴜᴋᴇ ᴀʟᴇʀᴛ*-\n## ${i("WARNING")} ᴘʀɪᴠɪʟᴇɢᴇ ᴄʜᴀɴɢᴇ\n**ʀᴏʟᴇ:** ${newRole.name}\n**ʙʏ:** <@${executor.id}> (${executor.tag})\n\n> Dangerous permissions were granted by a trusted account. No action taken — please verify this was intentional.`,
+    );
+    return;
+  }
+
+  console.log(
+    `[ANTI-NUKE] Privilege escalation on role "${newRole.name}" by ${executor.tag}. Reverting.`,
+  );
+
+  await newRole
+    .setPermissions(
+      oldRole.permissions,
+      "[ANTI-NUKE] Reverting unauthorized privilege escalation",
+    )
+    .catch((err) =>
+      console.error(
+        "[ANTI-NUKE] Failed to revert role permissions:",
+        err.message,
+      ),
+    );
+
+  await instantAntiNuke(
+    guild,
+    executor.id,
+    `Privilege Escalation: dangerous permissions were granted to role "${newRole.name}" and have been reverted.`,
+    "ban",
+    getModLogChannel(guild),
+  );
+}
+
+export async function checkMassUnban(guild, executor) {
+  await runNukeCheck(guild, executor, {
+    counterKey: "banRemoveCount",
+    limitKey: "banRemove",
+    defaultLimit: 5,
+    reason: "Unban",
+    actionType: "ban",
+  });
+}
+
+export async function checkWebhookCreate(guild, executor) {
+  await runNukeCheck(guild, executor, {
+    counterKey: "webhookCreateCount",
+    limitKey: "webhookCreate",
+    defaultLimit: 3,
+    reason: "Webhook Creation",
+    actionType: "ban",
+  });
+}
+
+export async function checkGuildUpdate(guild, executor, changeSummary) {
+  const cfg = await loadConfig();
+  if (!cfg.enabled || !cfg.raid) return;
+  if (!executor || executor.bot) return;
+  if (executor.id === guild.ownerId) return;
+
+  const channel = getModLogChannel(guild);
+  if (!channel) return;
+
+  const container = new ContainerBuilder().setAccentColor(EMBED_COLOR);
+  container.addSectionComponents(
+    new SectionBuilder().addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(
+        `-*ᴀɴᴛɪ-ɴᴜᴋᴇ ᴀʟᴇʀᴛ*-\n## ${i("WARNING")} sᴇʀᴠᴇʀ sᴇᴛᴛɪɴɢs ᴄʜᴀɴɢᴇᴅ\n**ʙʏ:** <@${executor.id}> (${executor.tag})\n\n${changeSummary || "Server settings were updated."}`,
+      ),
+    ),
+  );
+  addFooter(container);
+  await channel
+    .send({ components: [container], flags: MessageFlags.IsComponentsV2 })
+    .catch(() => {});
+}
+
+export async function checkBotAdd(guild, botMember, executor) {
+  const cfg = await loadConfig();
+  if (!cfg.enabled || !cfg.raid) return;
+
+  const channel = getModLogChannel(guild);
+  if (!channel) return;
+
+  const addedBy = executor
+    ? `<@${executor.id}> (${executor.tag})`
+    : "Unknown (no recent audit entry)";
+
+  const container = new ContainerBuilder().setAccentColor(EMBED_COLOR);
+  container.addSectionComponents(
+    new SectionBuilder().addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(
+        `-*ᴀɴᴛɪ-ɴᴜᴋᴇ ᴀʟᴇʀᴛ*-\n## ${i("WARNING")} ɴᴇᴡ ʙᴏᴛ ᴀᴅᴅᴇᴅ\n**ʙᴏᴛ:** <@${botMember.id}> (${botMember.user.tag})\n**ᴀᴅᴅᴇᴅ ʙʏ:** ${addedBy}\n\n> ɪғ ᴛʜɪs ʙᴏᴛ ᴡᴀs ɴᴏᴛ ᴀᴜᴛʜᴏʀɪᴢᴇᴅ, ʀᴇᴍᴏᴠᴇ ɪᴛ ᴀɴᴅ ʀᴇᴠɪᴇᴡ ɪᴛs ᴘᴇʀᴍɪssɪᴏɴs ɪᴍᴍᴇᴅɪᴀᴛᴇʟʏ.`,
+      ),
+    ),
+  );
+  addFooter(container);
+  await channel
+    .send({ components: [container], flags: MessageFlags.IsComponentsV2 })
+    .catch(() => {});
 }

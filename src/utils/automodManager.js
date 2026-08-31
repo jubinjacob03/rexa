@@ -13,12 +13,25 @@ const defaultData = {
     channelDelete: 2,
     nicknameChange: 3,
     messageDelete: 3,
+    massBan: 3,
+    massKick: 3,
+    roleDelete: 2,
+    channelCreate: 3,
+    roleCreate: 3,
+    channelUpdate: 5,
+    banRemove: 5,
+    webhookCreate: 3,
   },
 };
 
 let _cache = null;
 let _cacheTTL = 0;
 const CACHE_MS = 10_000;
+
+export function getConfigSync() {
+  return _cache || { ...defaultData };
+}
+
 export async function loadConfig() {
   if (_cache && Date.now() < _cacheTTL) return _cache;
 
@@ -75,11 +88,6 @@ export async function saveConfig(data) {
   }
 }
 
-/**
- * Updates the automod configuration with new values.
- * @param {Object} updates - The updates to apply.
- * @returns {Promise<Object>} The updated configuration.
- */
 export async function updateConfig(updates) {
   const current = await loadConfig();
   const newData = {
@@ -90,3 +98,5 @@ export async function updateConfig(updates) {
   await saveConfig(newData);
   return newData;
 }
+
+loadConfig().catch(() => {});

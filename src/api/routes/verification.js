@@ -58,11 +58,6 @@ router.get("/pending", async (req, res) => {
   }
 });
 
-/**
- * GET /api/verification/user-status
- * Retrieves the verification status and roles for a specific user.
- * Requires `userId` query parameter.
- */
 router.get("/user-status", async (req, res) => {
   try {
     const client = req.app.get("discordClient");
@@ -342,11 +337,6 @@ router.post("/approve", async (req, res) => {
   }
 });
 
-/**
- * POST /api/verification/reject
- * Rejects a pending verification request.
- * Expects { requesterId, targetUserId } in the request body.
- */
 router.post("/reject", async (req, res) => {
   try {
     const client = req.app.get("discordClient");
